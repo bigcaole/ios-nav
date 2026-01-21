@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ "main" ] # 当你向 main 分支提交代码时触发
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -27,5 +27,5 @@ jobs:
         with:
           context: .
           push: true
-          # 镜像名称：ghcr.io/你的用户名/mynavsite:latest
-          tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+          # 关键修改：手动指定为全小写镜像名
+          tags: ghcr.io/bigcaole/mynavsite:latest
