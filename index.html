@@ -1,0 +1,1571 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>我的 iOS 风格导航</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#f2f2f7" />
+    <script>
+      (function () {
+        try {
+          const saved = localStorage.getItem("theme");
+          const hour = new Date().getHours();
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const autoDark = hour >= 18 || hour < 6 || prefersDark;
+          const shouldDark = saved ? saved === "dark" : autoDark;
+          if (shouldDark) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (err) {}
+      })();
+    </script>
+    <style>
+      :root {
+        --bg-a: #f7f2ee;
+        --bg-b: #e7edf7;
+        --card: #ffffff;
+        --text: #17181a;
+        --muted: #6a6f7a;
+        --dock: rgba(255, 255, 255, 0.6);
+        --dock-border: rgba(255, 255, 255, 0.4);
+        --shadow: 0 10px 30px rgba(16, 24, 40, 0.12);
+        --radius: 22px;
+        --base-size: 15px;
+        --label-weight: 600;
+        --title-weight: 700;
+      }
+      html.dark {
+        --bg-a: #0f1115;
+        --bg-b: #141826;
+        --card: #1c2029;
+        --text: #f5f7fb;
+        --muted: #9aa3b2;
+        --dock: rgba(28, 32, 41, 0.75);
+        --dock-border: rgba(255, 255, 255, 0.08);
+        --shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        min-height: 100vh;
+        font-size: var(--base-size);
+        transition: background 0.35s ease, color 0.35s ease;
+      }
+      body.bold {
+        --label-weight: 700;
+        --title-weight: 800;
+      }
+      header {
+        padding: 28px 22px 6px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+      .title-wrap {
+        display: grid;
+        gap: 6px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 26px;
+        letter-spacing: 0.3px;
+        font-weight: var(--title-weight);
+      }
+      p {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .grid {
+        display: grid;
+        gap: 18px;
+        padding: 18px 22px 120px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .category-card {
+        grid-column: 1 / -1;
+        border-radius: 22px;
+        padding: 16px 16px 18px;
+        box-shadow: 0 14px 30px rgba(16, 24, 40, 0.12);
+        transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .category-title {
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1.6px;
+        margin: 2px 0 14px;
+      }
+      .category-grid {
+        display: grid;
+        gap: 14px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      .app {
+        text-decoration: none;
+        color: inherit;
+        text-align: center;
+        display: grid;
+        gap: 10px;
+        justify-items: center;
+        position: relative;
+      }
+      .icon {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: var(--radius);
+        background: var(--card);
+        box-shadow: var(--shadow);
+        display: grid;
+        place-items: center;
+        font-size: 22px;
+        font-weight: 700;
+        color: #ffffff;
+        overflow: hidden;
+        position: relative;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+      }
+      @keyframes jiggle {
+        0% {
+          transform: rotate(-1.5deg);
+        }
+        50% {
+          transform: rotate(1.5deg);
+        }
+        100% {
+          transform: rotate(-1.5deg);
+        }
+      }
+      .jiggle .icon {
+        animation: jiggle 0.2s ease-in-out infinite;
+        transform-origin: 50% 60%;
+      }
+      .jiggle .icon:hover {
+        transform: rotate(0deg);
+      }
+      .minus {
+        position: absolute;
+        left: 6px;
+        top: 6px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #ff3b30;
+        border: 2px solid #ffffff;
+        box-shadow: 0 6px 12px rgba(16, 24, 40, 0.22);
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 16px;
+        border: none;
+        cursor: pointer;
+        z-index: 2;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .edit-badge {
+        position: absolute;
+        right: 6px;
+        top: 6px;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #0a84ff;
+        border: 2px solid #ffffff;
+        box-shadow: 0 6px 12px rgba(16, 24, 40, 0.22);
+        display: grid;
+        place-items: center;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 12px;
+        border: none;
+        cursor: pointer;
+        z-index: 2;
+        opacity: 0;
+        pointer-events: none;
+      }
+      .editing .minus {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .editing .edit-badge {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      .icon .lock {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.6);
+        display: grid;
+        place-items: center;
+      }
+      .icon .lock svg {
+        width: 11px;
+        height: 11px;
+        fill: #ffffff;
+      }
+      .icon img {
+        width: 72%;
+        height: 72%;
+        object-fit: contain;
+        display: block;
+      }
+      .app:hover .icon {
+        box-shadow: 0 14px 36px rgba(16, 24, 40, 0.18);
+      }
+      .label {
+        font-size: 13px;
+        font-weight: var(--label-weight);
+      }
+      .sublabel {
+        font-size: 12px;
+      }
+      .dock {
+        position: fixed;
+        left: 16px;
+        right: 16px;
+        bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 28px;
+        background: var(--dock);
+        border: 1px solid var(--dock-border);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.18);
+        display: grid;
+        grid-auto-flow: column;
+        gap: 14px;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .dock .icon {
+        width: 56px;
+        box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+      }
+      .hidden {
+        display: none;
+      }
+      .search-row {
+        padding: 8px 22px 0;
+      }
+      .search-row input {
+        width: 100%;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 16px;
+        padding: 10px 14px;
+        font-size: 14px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.8);
+        box-shadow: 0 8px 18px rgba(16, 24, 40, 0.08);
+        transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
+      }
+      .search-overlay {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: flex-start;
+        justify-content: center;
+        padding: 80px 20px 40px;
+        background: rgba(20, 24, 30, 0.35);
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+        z-index: 30;
+      }
+      .search-overlay.active {
+        display: flex;
+      }
+      .spotlight {
+        width: min(900px, 100%);
+      }
+      .spotlight input {
+        width: 100%;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        border-radius: 18px;
+        padding: 16px 18px;
+        font-size: 20px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.85);
+        box-shadow: 0 18px 30px rgba(16, 24, 40, 0.18);
+        transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .spotlight-results {
+        margin-top: 18px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 14px;
+      }
+      .spotlight-results .app {
+        background: rgba(255, 255, 255, 0.25);
+        padding: 10px;
+        border-radius: 18px;
+      }
+      .btn {
+        border: none;
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 13px;
+        cursor: pointer;
+        background: rgba(255, 255, 255, 0.8);
+        color: var(--text);
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.1);
+        transition: background-color 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .btn.primary {
+        background: #0a84ff;
+        color: #ffffff;
+      }
+      .theme-toggle {
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+      }
+      .theme-toggle svg {
+        width: 22px;
+        height: 22px;
+        position: absolute;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+      }
+      .theme-toggle .sun {
+        fill: #ffcc33;
+        opacity: 1;
+        transform: scale(1);
+      }
+      .theme-toggle .moon {
+        fill: #7c6cff;
+        opacity: 0;
+        transform: scale(0.7);
+      }
+      .ios-bg {
+        background:
+          radial-gradient(700px 420px at 15% 10%, rgba(185, 214, 255, 0.85), transparent 65%),
+          radial-gradient(650px 380px at 85% 20%, rgba(255, 210, 225, 0.7), transparent 60%),
+          radial-gradient(800px 500px at 45% 80%, rgba(210, 205, 255, 0.7), transparent 65%),
+          linear-gradient(180deg, #f7f7fb, #f2f2f7);
+      }
+      html.dark .ios-bg {
+        background:
+          radial-gradient(700px 420px at 20% 10%, rgba(32, 64, 120, 0.6), transparent 70%),
+          radial-gradient(700px 450px at 85% 20%, rgba(76, 44, 120, 0.6), transparent 70%),
+          linear-gradient(180deg, #0b0f1a, #121826);
+      }
+      html.dark .theme-toggle .sun {
+        opacity: 0;
+        transform: scale(0.7);
+      }
+      html.dark .theme-toggle .moon {
+        opacity: 1;
+        transform: scale(1);
+      }
+      .modal {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 22px;
+        background: rgba(12, 14, 18, 0.35);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 20;
+      }
+      .modal.active {
+        display: flex;
+      }
+      .sheet {
+        width: min(420px, 100%);
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 24px;
+        padding: 20px;
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+      }
+      .sheet h2 {
+        margin: 0 0 12px;
+        font-size: 18px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      .field label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      .field input {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.85);
+      }
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 0 4px;
+      }
+      .toggle {
+        position: relative;
+        width: 48px;
+        height: 28px;
+      }
+      .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        inset: 0;
+        background: #d5d7dc;
+        border-radius: 999px;
+        transition: 0.2s ease;
+      }
+      .slider::before {
+        content: "";
+        position: absolute;
+        width: 24px;
+        height: 24px;
+        left: 2px;
+        top: 2px;
+        background: #ffffff;
+        border-radius: 50%;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        transition: 0.2s ease;
+      }
+      .toggle input:checked + .slider {
+        background: #34c759;
+      }
+      .toggle input:checked + .slider::before {
+        transform: translateX(20px);
+      }
+      .sheet .footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .settings-group {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid rgba(0, 0, 0, 0.06);
+      }
+      .settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 10px 0;
+        font-size: 13px;
+      }
+      .settings-row input[type="range"] {
+        width: 160px;
+        accent-color: #0a84ff;
+      }
+      .disabled {
+        opacity: 0.5;
+        pointer-events: none;
+      }
+      @media (min-width: 700px) {
+        .grid {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+        .category-grid {
+          grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+      }
+      @media (min-width: 1100px) {
+        .grid {
+          grid-template-columns: repeat(10, minmax(0, 1fr));
+        }
+        .category-grid {
+          grid-template-columns: repeat(10, minmax(0, 1fr));
+        }
+      }
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: "class"
+      };
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="text-slate-900 transition-colors duration-300 dark:text-white">
+    <div class="ios-bg fixed inset-0 -z-10"></div>
+    <div
+      id="top-controls"
+      class="fixed right-6 bottom-24 z-[100] inline-flex transition-all duration-200 md:top-6 md:bottom-auto"
+    >
+      <div id="menuRoot" class="relative flex flex-col items-center gap-3 md:flex-row md:items-center">
+      <button
+        class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-sm font-medium text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 md:hidden"
+        id="menuToggle"
+        aria-label="打开菜单"
+        aria-expanded="false"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true" data-icon="menu">
+          <path fill="currentColor" d="M4 7h16a1 1 0 0 0 0-2H4a1 1 0 0 0 0 2Zm16 4H4a1 1 0 0 0 0 2h16a1 1 0 0 0 0-2Zm0 6H4a1 1 0 0 0 0 2h16a1 1 0 0 0 0-2Z" />
+        </svg>
+        <svg class="h-5 w-5 hidden" viewBox="0 0 24 24" aria-hidden="true" data-icon="close">
+          <path fill="currentColor" d="M18.3 5.71a1 1 0 0 0-1.41 0L12 10.59 7.11 5.7a1 1 0 1 0-1.41 1.42L10.59 12l-4.9 4.89a1 1 0 0 0 1.41 1.42L12 13.41l4.89 4.9a1 1 0 0 0 1.42-1.41L13.41 12l4.9-4.89a1 1 0 0 0-.01-1.4Z" />
+        </svg>
+      </button>
+      <div
+        id="controlGroup"
+        class="absolute left-1/2 -translate-x-1/2 flex flex-col md:flex-row items-center md:items-center gap-3 transition-all opacity-0 pointer-events-none translate-y-2 scale-95 md:static md:translate-x-0 md:opacity-100 md:pointer-events-auto md:translate-y-0 md:scale-100"
+      >
+        <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="loginBtn"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 2c-4.42 0-8 2-8 4.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5C20 16 16.42 14 12 14Z"
+            />
+          </svg>
+          <span class="hidden md:inline">登录</span>
+        </button>
+        <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="settingsBtn"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 8a4 4 0 1 0 4 4 4 4 0 0 0-4-4Zm9 4a7.56 7.56 0 0 0-.12-1.33l2-1.55-2-3.46-2.39.8A7.73 7.73 0 0 0 16.4 5l-.36-2.48H8l-.36 2.48A7.73 7.73 0 0 0 5.51 6.46l-2.39-.8-2 3.46 2 1.55A7.56 7.56 0 0 0 3 12a7.56 7.56 0 0 0 .12 1.33l-2 1.55 2 3.46 2.39-.8A7.73 7.73 0 0 0 7.6 19l.36 2.48h8l.36-2.48a7.73 7.73 0 0 0 2.11-1.46l2.39.8 2-3.46-2-1.55A7.56 7.56 0 0 0 21 12Z"
+            />
+          </svg>
+          <span class="hidden md:inline">设置</span>
+        </button>
+        <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="editBtn"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75ZM21.71 6.04a1 1 0 0 0 0-1.41L19.37 2.29a1 1 0 0 0-1.41 0L16.13 4.12l3.75 3.75Z"
+            />
+          </svg>
+          <span class="hidden md:inline">编辑</span>
+        </button>
+        <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="addBtn"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="currentColor" d="M19 11h-6V5a1 1 0 0 0-2 0v6H5a1 1 0 0 0 0 2h6v6a1 1 0 0 0 2 0v-6h6a1 1 0 0 0 0-2Z" />
+          </svg>
+          <span class="hidden md:inline">添加</span>
+        </button>
+        <button
+          class="theme-toggle flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 w-12 h-12 transition-all hover:scale-105 active:scale-95"
+          id="themeToggle"
+          aria-label="切换日夜模式"
+          aria-pressed="false"
+        >
+        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-4.5a1 1 0 0 1 1 1V5a1 1 0 1 1-2 0V3.5a1 1 0 0 1 1-1Zm0 15.5a1 1 0 0 1 1 1V21a1 1 0 1 1-2 0v-2a1 1 0 0 1 1-1Zm8.5-6a1 1 0 0 1-1 1H19a1 1 0 1 1 0-2h1.5a1 1 0 0 1 1 1ZM5 12a1 1 0 0 1-1 1H2.5a1 1 0 1 1 0-2H4a1 1 0 0 1 1 1Zm11.95-6.45a1 1 0 0 1 1.41 0l1.06 1.06a1 1 0 1 1-1.41 1.41l-1.06-1.06a1 1 0 0 1 0-1.41ZM5.58 17.82a1 1 0 0 1 1.41 0l1.06 1.06a1 1 0 0 1-1.41 1.41l-1.06-1.06a1 1 0 0 1 0-1.41Zm12.84 1.06a1 1 0 0 1-1.41 0l-1.06-1.06a1 1 0 1 1 1.41-1.41l1.06 1.06a1 1 0 0 1 0 1.41ZM7.05 6.64a1 1 0 0 1-1.41 0L4.58 5.58a1 1 0 1 1 1.41-1.41l1.06 1.06a1 1 0 0 1 0 1.41Z"
+          />
+        </svg>
+        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5a.5.5 0 0 1 .7.6 7 7 0 1 0 9.7 9.7.5.5 0 0 1 .6.7Z"
+          />
+        </svg>
+        </button>
+      </div>
+      </div>
+    </div>
+    <header class="pt-16 sm:pt-0">
+      <div class="title-wrap">
+        <h1 class="text-slate-900 dark:text-white hidden sm:block" id="siteTitle">我的 iOS 风格导航</h1>
+        <p class="text-slate-900 dark:text-white">挑一个图标，直接打开网站。</p>
+      </div>
+    </header>
+
+    <div class="search-row">
+      <input
+        id="searchInput"
+        class="bg-white/50 dark:bg-black/50 backdrop-blur-md text-slate-900 dark:text-white"
+        type="search"
+        placeholder="搜索导航..."
+      />
+    </div>
+
+    <main class="grid" id="appGrid"></main>
+
+    <nav class="dock" aria-label="快捷栏">
+      <a class="app" href="https://www.google.com" target="_blank" rel="noreferrer">
+        <div
+          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
+          data-url="https://www.google.com"
+        ></div>
+      </a>
+      <a class="app" href="https://mail.google.com" target="_blank" rel="noreferrer">
+        <div
+          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
+          data-url="https://mail.google.com"
+        ></div>
+      </a>
+      <a class="app" href="https://calendar.google.com" target="_blank" rel="noreferrer">
+        <div
+          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
+          data-url="https://calendar.google.com"
+        ></div>
+      </a>
+      <a class="app" href="https://drive.google.com" target="_blank" rel="noreferrer">
+        <div
+          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
+          data-url="https://drive.google.com"
+        ></div>
+      </a>
+    </nav>
+
+    <div class="modal" id="modal">
+      <div class="sheet">
+        <h2 id="formTitle">添加导航</h2>
+        <form id="linkForm">
+          <div class="field">
+            <label for="titleInput">标题</label>
+          <input
+            id="titleInput"
+            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+            type="text"
+            placeholder="例如：苹果"
+            required
+          />
+          </div>
+          <div class="field">
+            <label for="urlInput">网址</label>
+          <input
+            id="urlInput"
+            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+            type="url"
+            placeholder="https://example.com"
+            required
+          />
+          </div>
+          <div class="field">
+            <label for="categoryInput">分类（可选）</label>
+          <input
+            id="categoryInput"
+            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+            list="categoryList"
+            type="text"
+            placeholder="例如：工作"
+          />
+            <datalist id="categoryList"></datalist>
+          </div>
+          <div class="toggle-row">
+            <span>仅登录可见</span>
+            <label class="toggle">
+              <input id="privateInput" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="footer">
+            <button type="button" class="btn" id="cancelBtn">取消</button>
+            <button type="submit" class="btn primary" id="saveBtn">保存</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+      <div class="sheet bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl">
+        <h2>设置</h2>
+        <div class="field">
+          <label for="siteNameInput">网站标题</label>
+          <input
+            id="siteNameInput"
+            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+            type="text"
+            placeholder="例如：我的导航"
+          />
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">字体大小</span>
+          <input id="fontSizeInput" type="range" min="12" max="20" value="15" />
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">加粗文字</span>
+          <label class="toggle">
+            <input id="boldToggle" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-group" id="backupGroup">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">导出备份</span>
+            <a
+              class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+              id="exportBtn"
+              href="/api/backup/export"
+            >下载</a>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">导入备份</span>
+            <input
+              id="importFile"
+              class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+              style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+              type="file"
+              accept=".db"
+            />
+          </div>
+          <div class="settings-row">
+            <span></span>
+            <button class="btn border border-gray-200/50 text-slate-900 dark:text-white" id="importBtn">导入</button>
+          </div>
+        </div>
+        <div class="footer">
+          <button
+            type="button"
+            class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+            id="settingsSaveBtn"
+          >保存设置</button>
+          <button
+            type="button"
+            class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+            id="settingsCloseBtn"
+          >关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="search-overlay" id="searchOverlay">
+      <div class="spotlight">
+        <input id="spotlightInput" type="search" placeholder="搜索导航..." />
+        <div class="spotlight-results" id="spotlightResults"></div>
+      </div>
+    </div>
+
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("/service-worker.js");
+        });
+      }
+
+      const grid = document.querySelector("#appGrid");
+      const modal = document.querySelector("#modal");
+      const settingsModal = document.querySelector("#settingsModal");
+      const addBtn = document.querySelector("#addBtn");
+      const editBtn = document.querySelector("#editBtn");
+      const cancelBtn = document.querySelector("#cancelBtn");
+      const loginBtn = document.querySelector("#loginBtn");
+      const settingsBtn = document.querySelector("#settingsBtn");
+      const settingsCloseBtn = document.querySelector("#settingsCloseBtn");
+      const menuToggle = document.querySelector("#menuToggle");
+      const controlGroup = document.querySelector("#controlGroup");
+      const linkForm = document.querySelector("#linkForm");
+      const themeToggle = document.querySelector("#themeToggle");
+      const formTitle = document.querySelector("#formTitle");
+      const saveBtn = document.querySelector("#saveBtn");
+      const searchInput = document.querySelector("#searchInput");
+      const searchOverlay = document.querySelector("#searchOverlay");
+      const spotlightInput = document.querySelector("#spotlightInput");
+      const spotlightResults = document.querySelector("#spotlightResults");
+      const topControls = document.querySelector("#top-controls");
+      const titleInput = document.querySelector("#titleInput");
+      const urlInput = document.querySelector("#urlInput");
+      const categoryInput = document.querySelector("#categoryInput");
+      const privateInput = document.querySelector("#privateInput");
+      const categoryList = document.querySelector("#categoryList");
+      const siteTitle = document.querySelector("#siteTitle");
+      const siteNameInput = document.querySelector("#siteNameInput");
+      const fontSizeInput = document.querySelector("#fontSizeInput");
+      const boldToggle = document.querySelector("#boldToggle");
+      const exportBtn = document.querySelector("#exportBtn");
+      const importFile = document.querySelector("#importFile");
+      const importBtn = document.querySelector("#importBtn");
+      const backupGroup = document.querySelector("#backupGroup");
+      const settingsSaveBtn = document.querySelector("#settingsSaveBtn");
+      let loggedIn = false;
+      let editing = false;
+      let editingLinkId = null;
+      let allLinks = [];
+
+      function hashCode(text) {
+        let hash = 0;
+        for (let i = 0; i < text.length; i += 1) {
+          hash = (hash << 5) - hash + text.charCodeAt(i);
+          hash |= 0;
+        }
+        return Math.abs(hash);
+      }
+
+      function colorPair(seed) {
+        const hue = seed % 360;
+        const hue2 = (hue + 40 + (seed % 60)) % 360;
+        return [`hsl(${hue}, 70%, 55%)`, `hsl(${hue2}, 80%, 45%)`];
+      }
+
+      function firstLetter(url) {
+        try {
+          const host = new URL(url).hostname.replace("www.", "");
+          return host.charAt(0).toUpperCase();
+        } catch (err) {
+          return "A";
+        }
+      }
+
+      function buildIcon(iconEl, url, iconUrl, isPrivate) {
+        const seed = hashCode(url);
+        const [c1, c2] = colorPair(seed);
+
+        function fallbackToLetter() {
+          iconEl.innerHTML = "";
+          iconEl.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
+          iconEl.textContent = firstLetter(url);
+        }
+
+        const img = document.createElement("img");
+        const faviconUrl = url
+          ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(url)}&sz=128`
+          : "";
+        img.src = iconUrl || faviconUrl;
+        img.alt = "";
+        img.onerror = () => {
+          fallbackToLetter();
+        };
+        iconEl.innerHTML = "";
+        iconEl.appendChild(img);
+        if (isPrivate) {
+          const lock = document.createElement("div");
+          lock.className = "lock";
+          lock.innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
+          iconEl.appendChild(lock);
+        }
+      }
+
+      function groupByCategory(links) {
+        const groups = {};
+        links.forEach((item) => {
+          const key = (item.category || "未分类").trim();
+          if (!groups[key]) {
+            groups[key] = [];
+          }
+          groups[key].push(item);
+        });
+        return groups;
+      }
+
+      function renderDockIcons() {
+        document.querySelectorAll(".dock .icon").forEach((icon) => {
+          const url = icon.dataset.url || "";
+          buildIcon(icon, url, "", false);
+        });
+      }
+
+      function renderLinks(links) {
+        grid.innerHTML = "";
+        const groups = groupByCategory(links);
+        Object.keys(groups)
+          .sort((a, b) => a.localeCompare(b))
+          .forEach((category) => {
+            const cardWrap = document.createElement("section");
+            cardWrap.className =
+              "category-card bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-white/20";
+
+            const heading = document.createElement("div");
+            heading.className = "category-title font-bold text-slate-900 dark:text-white";
+            heading.textContent = category;
+            cardWrap.appendChild(heading);
+
+            const innerGrid = document.createElement("div");
+            innerGrid.className = "category-grid";
+
+            groups[category].forEach((item) => {
+              const isPrivate = loggedIn && Number(item.is_private) === 1;
+              const card = document.createElement("a");
+              card.className = editing ? "app jiggle" : "app";
+              card.href = item.url;
+              card.target = "_blank";
+              card.rel = "noreferrer";
+              card.dataset.id = item.id;
+
+              const minus = document.createElement("button");
+              minus.className = "minus";
+              minus.type = "button";
+              minus.textContent = "−";
+              minus.setAttribute("onclick", `deleteLink(${item.id})`);
+              minus.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+              });
+              card.appendChild(minus);
+
+              const editBadge = document.createElement("button");
+              editBadge.className = "edit-badge";
+              editBadge.type = "button";
+              editBadge.textContent = "✎";
+              editBadge.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                openEditModal(item);
+              });
+              card.appendChild(editBadge);
+
+              const icon = document.createElement("div");
+              icon.className =
+                "icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105";
+              buildIcon(icon, item.url, item.icon, isPrivate);
+
+              const label = document.createElement("div");
+              label.className = "label text-slate-900 dark:text-white";
+              label.textContent = item.title || "未命名";
+
+              const sublabel = document.createElement("div");
+              sublabel.className = "sublabel text-slate-900 dark:text-white";
+              sublabel.textContent = item.category || "";
+
+              card.append(icon, label, sublabel);
+              innerGrid.appendChild(card);
+            });
+
+            cardWrap.appendChild(innerGrid);
+            grid.appendChild(cardWrap);
+          });
+        document.body.classList.toggle("editing", editing);
+      }
+
+      function renderSpotlightResults(links) {
+        spotlightResults.innerHTML = "";
+        links.forEach((item) => {
+          const isPrivate = loggedIn && Number(item.is_private) === 1;
+          const card = document.createElement("a");
+          card.className = "app";
+          card.href = item.url;
+          card.target = "_blank";
+          card.rel = "noreferrer";
+
+          const icon = document.createElement("div");
+          icon.className =
+            "icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105";
+          buildIcon(icon, item.url, item.icon, isPrivate);
+
+          const label = document.createElement("div");
+          label.className = "label text-slate-900 dark:text-white";
+          label.textContent = item.title || "未命名";
+
+          card.append(icon, label);
+          spotlightResults.appendChild(card);
+        });
+      }
+
+      function fetchLinks() {
+        const url = loggedIn ? "/api/links?includePrivate=1" : "/api/links";
+        fetch(url)
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              allLinks = data;
+              applySearch();
+            }
+          })
+          .catch(() => {
+            renderLinks([]);
+          });
+      }
+
+      function setLoginState(next) {
+        loggedIn = next;
+        const label = loginBtn.querySelector("span");
+        if (label) {
+          label.textContent = loggedIn ? "退出" : "登录";
+        }
+        addBtn.classList.toggle("hidden", !loggedIn);
+        editBtn.classList.toggle("hidden", !loggedIn);
+        settingsBtn.classList.toggle("hidden", !loggedIn);
+        backupGroup.classList.toggle("hidden", !loggedIn);
+        fetchLinks();
+      }
+
+      function applySearch() {
+        const keyword = searchInput.value.trim().toLowerCase();
+        if (!keyword) {
+          renderLinks(allLinks);
+          return;
+        }
+        const filtered = allLinks.filter((item) => {
+          const text = `${item.title || ""} ${item.url || ""} ${item.category || ""}`.toLowerCase();
+          return text.includes(keyword);
+        });
+        renderLinks(filtered);
+      }
+
+      searchInput.addEventListener("input", () => {
+        applySearch();
+      });
+      searchInput.addEventListener("focus", () => {
+        openSpotlight();
+      });
+
+      function applySpotlightSearch() {
+        const keyword = spotlightInput.value.trim().toLowerCase();
+        if (!keyword) {
+          renderSpotlightResults(allLinks);
+          return;
+        }
+        const filtered = allLinks.filter((item) => {
+          const text = `${item.title || ""} ${item.url || ""} ${item.category || ""}`.toLowerCase();
+          return text.includes(keyword);
+        });
+        renderSpotlightResults(filtered);
+      }
+
+      function deleteLink(id) {
+        if (!loggedIn || !id) {
+          return;
+        }
+        fetch(`/api/links/${id}`, {
+          method: "DELETE",
+          credentials: "same-origin"
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Delete failed");
+            }
+            window.location.reload(true);
+          })
+          .catch(() => {});
+      }
+
+      function openSpotlight() {
+        searchOverlay.classList.add("active");
+        spotlightInput.value = searchInput.value;
+        spotlightInput.focus();
+        applySpotlightSearch();
+      }
+
+      function closeSpotlight() {
+        searchOverlay.classList.remove("active");
+      }
+
+      searchOverlay.addEventListener("click", (event) => {
+        if (event.target === searchOverlay) {
+          closeSpotlight();
+        }
+      });
+      spotlightInput.addEventListener("input", () => {
+        searchInput.value = spotlightInput.value;
+        applySpotlightSearch();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "/" && !searchOverlay.classList.contains("active")) {
+          event.preventDefault();
+          openSpotlight();
+        } else if (event.key === "Escape" && searchOverlay.classList.contains("active")) {
+          closeSpotlight();
+        }
+      });
+
+      addBtn.addEventListener("click", () => {
+        if (!loggedIn) {
+          window.location.href = "/login.html";
+          return;
+        }
+        editingLinkId = null;
+        formTitle.textContent = "添加导航";
+        saveBtn.textContent = "保存";
+        privateInput.checked = false;
+        fetch("/api/categories")
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              categoryList.innerHTML = "";
+              data.forEach((name) => {
+                const option = document.createElement("option");
+                option.value = name;
+                categoryList.appendChild(option);
+              });
+            }
+          })
+          .catch(() => {});
+        modal.classList.add("active");
+      });
+      editBtn.addEventListener("click", () => {
+        if (!loggedIn) {
+          window.location.href = "/login.html";
+          return;
+        }
+        editing = !editing;
+        editBtn.textContent = editing ? "完成" : "编辑";
+        applySearch();
+      });
+      cancelBtn.addEventListener("click", () => {
+        modal.classList.remove("active");
+      });
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          modal.classList.remove("active");
+        }
+      });
+      loginBtn.addEventListener("click", () => {
+        if (loggedIn) {
+          fetch("/api/logout", { method: "POST" }).finally(() => {
+            setLoginState(false);
+          });
+        } else {
+          window.location.href = "/login.html";
+        }
+      });
+      settingsBtn.addEventListener("click", () => {
+        settingsModal.classList.add("active");
+      });
+      settingsCloseBtn.addEventListener("click", () => {
+        settingsModal.classList.remove("active");
+      });
+      settingsModal.addEventListener("click", (event) => {
+        if (event.target === settingsModal) {
+          settingsModal.classList.remove("active");
+        }
+      });
+      function isMobileMenu() {
+        return !window.matchMedia("(min-width: 768px)").matches;
+      }
+
+      function updateMenuSide() {
+        if (!topControls || !isMobileMenu()) {
+          return;
+        }
+        const rect = topControls.getBoundingClientRect();
+        const side = rect.left + rect.width / 2 < window.innerWidth / 2 ? "left" : "right";
+        topControls.dataset.side = side;
+      }
+
+      function updateMenuDirection() {
+        if (!topControls || !controlGroup || !isMobileMenu()) {
+          return;
+        }
+        const rect = topControls.getBoundingClientRect();
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const needsUpward = spaceBelow < 250;
+        controlGroup.classList.toggle("flex-col", !needsUpward);
+        controlGroup.classList.toggle("flex-col-reverse", needsUpward);
+        controlGroup.classList.toggle("top-[calc(100%+15px)]", !needsUpward);
+        controlGroup.classList.toggle("bottom-[calc(100%+15px)]", needsUpward);
+        controlGroup.classList.toggle("mt-3", false);
+        controlGroup.classList.toggle("mb-3", false);
+      }
+
+      function applyMobilePosition(left, top) {
+        if (!topControls) return;
+        topControls.style.left = `${left}px`;
+        topControls.style.top = `${top}px`;
+        topControls.style.right = "auto";
+        topControls.style.bottom = "auto";
+        updateMenuSide();
+      }
+
+      function snapToEdge() {
+        if (!topControls || !isMobileMenu()) {
+          return;
+        }
+        const rect = topControls.getBoundingClientRect();
+        const margin = 10;
+        const screenCenterX = window.innerWidth / 2;
+        const centerX = rect.left + rect.width / 2;
+        const snapLeft =
+          centerX < screenCenterX ? margin : window.innerWidth - rect.width - margin;
+        applyMobilePosition(snapLeft, rect.top);
+        updateMenuDirection();
+        localStorage.setItem("menuPosition", JSON.stringify({ left: snapLeft, top: rect.top }));
+      }
+
+      function setMenuOpen(open) {
+        if (!menuToggle || !controlGroup) {
+          return;
+        }
+        const menuIcon = menuToggle.querySelector('[data-icon="menu"]');
+        const closeIcon = menuToggle.querySelector('[data-icon="close"]');
+        if (open) {
+          updateMenuDirection();
+          controlGroup.classList.remove("opacity-0", "pointer-events-none", "translate-y-2");
+          controlGroup.classList.add("opacity-100", "pointer-events-auto", "translate-y-0", "scale-100");
+          controlGroup.classList.remove("scale-95");
+          menuToggle.setAttribute("aria-expanded", "true");
+          if (menuIcon) menuIcon.classList.add("hidden");
+          if (closeIcon) closeIcon.classList.remove("hidden");
+        } else {
+          controlGroup.classList.add("opacity-0", "pointer-events-none", "translate-y-2");
+          controlGroup.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0", "scale-100");
+          controlGroup.classList.add("scale-95");
+          menuToggle.setAttribute("aria-expanded", "false");
+          if (menuIcon) menuIcon.classList.remove("hidden");
+          if (closeIcon) closeIcon.classList.add("hidden");
+        }
+      }
+      if (menuToggle && controlGroup) {
+        let isDragging = false;
+        let moved = false;
+        let startX = 0;
+        let startY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        let offsetX = 0;
+        let offsetY = 0;
+        const dragThreshold = 8;
+
+        function onDragStart(clientX, clientY) {
+          if (!topControls || !isMobileMenu()) return;
+          const rect = topControls.getBoundingClientRect();
+          startLeft = rect.left;
+          startTop = rect.top;
+          startX = clientX;
+          startY = clientY;
+          offsetX = clientX - rect.left;
+          offsetY = clientY - rect.top;
+          isDragging = false;
+          moved = false;
+          topControls.style.transition = "none";
+        }
+
+        function onDragMove(clientX, clientY) {
+          if (!topControls || !isMobileMenu()) return;
+          const dx = clientX - startX;
+          const dy = clientY - startY;
+          if (!isDragging && Math.hypot(dx, dy) > dragThreshold) {
+            isDragging = true;
+            moved = true;
+          }
+          if (!isDragging) return;
+          const rect = topControls.getBoundingClientRect();
+          const margin = 10;
+          const maxLeft = window.innerWidth - rect.width - margin;
+          const maxTop = window.innerHeight - rect.height - 10;
+          let nextLeft = clientX - offsetX;
+          let nextTop = clientY - offsetY;
+          if (nextLeft < margin) nextLeft = margin;
+          if (nextLeft > maxLeft) nextLeft = maxLeft;
+          if (nextTop < margin) nextTop = margin;
+          if (nextTop > maxTop) nextTop = maxTop;
+          applyMobilePosition(nextLeft, nextTop);
+        }
+
+        function onDragEnd() {
+          if (!topControls || !isMobileMenu()) return;
+          topControls.style.transition = "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)";
+          if (moved) {
+            snapToEdge();
+            return;
+          }
+          const isOpen = controlGroup.classList.contains("opacity-100");
+          setMenuOpen(!isOpen);
+        }
+
+        menuToggle.addEventListener("click", (event) => {
+          if (!isMobileMenu() || moved) {
+            moved = false;
+            event.preventDefault();
+            return;
+          }
+          const isOpen = controlGroup.classList.contains("opacity-100");
+          setMenuOpen(!isOpen);
+        });
+        menuToggle.addEventListener("mousedown", (event) => {
+          onDragStart(event.clientX, event.clientY);
+          const onMove = (moveEvent) => onDragMove(moveEvent.clientX, moveEvent.clientY);
+          const onUp = () => {
+            document.removeEventListener("mousemove", onMove);
+            document.removeEventListener("mouseup", onUp);
+            onDragEnd();
+          };
+          document.addEventListener("mousemove", onMove);
+          document.addEventListener("mouseup", onUp);
+        });
+        menuToggle.addEventListener("touchstart", (event) => {
+          const touch = event.touches[0];
+          if (!touch) return;
+          onDragStart(touch.clientX, touch.clientY);
+          event.preventDefault();
+          const onMove = (moveEvent) => {
+            const moveTouch = moveEvent.touches[0];
+            if (!moveTouch) return;
+            onDragMove(moveTouch.clientX, moveTouch.clientY);
+          };
+          const onUp = () => {
+            document.removeEventListener("touchmove", onMove);
+            document.removeEventListener("touchend", onUp);
+            onDragEnd();
+          };
+          document.addEventListener("touchmove", onMove, { passive: false });
+          document.addEventListener("touchend", onUp);
+        });
+        document.addEventListener("click", (event) => {
+          if (!isMobileMenu()) {
+            return;
+          }
+          const target = event.target;
+          if (!target || target.closest("#top-controls")) {
+            return;
+          }
+          setMenuOpen(false);
+        });
+        [loginBtn, settingsBtn, editBtn, addBtn, themeToggle].forEach((btn) => {
+          if (!btn) return;
+          btn.addEventListener("click", () => {
+            if (isMobileMenu()) {
+              setMenuOpen(false);
+            }
+          });
+        });
+      }
+
+      function initMobilePosition() {
+        if (!topControls || !isMobileMenu()) {
+          return;
+        }
+        const stored = localStorage.getItem("menuPosition");
+        if (stored) {
+          try {
+            const pos = JSON.parse(stored);
+            if (typeof pos.left === "number" && typeof pos.top === "number") {
+              applyMobilePosition(pos.left, pos.top);
+              return;
+            }
+          } catch (err) {}
+        }
+        const rect = topControls.getBoundingClientRect();
+        const margin = 10;
+        const left = window.innerWidth - rect.width - margin;
+        const top = window.innerHeight - rect.height - 10;
+        applyMobilePosition(left, top);
+        updateMenuDirection();
+      }
+
+      window.addEventListener("resize", () => {
+        if (!topControls) return;
+        if (isMobileMenu()) {
+          initMobilePosition();
+          setMenuOpen(false);
+        } else {
+          topControls.style.left = "";
+          topControls.style.top = "";
+          topControls.style.right = "";
+          topControls.style.bottom = "";
+          topControls.classList.remove("items-start");
+          topControls.classList.add("items-end");
+          if (menuToggle) {
+            menuToggle.setAttribute("aria-expanded", "false");
+          }
+        }
+      });
+      settingsSaveBtn.addEventListener("click", () => {
+        if (!loggedIn) {
+          window.location.href = "/login.html";
+          return;
+        }
+        const payload = { siteName: siteNameInput.value.trim() };
+        if (!payload.siteName) {
+          return;
+        }
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Failed to save");
+            }
+            siteTitle.textContent = payload.siteName;
+            document.title = payload.siteName;
+            settingsModal.classList.remove("active");
+          })
+          .catch(() => {});
+      });
+      linkForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const payload = {
+          title: titleInput.value.trim(),
+          url: urlInput.value.trim(),
+          category: categoryInput.value.trim(),
+          is_private: privateInput.checked ? 1 : 0
+        };
+        const method = editingLinkId ? "PUT" : "POST";
+        const url = editingLinkId ? `/api/links/${editingLinkId}` : "/api/links";
+        fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Failed to save");
+            }
+            linkForm.reset();
+            modal.classList.remove("active");
+            window.location.reload(true);
+          })
+          .catch(() => {});
+      });
+
+      function openEditModal(item) {
+        if (!loggedIn) {
+          window.location.href = "/login.html";
+          return;
+        }
+        editingLinkId = item.id;
+        formTitle.textContent = "编辑导航";
+        saveBtn.textContent = "保存修改";
+        titleInput.value = item.title || "";
+        urlInput.value = item.url || "";
+        categoryInput.value = item.category || "";
+        privateInput.checked = Number(item.is_private) === 1;
+        fetch("/api/categories")
+          .then((res) => res.json())
+          .then((data) => {
+            if (Array.isArray(data)) {
+              categoryList.innerHTML = "";
+              data.forEach((name) => {
+                const option = document.createElement("option");
+                option.value = name;
+                categoryList.appendChild(option);
+              });
+            }
+          })
+          .catch(() => {});
+        modal.classList.add("active");
+      }
+
+      function updateThemeButton() {
+        const isDark = document.documentElement.classList.contains("dark");
+        themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
+        themeToggle.setAttribute(
+          "aria-label",
+          isDark ? "切换到日间模式" : "切换到夜间模式"
+        );
+        updateModalInputStyles(isDark);
+      }
+
+      function updateModalInputStyles(isDark) {
+        const inputs = document.querySelectorAll(
+          "#modal input, #settingsModal input, #modal select, #settingsModal select"
+        );
+        inputs.forEach((input) => {
+          input.style.color = isDark ? "#ffffff" : "#1a1a1a";
+          input.style.backgroundColor = isDark
+            ? "rgba(15, 23, 42, 0.9)"
+            : "rgba(255, 255, 255, 0.9)";
+        });
+      }
+
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.documentElement.classList.contains("dark");
+        const next = isDark ? "light" : "dark";
+        document.documentElement.classList.toggle("dark", next === "dark");
+        localStorage.setItem("theme", next);
+        updateThemeButton();
+      });
+
+      function applyFontSettings() {
+        const size = Number(localStorage.getItem("fontSize") || "15");
+        const bold = localStorage.getItem("fontBold") === "1";
+        document.documentElement.style.setProperty("--base-size", `${size}px`);
+        document.body.classList.toggle("bold", bold);
+        fontSizeInput.value = String(size);
+        boldToggle.checked = bold;
+      }
+
+      fontSizeInput.addEventListener("input", (event) => {
+        const size = Number(event.target.value);
+        localStorage.setItem("fontSize", String(size));
+        document.documentElement.style.setProperty("--base-size", `${size}px`);
+      });
+
+      boldToggle.addEventListener("change", (event) => {
+        const next = event.target.checked;
+        localStorage.setItem("fontBold", next ? "1" : "0");
+        document.body.classList.toggle("bold", next);
+      });
+
+      importBtn.addEventListener("click", () => {
+        if (!loggedIn) {
+          window.location.href = "/login.html";
+          return;
+        }
+        if (!importFile.files[0]) {
+          return;
+        }
+        const formData = new FormData();
+        formData.append("db", importFile.files[0]);
+        fetch("/api/backup/import", {
+          method: "POST",
+          body: formData
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Import failed");
+            }
+            return res.json();
+          })
+          .then(() => {
+            importFile.value = "";
+            fetchLinks();
+          })
+          .catch(() => {});
+      });
+
+      fetch("/api/me")
+        .then((res) => res.json())
+        .then((data) => {
+          setLoginState(Boolean(data && data.loggedIn));
+        })
+        .catch(() => {
+          setLoginState(false);
+        });
+      fetch("/api/settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.siteName) {
+            siteTitle.textContent = data.siteName;
+            siteNameInput.value = data.siteName;
+            document.title = data.siteName;
+          }
+        })
+        .catch(() => {});
+
+      applyFontSettings();
+      renderDockIcons();
+      updateThemeButton();
+      initMobilePosition();
+    </script>
+  </body>
+</html>

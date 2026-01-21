@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>登录</title>
+    <style>
+      :root {
+        --bg-a: #f7f2ee;
+        --bg-b: #e7edf7;
+        --text: #17181a;
+        --muted: #6a6f7a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(800px 300px at 15% 0%, rgba(255, 255, 255, 0.8), transparent 70%),
+          radial-gradient(900px 400px at 80% 10%, rgba(255, 255, 255, 0.7), transparent 60%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(360px, 100%);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.85);
+      }
+      button {
+        width: 100%;
+        border: none;
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.15);
+      }
+      .error {
+        margin-top: 10px;
+        color: #d64545;
+        font-size: 12px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>登录</h1>
+      <p>请输入管理员密码。</p>
+      <form id="loginForm">
+        <div class="field">
+          <label for="passwordInput">密码</label>
+          <input id="passwordInput" type="password" required />
+        </div>
+        <button type="submit">登录</button>
+        <div class="error" id="errorMsg">密码错误。</div>
+      </form>
+    </div>
+
+    <script>
+      const form = document.querySelector("#loginForm");
+      const passwordInput = document.querySelector("#passwordInput");
+      const errorMsg = document.querySelector("#errorMsg");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        fetch("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ password: passwordInput.value })
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Invalid password");
+            }
+            window.location.href = "/";
+          })
+          .catch(() => {
+            errorMsg.style.display = "block";
+          });
+      });
+    </script>
+  </body>
+</html>
