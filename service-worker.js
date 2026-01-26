@@ -1,4 +1,4 @@
-const CACHE_NAME = "mynavsite-v1";
+const CACHE_NAME = "mynavsite-v2";
 const ASSETS = [
   "/",
   "/index.html",

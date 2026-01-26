@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>编辑资料</title>
+    <script>
+      tailwind.config = {
+        darkMode: "class"
+      };
+      (function () {
+        try {
+          const saved = localStorage.getItem("theme");
+          const hour = new Date().getHours();
+          const prefersDark =
+            window.matchMedia &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches;
+          const autoDark = hour >= 18 || hour < 6 || prefersDark;
+          const shouldDark = saved ? saved === "dark" : autoDark;
+          if (shouldDark) {
+            document.documentElement.classList.add("dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+          }
+        } catch (err) {}
+      })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen text-slate-900 dark:text-white">
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-blue-100 via-pink-100 to-purple-100 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800"></div>
+    <main class="mx-auto max-w-2xl p-6">
+      <div class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl border border-white/20 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between">
+          <h1 class="text-xl font-semibold">编辑资料</h1>
+          <a href="/" class="text-sm text-slate-700 dark:text-slate-300">返回首页</a>
+        </div>
+
+        <div class="mt-6 space-y-6">
+<div class="pt-4 border-t border-white/20">
+            <label class="text-sm text-slate-800 dark:text-slate-100">修改密码</label>
+            <div class="mt-2 grid gap-2">
+              <input id="oldPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="当前密码" />
+              <input id="newPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="新密码" />
+              <input id="confirmPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="确认新密码" />
+              <button id="updatePasswordBtn" class="rounded-full border border-gray-200/50 bg-white/60 dark:bg-black/40 px-4 py-2 text-sm">保存修改</button>
+            </div>
+          </div>
+
+          <div class="flex justify-end">
+            <button id="saveProfileBtn" class="rounded-full bg-emerald-500/80 text-white px-4 py-2 text-sm">保存资料</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <div id="toastContainer" class="fixed bottom-6 right-6 z-[999] space-y-2"></div>
+
+    <script>
+      const toastContainer = document.querySelector("#toastContainer");
+      const userNameInput = document.querySelector("#userNameInput");
+      const avatarInput = document.querySelector("#avatarInput");
+      const saveProfileBtn = document.querySelector("#saveProfileBtn");
+      const updatePasswordBtn = document.querySelector("#updatePasswordBtn");
+      const oldPassword = document.querySelector("#oldPassword");
+      const newPassword = document.querySelector("#newPassword");
+      const confirmPassword = document.querySelector("#confirmPassword");
+
+      function showToast(message, type = "success") {
+        const toast = document.createElement("div");
+        toast.className =
+          "px-4 py-2 rounded-xl text-sm text-white shadow-lg backdrop-blur-md " +
+          (type === "error" ? "bg-red-500/80" : "bg-emerald-500/80");
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.classList.add("opacity-0"), 2000);
+        setTimeout(() => toast.remove(), 2400);
+      }
+
+      fetch("/api/settings")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.userName) userNameInput.value = data.userName;
+        });
+
+      saveProfileBtn.addEventListener("click", () => {
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userName: userNameInput.value.trim()
+          })
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed");
+            showToast("Saved");
+          })
+          .catch(() => showToast("Save failed", "error"));
+      });
+
+      
+
+      avatarInput.addEventListener("change", () => {
+        if (!avatarInput.files || !avatarInput.files[0]) return;
+        const formData = new FormData();
+        formData.append("avatar", avatarInput.files[0]);
+        fetch("/api/settings/avatar", { method: "POST", body: formData })
+          .then((res) => res.json())
+          .then(() => showToast("Saved"))
+          .catch(() => showToast("Save failed", "error"));
+      });
+
+      
+
+      updatePasswordBtn.addEventListener("click", () => {
+        const oldPasswordValue = oldPassword.value.trim();
+        const newPasswordValue = newPassword.value.trim();
+        const confirmValue = confirmPassword.value.trim();
+        if (!oldPasswordValue || !newPasswordValue || newPasswordValue !== confirmValue) {
+          showToast("Saved");
+          return;
+        }
+        fetch("/api/auth/update-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ oldPassword: oldPasswordValue, newPassword: newPasswordValue })
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed");
+            oldPassword.value = "";
+            newPassword.value = "";
+            confirmPassword.value = "";
+            showToast("Saved");
+          })
+          .catch(() => showToast("Save failed", "error"));
+      });
+    </script>
+  </body>
+</html>

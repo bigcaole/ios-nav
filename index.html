@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
@@ -38,6 +38,8 @@
         --base-size: 15px;
         --label-weight: 600;
         --title-weight: 700;
+        --dynamic-text: #0f172a;
+        --dynamic-placeholder: #64748b;
       }
       html.dark {
         --bg-a: #0f1115;
@@ -51,6 +53,7 @@
       }
       * {
         box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
       }
       body {
         margin: 0;
@@ -59,6 +62,10 @@
         min-height: 100vh;
         font-size: var(--base-size);
         transition: background 0.35s ease, color 0.35s ease;
+      }
+      input::placeholder,
+      textarea::placeholder {
+        color: var(--dynamic-placeholder);
       }
       body.bold {
         --label-weight: 700;
@@ -87,52 +94,279 @@
         font-size: 14px;
       }
       .grid {
-        display: grid;
+        display: flex;
+        flex-direction: column;
         gap: 18px;
         padding: 18px 22px 120px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
       .category-card {
-        grid-column: 1 / -1;
-        border-radius: 22px;
-        padding: 16px 16px 18px;
-        box-shadow: 0 14px 30px rgba(16, 24, 40, 0.12);
+        width: 100%;
+        max-width: 100%;
+        border-radius: 18px;
+        padding: 12px 12px;
+        box-shadow: none;
+        background: rgba(255, 255, 255, 0.65);
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0;
         transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+        position: relative;
+        height: auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        padding-bottom: 20px !important;
+        backdrop-filter: blur(30px);
+        -webkit-backdrop-filter: blur(30px);
+      }
+      html.dark .category-card {
+        background: rgba(30, 41, 59, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.05);
       }
       .category-title {
-        font-size: 14px;
-        text-transform: uppercase;
-        letter-spacing: 1.6px;
-        margin: 2px 0 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        min-width: 80px;
+        background: rgba(0, 0, 0, 0.3);
+        color: #ffffff;
+        margin: 0;
+        transition: all 0.25s ease;
+        white-space: nowrap;
+        width: fit-content;
       }
       .category-grid {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex: 1;
+        overflow: visible !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        flex-wrap: nowrap;
+        scroll-snap-type: x mandatory;
+        scroll-padding: 8px;
+        scroll-behavior: smooth;
+        padding: 20px 0 24px 96px;
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+        pointer-events: auto;
+      }
+      .category-grid::-webkit-scrollbar {
+        display: none;
+      }
+      .category-page {
+        flex: 0 0 100%;
+        min-width: 100%;
         display: grid;
-        gap: 14px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-auto-flow: column;
+        grid-auto-columns: var(--icon-size, 40px);
+        grid-template-rows: repeat(1, var(--icon-size, 40px));
+        gap: var(--grid-gap, 16px);
+        scroll-snap-align: start;
+        justify-content: flex-start;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .pagination-dots {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+      }
+      .pagination-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.4);
+        transition: all 0.3s ease;
+      }
+      .pagination-dot.active {
+        width: 20px;
+        background: rgba(255, 255, 255, 0.85);
+      }
+      html.dark .pagination-dot {
+        background: rgba(148, 163, 184, 0.4);
+      }
+      html.dark .pagination-dot.active {
+        background: rgba(255, 255, 255, 0.9);
+      }
+      .page-arrow {
+        position: absolute;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 30px;
+        height: 30px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        display: grid;
+        place-items: center;
+        color: #0f172a;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      html.dark .page-arrow {
+        background: rgba(15, 23, 42, 0.6);
+        color: #f8fafc;
+        border-color: rgba(255, 255, 255, 0.15);
+      }
+      .page-arrow.left {
+        left: 10px;
+      }
+      .page-arrow.right {
+        right: 10px;
+      }
+      .page-arrow.hidden {
+        opacity: 0;
+        pointer-events: none;
       }
       .app {
         text-decoration: none;
         color: inherit;
         text-align: center;
         display: grid;
-        gap: 10px;
+        gap: 6px;
         justify-items: center;
         position: relative;
+        overflow: visible !important;
+        transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      .is-editing .category-grid,
+      .is-editing .category-card,
+      .is-editing .dock-grid,
+      .is-editing .dock-slot,
+      .app-unlocked .category-grid,
+      .app-unlocked .category-card,
+      .app-unlocked .dock-grid,
+      .app-unlocked .dock-slot {
+        pointer-events: auto !important;
+        user-select: auto !important;
+        -webkit-user-drag: element !important;
+        cursor: grab !important;
+      }
+      .is-editing .category-grid:active,
+      .is-editing .dock-grid:active,
+      .app-unlocked .category-grid:active,
+      .app-unlocked .dock-grid:active {
+        cursor: grabbing !important;
+      }
+      .is-editing .icon {
+        position: relative;
+        z-index: 100;
+      }
+      .icon,
+      .icon img {
+        -webkit-user-drag: none;
+      }
+      .mode-sort .icon:hover,
+      .mode-sort .app:hover .icon {
+        transform: none !important;
+      }
+      .mode-sort .category-grid {
+        min-height: 50px;
+      }
+      .mode-sort * {
+        pointer-events: auto !important;
+        user-select: none !important;
+        -webkit-user-drag: none !important;
+        cursor: grab !important;
+      }
+      .mode-sort .sortable-ghost {
+        background: rgba(255, 255, 255, 0.12);
+        border: 1px dashed rgba(255, 255, 255, 0.5);
+        border-radius: 16px;
+        opacity: 0.3;
+      }
+      html.dark .mode-sort .sortable-ghost {
+        background: rgba(15, 23, 42, 0.35);
+        border-color: rgba(226, 232, 240, 0.35);
+      }
+      .mode-sort .sortable-drag {
+        opacity: 0.5 !important;
+        transform: scale(1.05) rotate(-2deg) !important;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+      }
+      .is-editing .icon,
+      .is-editing .app {
+        transform: none !important;
+        transition: none !important;
+      }
+      .sort-unlocked .edit-badge,
+      .sort-unlocked .delete-badge {
+        display: none !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
+      .sortable-ghost,
+      .sortable-drag,
+      .sortable-chosen {
+        z-index: 9999 !important;
+      }
+      .is-editing * {
+        pointer-events: auto !important;
+        user-select: auto !important;
+        -webkit-user-drag: none !important;
+      }
+      .is-editing .category-title-capsule {
+        z-index: 9999;
+        cursor: grab;
+      }
+      .app-unlocked .category-grid,
+      .app-unlocked .dock-grid,
+      .app-unlocked .dock-slot {
+        user-select: auto !important;
+        pointer-events: auto !important;
+        cursor: grab;
+      }
+      .app-unlocked .category-grid:active,
+      .app-unlocked .dock-grid:active,
+      .app-unlocked .dock-slot:active {
+        cursor: grabbing;
+      }
+      .is-dragging .app,
+      .is-dragging .icon {
+        transform: none !important;
+        transition: none !important;
+      }
+      .is-dragging .icon {
+        filter: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+      }
+      .is-dragging .app {
+        opacity: 0.7;
+      }
+      .app-unlocked * {
+        pointer-events: auto !important;
+        user-select: none !important;
       }
       .icon {
-        width: 100%;
-        aspect-ratio: 1 / 1;
-        border-radius: var(--radius);
+        width: var(--icon-size, 40px);
+        height: var(--icon-size, 40px);
+        min-width: 32px;
+        border-radius: 16px;
         background: var(--card);
         box-shadow: var(--shadow);
         display: grid;
         place-items: center;
-        font-size: 22px;
+        font-size: 12px;
         font-weight: 700;
         color: #ffffff;
-        overflow: hidden;
+        overflow: visible;
         position: relative;
-        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       }
       @keyframes jiggle {
         0% {
@@ -156,8 +390,8 @@
         position: absolute;
         left: 6px;
         top: 6px;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: #ff3b30;
         border: 2px solid #ffffff;
@@ -169,7 +403,7 @@
         font-size: 16px;
         border: none;
         cursor: pointer;
-        z-index: 2;
+        z-index: 50;
         opacity: 0;
         pointer-events: none;
       }
@@ -177,8 +411,8 @@
         position: absolute;
         right: 6px;
         top: 6px;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
         background: #0a84ff;
         border: 2px solid #ffffff;
@@ -190,17 +424,202 @@
         font-size: 12px;
         border: none;
         cursor: pointer;
-        z-index: 2;
+        z-index: 50;
         opacity: 0;
         pointer-events: none;
       }
-      .editing .minus {
-        opacity: 1;
-        pointer-events: auto;
+        .edit-badge,
+        .delete-badge {
+          display: none !important;
+        }
+        .delete-bubble {
+          position: absolute;
+          left: 50%;
+          bottom: -40px;
+          transform: translateX(-50%);
+          display: inline-flex;
+          gap: 6px;
+          padding: 6px 8px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.75);
+          color: #ffffff;
+          font-size: 12px;
+          z-index: 60;
+          pointer-events: auto;
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        }
+        .delete-bubble button {
+          border: none;
+          background: transparent;
+          color: #ffffff;
+          font-weight: 600;
+          padding: 2px 6px;
+          border-radius: 999px;
+          cursor: pointer;
+        }
+        .delete-bubble button.confirm {
+          background: rgba(248, 113, 113, 0.2);
+        }
+        .delete-bubble button.cancel {
+          background: rgba(148, 163, 184, 0.2);
+        }
+        .add-placeholder {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          cursor: pointer;
+        }
+        .add-placeholder .icon {
+          border: 1px dashed rgba(148, 163, 184, 0.7);
+          background: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: 600;
+        }
+        html.dark .add-placeholder .icon {
+          border-color: rgba(148, 163, 184, 0.5);
+          background: rgba(15, 23, 42, 0.4);
+        }
+        .category-add-card {
+          min-height: 120px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px 24px;
+          border-radius: 22px;
+          border: 1px dashed rgba(148, 163, 184, 0.6);
+          background: rgba(255, 255, 255, 0.35);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+        }
+        html.dark .category-add-card {
+          border-color: rgba(148, 163, 184, 0.35);
+          background: rgba(15, 23, 42, 0.45);
+        }
+        .category-add-card .add-category-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 18px;
+          border-radius: 999px;
+          border: 1px solid rgba(255, 255, 255, 0.35);
+          background: rgba(255, 255, 255, 0.35);
+          color: #0f172a;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        html.dark .category-add-card .add-category-btn {
+          color: #f8fafc;
+          background: rgba(15, 23, 42, 0.55);
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+        .dock-add-placeholder .icon {
+          border: 1px dashed rgba(148, 163, 184, 0.7);
+          background: rgba(255, 255, 255, 0.18);
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: 600;
+        }
+        html.dark .dock-add-placeholder .icon {
+          border-color: rgba(148, 163, 184, 0.5);
+          background: rgba(15, 23, 42, 0.4);
+        }
+      body.is-editing .app,
+      body.is-deleting .app {
+        animation: jiggle 0.2s ease-in-out infinite;
       }
-      .editing .edit-badge {
+      .rename-input {
+        width: min(220px, 70vw);
+        border: 1px solid rgba(148, 163, 184, 0.45);
+        border-radius: 12px;
+        padding: 4px 10px;
+        font-size: 14px;
+        background: rgba(255, 255, 255, 0.9);
+      }
+      html.dark .rename-input {
+        background: rgba(15, 23, 42, 0.8);
+        border-color: rgba(148, 163, 184, 0.3);
+        color: #ffffff;
+      }
+      .editable {
+        border-bottom: 1px dashed rgba(71, 85, 105, 0.6);
+      }
+      html.dark .editable {
+        border-bottom-color: rgba(226, 232, 240, 0.6);
+      }
+      @keyframes breathe {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.03);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .sort-unlocked .icon {
+        animation: breathe 1.6s ease-in-out infinite;
+      }
+      .toast {
+        position: fixed;
+        top: 84px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-10px);
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.85);
+        color: #ffffff;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 120;
+      }
+      .toast.show {
         opacity: 1;
-        pointer-events: auto;
+        transform: translateX(-50%) translateY(0);
+      }
+      body.modal-open {
+        overflow: hidden;
+      }
+      #settingsModal .sheet h2,
+      #settingsModal .sheet .field label,
+      #settingsModal .sheet .settings-row > span {
+        color: #000000 !important;
+      }
+      html.dark #settingsModal .sheet h2,
+      html.dark #settingsModal .sheet .field label,
+      html.dark #settingsModal .sheet .settings-row > span {
+        color: #f8fafc !important;
+      }
+      .edit-toolbar {
+        position: fixed;
+        top: 16px;
+        left: 16px;
+        right: 16px;
+        z-index: 210;
+        display: none;
+        align-items: center;
+        justify-content: flex-end;
+        padding: 10px 14px;
+        border-radius: 18px;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+      }
+      html.dark .edit-toolbar {
+        background: rgba(2, 6, 23, 0.6);
+        border-color: rgba(148, 163, 184, 0.25);
+      }
+      .edit-toolbar.active {
+        display: flex;
       }
       .icon .lock {
         position: absolute;
@@ -223,39 +642,196 @@
         height: 72%;
         object-fit: contain;
         display: block;
+        border-radius: 16px;
       }
-      .app:hover .icon {
-        box-shadow: 0 14px 36px rgba(16, 24, 40, 0.18);
+      @media (hover: hover) {
+        .app:hover .icon {
+          transform: scale(1.15);
+          box-shadow: 0 16px 36px rgba(16, 24, 40, 0.2);
+        }
       }
-      .label {
-        font-size: 13px;
-        font-weight: var(--label-weight);
+      .icon-label-capsule {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-width: 40px;
+        height: 20px;
+        background-color: rgba(0, 0, 0, 0.5) !important;
+        border-radius: 9999px;
+        padding: 2px 8px;
+        margin-top: 6px;
       }
-      .sublabel {
-        font-size: 12px;
+      html.dark .icon-label-capsule {
+        background-color: rgba(255, 255, 255, 0.2) !important;
+      }
+      .icon-label-text {
+        color: #ffffff !important;
+        font-size: 11px !important;
+        font-weight: 500 !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+      }
+      .app:hover .icon-label-capsule {
+        transform: scale(1.05);
+        transition: transform 0.2s ease;
       }
       .dock {
         position: fixed;
         left: 16px;
         right: 16px;
-        bottom: 16px;
-        padding: 12px 16px;
-        border-radius: 28px;
-        background: var(--dock);
-        border: 1px solid var(--dock-border);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.18);
-        display: grid;
-        grid-auto-flow: column;
-        gap: 14px;
+        bottom: 20px;
+        padding: 20px 18px;
+        border-radius: 34px;
+        background: rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(22px);
+        -webkit-backdrop-filter: blur(22px);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+        overflow: visible;
+      }
+      html.dark .dock {
+        background: rgba(15, 23, 42, 0.7);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .dock-empty {
+        min-height: 100px;
+      }
+      .sort-unlocked #dock-container {
+        min-height: 110px !important;
+      }
+      .dock-grid {
+        display: flex;
+        align-items: center;
+        justify-content: space-evenly;
+        gap: 12px;
+        flex-wrap: nowrap;
+        width: 100%;
+      }
+      .dock-slot {
+        width: 60px;
+        height: 60px;
+        display: flex;
         align-items: center;
         justify-content: center;
-        transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+        border-radius: 16px;
+        position: relative;
+        overflow: visible;
       }
-      .dock .icon {
-        width: 56px;
+      .dock-slot.empty {
+        border: 1px dashed rgba(148, 163, 184, 0.8);
+        background: rgba(255, 255, 255, 0.15);
+      }
+      html.dark .dock-slot.empty {
+        border-color: rgba(148, 163, 184, 0.5);
+        background: rgba(15, 23, 42, 0.35);
+      }
+      .dock-slot.empty,
+      .dock-add-placeholder .icon {
+        color: rgba(248, 250, 252, 0.9);
+      }
+      @media (min-width: 1024px) {
+        .dock-grid {
+          display: grid;
+          grid-template-columns: repeat(6, 1fr);
+          column-gap: 12px;
+          justify-content: center;
+          width: 348px;
+          max-width: 100%;
+          place-items: center;
+        }
+      }
+      .dock-item {
+        width: 60px;
+        height: 60px;
+        aspect-ratio: 1 / 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 16px;
+        position: relative;
+        overflow: visible;
+        z-index: 2;
+        transition: transform 0.2s ease-out;
+      }
+      .dock-item .minus,
+      .dock-item .edit-badge {
+        z-index: 3;
+      }
+      .dock-item .icon {
+        width: 100%;
+        height: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 16px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+        -webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.12));
+      }
+      .dock-item .icon img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 16px;
+      }
+      .dock .label {
+        display: none;
+      }
+      .dock-tooltip {
+        position: absolute;
+        bottom: 58px;
+        left: 50%;
+        transform: translateX(-50%) translateY(6px);
+        padding: 6px 10px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ffffff;
+        font-size: 11px;
+        white-space: nowrap;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+      .dock-item:hover .dock-tooltip {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      
+      .is-editing .dock .label,
+      .is-deleting .dock .label {
+        display: none;
+      }
+      .dock-placeholder {
+        min-width: 240px;
+        height: 64px;
+        padding: 0 16px;
+        border-radius: 16px;
+        border: 1px dashed rgba(148, 163, 184, 0.6);
+        color: #64748b;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        display: grid;
+        place-items: center;
+        cursor: pointer;
+        font-size: 12px;
+        text-align: center;
+      }
+      html.dark .dock-placeholder {
+        border-color: rgba(148, 163, 184, 0.3);
+        color: #e2e8f0;
+        background: rgba(15, 23, 42, 0.5);
+      }
+      .dock-drop {
+        border-color: rgba(59, 130, 246, 0.8);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+        transform: scale(1.02);
       }
       .actions {
         display: flex;
@@ -264,59 +840,153 @@
       .hidden {
         display: none;
       }
-      .search-row {
-        padding: 8px 22px 0;
       }
-      .search-row input {
-        width: 100%;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        border-radius: 16px;
-        padding: 10px 14px;
-        font-size: 14px;
-        outline: none;
-        background: rgba(255, 255, 255, 0.8);
-        box-shadow: 0 8px 18px rgba(16, 24, 40, 0.08);
-        transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease;
-      }
-      .search-overlay {
-        position: fixed;
-        inset: 0;
-        display: none;
-        align-items: flex-start;
-        justify-content: center;
-        padding: 80px 20px 40px;
-        background: rgba(20, 24, 30, 0.35);
-        backdrop-filter: blur(30px);
-        -webkit-backdrop-filter: blur(30px);
-        z-index: 30;
-      }
-      .search-overlay.active {
+      .page-dots {
         display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 10px;
       }
-      .spotlight {
-        width: min(900px, 100%);
+      .page-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.6);
       }
-      .spotlight input {
+      .page-dot.active {
+        background: rgba(255, 255, 255, 1);
+      }
+      html.dark .page-dot {
+        background: rgba(148, 163, 184, 0.5);
+      }
+      html.dark .page-dot.active {
+        background: rgba(255, 255, 255, 0.9);
+      }
+      .select {
+        position: relative;
+      }
+      .select-btn {
         width: 100%;
-        border: 1px solid rgba(255, 255, 255, 0.4);
-        border-radius: 18px;
-        padding: 16px 18px;
-        font-size: 20px;
-        outline: none;
-        background: rgba(255, 255, 255, 0.85);
-        box-shadow: 0 18px 30px rgba(16, 24, 40, 0.18);
-        transition: background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid #cbd5e1;
+        background: rgba(255, 255, 255, 0.9);
+        color: #0f172a;
+        cursor: pointer;
       }
-      .spotlight-results {
-        margin-top: 18px;
+      html.dark .select-btn {
+        background: rgba(15, 23, 42, 0.8);
+        color: #ffffff;
+        border-color: rgba(148, 163, 184, 0.3);
+      }
+      .select-menu {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: calc(100% + 8px);
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        border-radius: 16px;
+        box-shadow: 0 18px 36px rgba(15, 23, 42, 0.12);
+        padding: 6px;
+        display: none;
+        z-index: 999 !important;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      html.dark .select-menu {
+        background: rgba(15, 23, 42, 0.9);
+        border-color: rgba(148, 163, 184, 0.3);
+      }
+      .select-menu.open {
+        display: block;
+      }
+      .select-item {
+        padding: 8px 10px;
+        border-radius: 12px;
+        cursor: pointer;
+        color: #0f172a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      html.dark .select-item {
+        color: #ffffff;
+      }
+      .select-item:hover {
+        background: rgba(59, 130, 246, 0.12);
+      }
+      .select-check {
+        color: #2563eb;
+        display: inline-flex;
+      }
+      .select-manage {
+        color: #2563eb;
+      }
+      .sheet.allow-overflow {
+        overflow: visible;
+      }
+      .category-manager-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .category-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 12px 12px;
+        border-radius: 14px;
+        background: #f9fafb;
+        border: 1px solid #e2e8f0;
+      }
+      html.dark .category-row {
+        background: #1f2937;
+        border-color: #334155;
+      }
+      .category-row:hover {
+        background: #f1f5f9;
+      }
+      html.dark .category-row:hover {
+        background: #111827;
+      }
+      .category-manager-list .category-name {
+        color: #0f172a !important;
+        font-weight: 700;
+        opacity: 1 !important;
+      }
+      html.dark .category-manager-list .category-name {
+        color: #f1f5f9 !important;
+      }
+      .category-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+        border: none;
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 14px;
+        place-items: center;
+        background: rgba(59, 130, 246, 0.12);
+        color: #2563eb;
+        cursor: pointer;
       }
-      .spotlight-results .app {
-        background: rgba(255, 255, 255, 0.25);
-        padding: 10px;
-        border-radius: 18px;
+      .icon-btn.danger {
+        background: rgba(239, 68, 68, 0.15);
+        color: #ef4444;
+      }
+      .icon-btn svg {
+        width: 20px;
+        height: 20px;
       }
       .btn {
         border: none;
@@ -355,17 +1025,244 @@
         transform: scale(0.7);
       }
       .ios-bg {
-        background:
-          radial-gradient(700px 420px at 15% 10%, rgba(185, 214, 255, 0.85), transparent 65%),
-          radial-gradient(650px 380px at 85% 20%, rgba(255, 210, 225, 0.7), transparent 60%),
-          radial-gradient(800px 500px at 45% 80%, rgba(210, 205, 255, 0.7), transparent 65%),
-          linear-gradient(180deg, #f7f7fb, #f2f2f7);
+        background: #e5e5ea;
       }
       html.dark .ios-bg {
-        background:
-          radial-gradient(700px 420px at 20% 10%, rgba(32, 64, 120, 0.6), transparent 70%),
-          radial-gradient(700px 450px at 85% 20%, rgba(76, 44, 120, 0.6), transparent 70%),
-          linear-gradient(180deg, #0b0f1a, #121826);
+        background: #1c1c1e;
+      }
+      .header-logo,
+      .site-title,
+      .category-card,
+      .dock-container {
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      input,
+      textarea {
+        user-select: text !important;
+        -webkit-user-select: text !important;
+      }
+      .site-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        z-index: 50;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 24px;
+        background: rgba(0, 0, 0, 0.2);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      html.dark .site-header {
+        background: rgba(15, 23, 42, 0.65);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .nav-header-bg {
+        background: rgba(0, 0, 0, 0.2);
+      }
+      html.dark .nav-header-bg {
+        background: rgba(15, 23, 42, 0.65);
+      }
+      #top-controls button {
+        color: rgba(248, 250, 252, 0.9);
+      }
+      #top-controls button span,
+      #top-controls button svg,
+      #avatarText {
+        color: #f8fafc !important;
+        filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+      }
+      #top-controls .theme-toggle .sun {
+        color: #facc15 !important;
+        fill: #facc15;
+        filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.4));
+      }
+      #avatarBtn {
+        overflow: hidden;
+        filter: none;
+      }
+      html.dark #top-controls button {
+        color: #cbd5e1;
+      }
+      html.dark #top-controls button:hover {
+        color: #ffffff;
+        background: rgba(255, 255, 255, 0.12);
+      }
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+        }
+      .title-group {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        min-width: 0;
+      }
+      .logo-mark {
+        width: 28px;
+        height: 28px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #3b82f6, #60a5fa);
+        color: #ffffff;
+        display: grid;
+        place-items: center;
+        font-weight: 700;
+        font-size: 14px;
+        box-shadow: 0 6px 14px rgba(59, 130, 246, 0.35);
+      }
+      .site-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #0f172a;
+        text-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      html.dark .site-title {
+        color: #f8fafc;
+      }
+      .site-slogan {
+        font-size: 12px;
+        color: #64748b;
+        white-space: nowrap;
+      }
+      html.dark .site-slogan {
+        color: #94a3b8;
+      }
+      .mode-control {
+        position: absolute;
+        right: 0;
+        top: 72px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.6);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        opacity: 0;
+        transform: translateY(-6px);
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 9999;
+        isolation: isolate;
+        transform: translateY(-6px) translateZ(0);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      .mode-control.open {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+      html.dark .mode-control {
+        background: rgba(15, 23, 42, 0.6);
+        border-color: rgba(255, 255, 255, 0.12);
+      }
+      .mode-btn {
+        border: none;
+        background: transparent;
+        color: #111827 !important;
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 600 !important;
+      }
+      html.dark .mode-btn {
+        color: #f1f5f9 !important;
+      }
+      .mode-btn.active {
+        background: rgba(37, 99, 235, 0.35);
+        color: #ffffff;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+      html.dark .mode-btn.active {
+        background: rgba(37, 99, 235, 0.4);
+        color: #ffffff;
+      }
+      @media (max-width: 640px) {
+        .title-group {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 4px;
+        }
+        .site-title {
+          font-size: 18px;
+        }
+        .site-slogan {
+          font-size: 11px;
+        }
+      }
+      .header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .main-content {
+        padding-top: 160px;
+      }
+      .category-nav {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        overflow-x: auto;
+        white-space: nowrap;
+        scrollbar-width: none;
+        max-width: min(80vw, 960px);
+        width: auto;
+      }
+      .category-nav::-webkit-scrollbar {
+        display: none;
+      }
+      .category-pill {
+        border: none;
+        padding: 6px 16px;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #111827;
+        background: #eff6ff;
+        cursor: pointer;
+        transition: background-color 0.2s ease, transform 0.2s ease;
+      }
+      .category-pill:hover {
+        background: #dbeafe;
+        transform: translateY(-1px);
+      }
+      .category-pill.active {
+        background: #2563eb;
+        color: #ffffff;
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+      }
+      html.dark .category-pill {
+        background: rgba(30, 58, 138, 0.2);
+        color: #ffffff;
+      }
+      html.dark .category-pill:hover {
+        background: rgba(30, 58, 138, 0.4);
+      }
+      html.dark .category-pill.active {
+        background: #3b82f6;
+        color: #ffffff;
+        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.35);
+      }
+      .page-intro {
+        padding-left: 24px;
+        padding-right: 24px;
+        margin-bottom: 12px;
       }
       html.dark .theme-toggle .sun {
         opacity: 0;
@@ -374,6 +1271,8 @@
       html.dark .theme-toggle .moon {
         opacity: 1;
         transform: scale(1);
+        color: #818cf8;
+        filter: drop-shadow(0 0 3px rgba(129, 140, 248, 0.5));
       }
       .modal {
         position: fixed;
@@ -382,13 +1281,75 @@
         align-items: center;
         justify-content: center;
         padding: 22px;
-        background: rgba(12, 14, 18, 0.35);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 20;
+        background: transparent;
+        z-index: 10000;
+      }
+      .modal .sheet {
+        background-color: #ffffff !important;
+      }
+      html.dark .modal .sheet {
+        background-color: rgba(15, 15, 18, 0.9) !important;
+      }
+      .modal label,
+      .modal span,
+      .modal p {
+        color: #0f172a !important;
+        font-weight: 500 !important;
+        opacity: 1 !important;
+      }
+      html.dark .modal label,
+      html.dark .modal span,
+      html.dark .modal p {
+        color: #ffffff !important;
+        opacity: 1 !important;
+      }
+      .modal input,
+      .modal textarea,
+      .modal select {
+        border: 1px solid #cbd5e1 !important;
+        color: #0f172a !important;
+        background-color: #ffffff !important;
+      }
+      html.dark .modal input,
+      html.dark .modal textarea,
+      html.dark .modal select {
+        border-color: #4b5563 !important;
+        color: #ffffff !important;
+        background-color: #1f2937 !important;
+      }
+      .modal input::placeholder,
+      .modal textarea::placeholder {
+        color: #94a3b8 !important;
+        opacity: 1 !important;
+      }
+      html.dark .modal input::placeholder,
+      html.dark .modal textarea::placeholder {
+        color: #9ca3af !important;
+        opacity: 1 !important;
+      }
+      .modal .btn.primary,
+      .modal .btn.bg-blue-600,
+      .modal button[type="submit"] {
+        background-color: #2563eb !important;
+        color: #ffffff !important;
+        box-shadow: none !important;
+      }
+      .modal .btn.bg-slate-100 {
+        color: #334155 !important;
+        box-shadow: none !important;
+        background-color: #f1f5f9 !important;
+        opacity: 1 !important;
       }
       .modal.active {
         display: flex;
+      }
+      .modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        z-index: 200;
       }
       .sheet {
         width: min(420px, 100%);
@@ -398,6 +1359,42 @@
         box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22);
         border: 1px solid rgba(255, 255, 255, 0.6);
         transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+        position: relative;
+        z-index: 201;
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+      .sheet.glass {
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+      html.dark .sheet.glass {
+        background: rgba(15, 15, 18, 0.85);
+      }
+      .modal-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .modal-header h2 {
+        margin: 0;
+      }
+      .back-btn {
+        width: 32px;
+        height: 32px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.6);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+      }
+      html.dark .back-btn {
+        background: rgba(0, 0, 0, 0.4);
+        border-color: rgba(255, 255, 255, 0.12);
       }
       .sheet h2 {
         margin: 0 0 12px;
@@ -489,25 +1486,19 @@
         opacity: 0.5;
         pointer-events: none;
       }
-      @media (min-width: 700px) {
-        .grid {
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-        }
-        .category-grid {
-          grid-template-columns: repeat(6, minmax(0, 1fr));
-        }
+    
+      [draggable="true"] {
+        -webkit-user-drag: none !important;
       }
-      @media (min-width: 1100px) {
-        .grid {
-          grid-template-columns: repeat(10, minmax(0, 1fr));
-        }
-        .category-grid {
-          grid-template-columns: repeat(10, minmax(0, 1fr));
-        }
+      .sortable-ghost {
+        background: transparent !important;
+        outline: none !important;
+        border: 2px dashed rgba(255, 255, 255, 0.4) !important;
       }
-    </style>
+</style>
     <script>
-      tailwind.config = {
+      window.tailwind = window.tailwind || {};
+      window.tailwind.config = {
         darkMode: "class"
       };
     </script>
@@ -515,11 +1506,33 @@
   </head>
   <body class="text-slate-900 transition-colors duration-300 dark:text-white">
     <div class="ios-bg fixed inset-0 -z-10"></div>
-    <div
-      id="top-controls"
-      class="fixed right-6 bottom-24 z-[100] inline-flex transition-all duration-200 md:top-6 md:bottom-auto"
-    >
-      <div id="menuRoot" class="relative flex flex-col items-center gap-3 md:flex-row md:items-center">
+    <div id="editToolbar" class="edit-toolbar">
+      <span id="editStatusLabel" class="text-slate-900 dark:text-white font-medium">正在编辑...</span>
+      <button
+        type="button"
+        class="flex items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-white font-medium shadow-sm"
+        id="editDoneBtn"
+      >
+        完成
+      </button>
+    </div>
+    <div id="toast" class="toast">保存成功</div>
+    <header class="site-header header-logo">
+        <div class="header-left">
+          <div class="logo-mark" aria-hidden="true">N</div>
+          <div class="title-group">
+            <div id="siteTitle" class="site-title">我的 iOS 风格导航</div>
+            <div class="site-slogan">挑一个图标，直接打开网站。</div>
+          </div>
+        </div>
+        <div id="top-controls" class="header-right">
+        <div id="menuRoot" class="relative flex flex-col items-center gap-3 md:flex-row md:items-center">
+          <div id="modeControl" class="mode-control">
+            <button class="mode-btn active" data-mode="preview">预览</button>
+            <button class="mode-btn" data-mode="sort">排序</button>
+            <button class="mode-btn" data-mode="edit">编辑</button>
+            <button class="mode-btn" data-mode="delete">增删</button>
+          </div>
       <button
         class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-sm font-medium text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 md:hidden"
         id="menuToggle"
@@ -535,7 +1548,7 @@
       </button>
       <div
         id="controlGroup"
-        class="absolute left-1/2 -translate-x-1/2 flex flex-col md:flex-row items-center md:items-center gap-3 transition-all opacity-0 pointer-events-none translate-y-2 scale-95 md:static md:translate-x-0 md:opacity-100 md:pointer-events-auto md:translate-y-0 md:scale-100"
+        class="absolute left-1/2 -translate-x-1/2 flex flex-col md:flex-row items-center md:items-center gap-4 transition-all opacity-0 pointer-events-none translate-y-2 scale-95 md:static md:translate-x-0 md:opacity-100 md:pointer-events-auto md:translate-y-0 md:scale-100"
       >
         <button
           class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
@@ -562,25 +1575,23 @@
           <span class="hidden md:inline">设置</span>
         </button>
         <button
-          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
-          id="editBtn"
+          class="hidden flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-10 h-10 md:w-12 md:h-12"
+          id="sortLockBtn"
+          aria-label="排序锁定"
+          aria-pressed="true"
         >
-          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true" data-icon="lock-closed">
             <path
               fill="currentColor"
-              d="M3 17.25V21h3.75L19.81 7.94l-3.75-3.75ZM21.71 6.04a1 1 0 0 0 0-1.41L19.37 2.29a1 1 0 0 0-1.41 0L16.13 4.12l3.75 3.75Z"
+              d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Zm-7-2a2 2 0 1 1 4 0v2h-4V7Z"
             />
           </svg>
-          <span class="hidden md:inline">编辑</span>
-        </button>
-        <button
-          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
-          id="addBtn"
-        >
-          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="currentColor" d="M19 11h-6V5a1 1 0 0 0-2 0v6H5a1 1 0 0 0 0 2h6v6a1 1 0 0 0 2 0v-6h6a1 1 0 0 0 0-2Z" />
+          <svg class="h-4 w-4 hidden" viewBox="0 0 24 24" aria-hidden="true" data-icon="lock-open">
+            <path
+              fill="currentColor"
+              d="M17 9h-7V7a2 2 0 1 1 4 0 1 1 0 0 0 2 0 4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Z"
+            />
           </svg>
-          <span class="hidden md:inline">添加</span>
         </button>
         <button
           class="theme-toggle flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 w-12 h-12 transition-all hover:scale-105 active:scale-95"
@@ -599,74 +1610,77 @@
           />
         </svg>
         </button>
+        <div id="avatarWrap" class="relative flex-shrink-0 hidden">
+          <button
+            id="avatarBtn"
+            class="w-12 h-12 rounded-full bg-white/60 dark:bg-black/60 backdrop-blur-lg border border-white/20 flex items-center justify-center text-slate-700 dark:text-white shadow-lg"
+            aria-label="User Center"
+            aria-expanded="false"
+          >
+            <img id="avatarImg" class="w-12 h-12 rounded-full hidden" alt="Avatar" />
+            <span id="avatarText" class="text-base font-semibold">A</span>
+          </button>
+          <div
+            id="avatarMenu"
+            class="absolute right-0 mt-3 w-56 bg-white/70 dark:bg-black/70 backdrop-blur-md border border-white/20 rounded-2xl shadow-xl p-2 opacity-0 pointer-events-none scale-95 transition-all"
+          >
+            <div class="px-3 py-2 text-sm text-slate-800 dark:text-white" id="userNameLabel">Admin</div>
+            <button class="w-full text-left px-3 py-2 rounded-lg text-slate-800 dark:text-white hover:bg-white/40 dark:hover:bg-white/10" id="avatarUploadBtn">&#x4FEE;&#x6539;&#x5934;&#x50CF;</button>
+            <button class="w-full text-left px-3 py-2 rounded-lg text-slate-800 dark:text-white hover:bg-white/40 dark:hover:bg-white/10" id="profileEditBtn">&#x7F16;&#x8F91;&#x8D44;&#x6599;</button>
+            <button class="w-full text-left px-3 py-2 rounded-lg text-slate-800 dark:text-white hover:bg-white/40 dark:hover:bg-white/10" id="logoutBtn">&#x9000;&#x51FA;&#x767B;&#x5F55;</button>
+          </div>
+          <input id="avatarInput" type="file" accept="image/*" class="hidden" />
+        </div>
       </div>
-      </div>
-    </div>
-    <header class="pt-16 sm:pt-0">
-      <div class="title-wrap">
-        <h1 class="text-slate-900 dark:text-white hidden sm:block" id="siteTitle">我的 iOS 风格导航</h1>
-        <p class="text-slate-900 dark:text-white">挑一个图标，直接打开网站。</p>
       </div>
     </header>
-
-    <div class="search-row">
-      <input
-        id="searchInput"
-        class="bg-white/50 dark:bg-black/50 backdrop-blur-md text-slate-900 dark:text-white"
-        type="search"
-        placeholder="搜索导航..."
-      />
+    <div class="main-content">
+      <div
+        id="categoryNav"
+        class="category-nav fixed top-[76px] left-1/2 -translate-x-1/2 z-40 nav-header-bg backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10 rounded-full p-1.5 shadow-md"
+      ></div>
+      <main class="grid" id="appGrid"></main>
     </div>
 
-    <main class="grid" id="appGrid"></main>
-
-    <nav class="dock" aria-label="快捷栏">
-      <a class="app" href="https://www.google.com" target="_blank" rel="noreferrer">
-        <div
-          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
-          data-url="https://www.google.com"
-        ></div>
-      </a>
-      <a class="app" href="https://mail.google.com" target="_blank" rel="noreferrer">
-        <div
-          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
-          data-url="https://mail.google.com"
-        ></div>
-      </a>
-      <a class="app" href="https://calendar.google.com" target="_blank" rel="noreferrer">
-        <div
-          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
-          data-url="https://calendar.google.com"
-        ></div>
-      </a>
-      <a class="app" href="https://drive.google.com" target="_blank" rel="noreferrer">
-        <div
-          class="icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105"
-          data-url="https://drive.google.com"
-        ></div>
-      </a>
-    </nav>
+    
+    <div id="dock-container" class="dock dock-container" aria-label="快捷栏">
+      <div class="dock-grid" id="dockGrid" data-dock="true">
+        <div class="dock-slot" data-slot="0"></div>
+        <div class="dock-slot" data-slot="1"></div>
+        <div class="dock-slot" data-slot="2"></div>
+        <div class="dock-slot" data-slot="3"></div>
+        <div class="dock-slot" data-slot="4"></div>
+        <div class="dock-slot" data-slot="5"></div>
+      </div>
+    </div>
 
     <div class="modal" id="modal">
-      <div class="sheet">
-        <h2 id="formTitle">添加导航</h2>
+      <div class="sheet glass allow-overflow">
+        <div class="modal-header">
+          <button type="button" class="back-btn" id="modalBackBtn" aria-label="返回">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M15.5 5.5a1 1 0 0 1 0 1.4L11.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z" />
+            </svg>
+          </button>
+          <h2 id="formTitle">添加导航</h2>
+        </div>
         <form id="linkForm">
           <div class="field">
             <label for="titleInput">标题</label>
-          <input
-            id="titleInput"
-            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            <input
+              id="titleInput"
+              class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
             type="text"
-            placeholder="例如：苹果"
+            placeholder="例如：苹果官网"
             required
           />
           </div>
           <div class="field">
             <label for="urlInput">网址</label>
-          <input
-            id="urlInput"
-            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
+            <input
+              id="urlInput"
+              class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
             type="url"
             placeholder="https://example.com"
@@ -674,44 +1688,170 @@
           />
           </div>
           <div class="field">
-            <label for="categoryInput">分类（可选）</label>
-          <input
-            id="categoryInput"
-            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
-            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
-            list="categoryList"
-            type="text"
-            placeholder="例如：工作"
-          />
-            <datalist id="categoryList"></datalist>
+            <label for="categorySelectBtn">分类</label>
+            <div class="select" id="categorySelect">
+              <button type="button" class="select-btn" id="categorySelectBtn">
+                <span id="categorySelectLabel">选择分类</span>
+                <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                  <path fill="currentColor" d="M7 10l5 5 5-5H7z" />
+                </svg>
+              </button>
+              <div class="select-menu" id="categorySelectMenu"></div>
+            </div>
+            <input id="categoryInput" type="hidden" />
           </div>
           <div class="toggle-row">
-            <span>仅登录可见</span>
+            <span class="text-slate-900 dark:text-white">固定到底部快捷栏</span>
+            <label class="toggle">
+              <input id="dockInput" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-row">
+            <span class="text-slate-900 dark:text-white">仅登录可见</span>
             <label class="toggle">
               <input id="privateInput" type="checkbox" />
               <span class="slider"></span>
             </label>
           </div>
           <div class="footer">
-            <button type="button" class="btn" id="cancelBtn">取消</button>
-            <button type="submit" class="btn primary" id="saveBtn">保存</button>
+            <button type="button" class="btn bg-slate-100 text-slate-700" id="cancelBtn">取消</button>
+            <button type="submit" class="btn bg-blue-600 text-white border border-blue-600/60" id="saveBtn">保存</button>
           </div>
         </form>
       </div>
     </div>
 
-    <div class="modal" id="settingsModal">
-      <div class="sheet bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl">
-        <h2>设置</h2>
+    <div class="modal" id="addMenuModal">
+      <div class="sheet glass">
+        <div class="modal-header">
+          <button type="button" class="back-btn" id="addMenuCloseBtn" aria-label="关闭">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M15.5 5.5a1 1 0 0 1 0 1.4L11.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z" />
+            </svg>
+          </button>
+          <h2>添加</h2>
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">添加链接项目</span>
+          <button class="btn bg-blue-600 text-white border border-blue-600/60" id="addLinkEntryBtn">添加</button>
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">管理/新建分类</span>
+          <button class="btn bg-slate-100 text-slate-700 border border-slate-200" id="manageCategoryEntryBtn">管理</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="categoryManagerModal">
+      <div class="sheet glass">
+        <div class="modal-header">
+          <button type="button" class="back-btn" id="categoryManagerCloseBtn" aria-label="关闭">
+            <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="currentColor" d="M15.5 5.5a1 1 0 0 1 0 1.4L11.4 11l4.1 4.1a1 1 0 1 1-1.4 1.4l-4.8-4.8a1 1 0 0 1 0-1.4l4.8-4.8a1 1 0 0 1 1.4 0Z" />
+            </svg>
+          </button>
+          <h2>分类管理</h2>
+        </div>
         <div class="field">
-          <label for="siteNameInput">网站标题</label>
-          <input
-            id="siteNameInput"
-            class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
-            style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
-            type="text"
-            placeholder="例如：我的导航"
-          />
+          <label for="newCategoryInput">新建分类</label>
+          <div class="flex gap-2">
+            <input
+              id="newCategoryInput"
+              class="text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              type="text"
+              placeholder="请输入分类名称"
+            />
+            <button class="btn bg-blue-600 text-white border border-blue-600/60" id="createCategoryBtn">新增</button>
+          </div>
+        </div>
+        <div class="category-manager-list" id="categoryManagerList"></div>
+        <div class="footer">
+          <button
+            type="button"
+            class="btn bg-slate-100 text-slate-700 border border-slate-200"
+            id="categoryManagerDoneBtn"
+          >完成</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" id="settingsModal">
+      <div class="modal-backdrop" id="settingsBackdrop"></div>
+      <div class="sheet glass bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl">
+        <h2>设置</h2>
+        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">外观装修</span>
+          </div>
+          <div class="field">
+            <label for="siteNameInput" class="text-slate-800 dark:text-slate-100">网站标题</label>
+            <input
+              id="siteNameInput"
+              class="text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style="color: #1a1a1a !important; background-color: rgba(248, 250, 252, 0.9) !important;"
+              type="text"
+              placeholder="例如：我的导航站"
+            />
+          </div>
+          <div class="field">
+            <label for="logoInput" class="text-slate-800 dark:text-slate-100">Logo 上传</label>
+            <input
+              id="logoInput"
+              class="text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style="color: #1a1a1a !important; background-color: rgba(248, 250, 252, 0.9) !important;"
+              type="file"
+              accept="image/*"
+            />
+          </div>
+          <div class="field">
+            <label for="bgColorInput" class="text-slate-800 dark:text-slate-100">背景颜色</label>
+            <input id="bgColorInput" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
+            <div class="mt-2 flex gap-2">
+              <button
+                type="button"
+                class="btn bg-blue-600 text-white border border-blue-600/60"
+                id="saveBgBtn"
+              >保存背景</button>
+              <button
+                type="button"
+                class="btn bg-slate-100 text-slate-700 border border-slate-200"
+                id="resetBgBtn"
+              >恢复默认</button>
+            </div>
+          </div>
+        </div>
+        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">&#x5185;&#x5BB9;&#x7BA1;&#x7406;</span>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100 flex items-center gap-2">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="currentColor" d="M12 5a7 7 0 1 1-7 7 7 7 0 0 1 7-7Zm0-2a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm1 8h3a1 1 0 0 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 1 1 2 0Z" />
+              </svg>
+              &#x6DFB;&#x52A0;&#x65B0;&#x94FE;&#x63A5;
+            </span>
+            <button
+              type="button"
+              class="btn rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-medium"
+              id="addBtn"
+            >&#x6DFB;&#x52A0;</button>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">编辑模式</span>
+            <label class="toggle">
+              <input id="editModeSwitch" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">删除模式</span>
+            <label class="toggle">
+              <input id="deleteModeSwitch" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
         </div>
         <div class="settings-row">
           <span class="text-slate-800 dark:text-slate-100">字体大小</span>
@@ -728,7 +1868,7 @@
           <div class="settings-row">
             <span class="text-slate-800 dark:text-slate-100">导出备份</span>
             <a
-              class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+              class="btn bg-slate-100 text-slate-700 border border-gray-200/50"
               id="exportBtn"
               href="/api/backup/export"
             >下载</a>
@@ -737,39 +1877,33 @@
             <span class="text-slate-800 dark:text-slate-100">导入备份</span>
             <input
               id="importFile"
-              class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-gray-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
-              style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+              class="text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style="color: #1a1a1a !important; background-color: rgba(248, 250, 252, 0.9) !important;"
               type="file"
-              accept=".db"
+              accept=".json"
             />
           </div>
           <div class="settings-row">
             <span></span>
-            <button class="btn border border-gray-200/50 text-slate-900 dark:text-white" id="importBtn">导入</button>
+            <button class="btn bg-slate-100 text-slate-700 border border-gray-200/50" id="importBtn">导入</button>
           </div>
         </div>
         <div class="footer">
           <button
             type="button"
-            class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+            class="btn bg-blue-600 text-white border border-blue-600/60"
             id="settingsSaveBtn"
           >保存设置</button>
           <button
             type="button"
-            class="btn border border-gray-200/50 text-slate-900 dark:text-white"
+            class="btn bg-slate-100 text-slate-700 border border-slate-200"
             id="settingsCloseBtn"
           >关闭</button>
         </div>
       </div>
     </div>
 
-    <div class="search-overlay" id="searchOverlay">
-      <div class="spotlight">
-        <input id="spotlightInput" type="search" placeholder="搜索导航..." />
-        <div class="spotlight-results" id="spotlightResults"></div>
-      </div>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
@@ -777,33 +1911,63 @@
         });
       }
 
+      document.addEventListener("DOMContentLoaded", () => {
+
       const grid = document.querySelector("#appGrid");
+      const dockGrid = document.querySelector("#dockGrid");
       const modal = document.querySelector("#modal");
+      const addMenuModal = document.querySelector("#addMenuModal");
+      const categoryManagerModal = document.querySelector("#categoryManagerModal");
       const settingsModal = document.querySelector("#settingsModal");
+      const settingsBackdrop = document.querySelector("#settingsBackdrop");
       const addBtn = document.querySelector("#addBtn");
-      const editBtn = document.querySelector("#editBtn");
+      const addMenuCloseBtn = document.querySelector("#addMenuCloseBtn");
+      const addLinkEntryBtn = document.querySelector("#addLinkEntryBtn");
+      const manageCategoryEntryBtn = document.querySelector("#manageCategoryEntryBtn");
       const cancelBtn = document.querySelector("#cancelBtn");
       const loginBtn = document.querySelector("#loginBtn");
       const settingsBtn = document.querySelector("#settingsBtn");
       const settingsCloseBtn = document.querySelector("#settingsCloseBtn");
+      const toast = document.querySelector("#toast");
+      const modalBackBtn = document.querySelector("#modalBackBtn");
+      const avatarWrap = document.querySelector("#avatarWrap");
+      const avatarBtn = document.querySelector("#avatarBtn");
+      const avatarMenu = document.querySelector("#avatarMenu");
+      const avatarImg = document.querySelector("#avatarImg");
+      const avatarText = document.querySelector("#avatarText");
+      const userNameLabel = document.querySelector("#userNameLabel");
+      const avatarUploadBtn = document.querySelector("#avatarUploadBtn");
+      const profileEditBtn = document.querySelector("#profileEditBtn");
+      const logoutBtn = document.querySelector("#logoutBtn");
+      const avatarInput = document.querySelector("#avatarInput");
       const menuToggle = document.querySelector("#menuToggle");
       const controlGroup = document.querySelector("#controlGroup");
+      const modeControl = document.querySelector("#modeControl");
+      const modeButtons = modeControl ? Array.from(modeControl.querySelectorAll(".mode-btn")) : [];
       const linkForm = document.querySelector("#linkForm");
       const themeToggle = document.querySelector("#themeToggle");
       const formTitle = document.querySelector("#formTitle");
       const saveBtn = document.querySelector("#saveBtn");
-      const searchInput = document.querySelector("#searchInput");
-      const searchOverlay = document.querySelector("#searchOverlay");
-      const spotlightInput = document.querySelector("#spotlightInput");
-      const spotlightResults = document.querySelector("#spotlightResults");
       const topControls = document.querySelector("#top-controls");
       const titleInput = document.querySelector("#titleInput");
       const urlInput = document.querySelector("#urlInput");
       const categoryInput = document.querySelector("#categoryInput");
+      const categorySelectBtn = document.querySelector("#categorySelectBtn");
+      const categorySelectLabel = document.querySelector("#categorySelectLabel");
+      const categorySelectMenu = document.querySelector("#categorySelectMenu");
+      const dockInput = document.querySelector("#dockInput");
       const privateInput = document.querySelector("#privateInput");
-      const categoryList = document.querySelector("#categoryList");
+      const categoryManagerCloseBtn = document.querySelector("#categoryManagerCloseBtn");
+      const categoryManagerDoneBtn = document.querySelector("#categoryManagerDoneBtn");
+      const newCategoryInput = document.querySelector("#newCategoryInput");
+      const createCategoryBtn = document.querySelector("#createCategoryBtn");
+      const categoryManagerList = document.querySelector("#categoryManagerList");
       const siteTitle = document.querySelector("#siteTitle");
       const siteNameInput = document.querySelector("#siteNameInput");
+      const logoInput = document.querySelector("#logoInput");
+      const bgColorInput = document.querySelector("#bgColorInput");
+      const saveBgBtn = document.querySelector("#saveBgBtn");
+      const resetBgBtn = document.querySelector("#resetBgBtn");
       const fontSizeInput = document.querySelector("#fontSizeInput");
       const boldToggle = document.querySelector("#boldToggle");
       const exportBtn = document.querySelector("#exportBtn");
@@ -811,10 +1975,239 @@
       const importBtn = document.querySelector("#importBtn");
       const backupGroup = document.querySelector("#backupGroup");
       const settingsSaveBtn = document.querySelector("#settingsSaveBtn");
+      const editModeToggle = document.getElementById("editModeSwitch");
+      const deleteModeToggle = document.getElementById("deleteModeSwitch");
+      const sortLockBtn = document.querySelector("#sortLockBtn");
+      const editToolbar = document.querySelector("#editToolbar");
+      const editDoneBtn = document.querySelector("#editDoneBtn");
+      const editStatusLabel = document.querySelector("#editStatusLabel");
       let loggedIn = false;
       let editing = false;
-      let editingLinkId = null;
+      let deleting = false;
+      let currentMode = "preview";
+        let editingLinkId = null;
+        let editingDockPosition = null;
+        let returnToSettings = null;
+        let pendingChanges = false;
+        let sortUnlocked = false;
+        let activeDeleteBubble = null;
+        const dockLimit = 6;
+      let saveTimer = null;
+      let appearanceTimer = null;
+
+      const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal].filter(Boolean);
+
+      function openModal(target, options = {}) {
+        if (!target) return;
+        modalList.forEach((item) => {
+          if (item !== target) {
+            item.classList.remove("active");
+          }
+        });
+        target.classList.add("active");
+        document.body.classList.add("modal-open");
+        returnToSettings = options.returnToSettings ? target : null;
+        if (target === settingsModal && avatarMenu) {
+          setAvatarMenuOpen(false);
+        }
+      }
+
+        function closeModal(target) {
+          if (!target) return;
+          target.classList.remove("active");
+          if (returnToSettings === target) {
+            returnToSettings = null;
+          if (settingsModal) {
+            openModal(settingsModal);
+          }
+        }
+          if (!document.querySelector(".modal.active")) {
+            document.body.classList.remove("modal-open");
+          }
+        }
+
+        function closeEditModalToPreview() {
+          returnToSettings = null;
+          closeModal(modal);
+          setActiveMode("preview");
+        }
+
+      function renderCategorySelect(categories, selectedName) {
+        if (!categorySelectMenu || !categorySelectLabel || !categoryInput) return;
+        categorySelectMenu.innerHTML = "";
+        const current =
+          selectedName || categoryInput.value || (categories[0] ? categories[0].name : "");
+
+        categories.forEach((item) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "select-item";
+          const label = document.createElement("span");
+          label.textContent = item.name;
+          btn.appendChild(label);
+          if (item.name === current) {
+            const check = document.createElement("span");
+            check.className = "select-check";
+            check.innerHTML =
+              '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M9.5 16.2 5.8 12.5a1 1 0 0 1 1.4-1.4l2.3 2.3 6.1-6.1a1 1 0 1 1 1.4 1.4l-6.8 6.8a1 1 0 0 1-1.4 0Z"/></svg>';
+            btn.appendChild(check);
+          }
+          btn.addEventListener("click", (event) => {
+            event.stopPropagation();
+            categoryInput.value = item.name;
+            categorySelectLabel.textContent = item.name;
+            categorySelectMenu.classList.remove("open");
+            renderCategorySelect(categories, item.name);
+          });
+          categorySelectMenu.appendChild(btn);
+        });
+
+        const manageBtn = document.createElement("button");
+        manageBtn.type = "button";
+        manageBtn.className = "select-item select-manage";
+        manageBtn.innerHTML =
+          '<span>+ 管理/新建分类</span><span class="select-check"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M12 5a7 7 0 1 1-7 7 7 7 0 0 1 7-7Zm0-2a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm1 8h3a1 1 0 0 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 1 1 2 0Z"/></svg></span>';
+        manageBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          categorySelectMenu.classList.remove("open");
+          closeModal(modal);
+          loadCategories().then((list) => {
+            renderCategoryManager(list);
+          });
+            openModal(categoryManagerModal, { returnToSettings: false });
+        });
+        categorySelectMenu.appendChild(manageBtn);
+
+        categoryInput.value = current || "";
+        categorySelectLabel.textContent = current || "选择分类";
+      }
+
+      async function parseCategoryResponse(res, fallbackMessage) {
+        const contentType = res.headers.get("content-type") || "";
+        if (!res.ok) {
+          if (contentType.includes("text/html")) {
+            const text = await res.text();
+            console.warn("收到非 JSON 响应，可能是静态资源路径冲突");
+            console.warn("Response preview:", text.slice(0, 100));
+            throw new Error("服务器返回了网页，请检查登录态或 API 路径");
+          }
+          let errData = null;
+          try {
+            errData = await res.json();
+          } catch (err) {
+            errData = null;
+          }
+          throw new Error(
+            (errData && (errData.detail || errData.error)) || fallbackMessage || "请求失败"
+          );
+        }
+        if (contentType.includes("text/html")) {
+          const text = await res.text();
+          console.warn("收到非 JSON 响应，可能是静态资源路径冲突");
+          console.warn("Response preview:", text.slice(0, 100));
+          throw new Error("服务器返回了网页，请检查登录态或 API 路径");
+        }
+        return res.json();
+      }
+
+      function loadCategories(selectedName) {
+        return fetch("/api/categories", { credentials: "include" })
+          .then((res) => parseCategoryResponse(res, "加载分类失败"))
+          .then((data) => {
+            const list = Array.isArray(data) ? data : [];
+            const categories = list.map((item) => {
+              if (typeof item === "string") {
+                return { id: item, name: item };
+              }
+              return { id: item.id, name: item.name };
+            });
+            renderCategorySelect(categories, selectedName);
+            return categories;
+          })
+          .catch((err) => {
+            alert(err.message || "加载分类失败");
+            return [];
+          });
+      }
+
+      function renderCategoryManager(categories) {
+        if (!categoryManagerList) return;
+        categoryManagerList.innerHTML = "";
+        if (!categories || !categories.length) {
+          const empty = document.createElement("div");
+          empty.className = "category-row";
+          empty.textContent = "暂无分类";
+          categoryManagerList.appendChild(empty);
+          return;
+        }
+        categories.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "category-row";
+          const name = document.createElement("div");
+          name.className = "category-name text-slate-900 dark:text-slate-100 font-bold opacity-100 pl-1";
+          name.textContent = item.name || "未命名分类";
+          const actions = document.createElement("div");
+          actions.className = "category-actions";
+
+          const editBtn = document.createElement("button");
+          editBtn.type = "button";
+          editBtn.className = "icon-btn";
+          editBtn.dataset.id = item.id;
+          editBtn.innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.25V20h2.75l8.1-8.1-2.75-2.75-8.1 8.1Zm15.71-9.04a1 1 0 0 0 0-1.41l-2.5-2.5a1 1 0 0 0-1.41 0l-1.95 1.95 3.91 3.91 1.95-1.95Z"/></svg>';
+          editBtn.addEventListener("click", () => {
+            const nextName = window.prompt("请输入新的分类名称", item.name);
+            if (!nextName) return;
+            fetch(`/api/categories/${item.id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json; charset=utf-8" },
+              body: JSON.stringify({ name: nextName })
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error("更新失败");
+                return res.json();
+              })
+              .then((updated) => {
+                name.textContent = updated.name || nextName;
+                loadCategories(updated.name || nextName);
+                applySearch();
+              })
+              .catch((err) => {
+                alert(err.message || "更新失败");
+              });
+          });
+
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "icon-btn danger";
+          deleteBtn.dataset.id = item.id;
+          deleteBtn.innerHTML =
+            '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 7h12v2H6V7Zm2 3h8l-1 10H9L8 10Zm4-7a2 2 0 0 1 2 2v1H10V5a2 2 0 0 1 2-2Z"/></svg>';
+          deleteBtn.addEventListener("click", () => {
+            const confirmDelete = window.confirm(
+              "删除分类并删除其链接？点击取消将移动到“未分类”。"
+            );
+            const mode = confirmDelete ? "delete" : "move";
+            fetch(`/api/categories/${item.id}?mode=${mode}`, { method: "DELETE" })
+              .then((res) => {
+                if (!res.ok) throw new Error("删除失败");
+                row.remove();
+                loadCategories();
+                fetchLinks();
+              })
+              .catch((err) => {
+                alert(err.message || "删除失败");
+              });
+          });
+
+          actions.append(editBtn, deleteBtn);
+          row.dataset.categoryId = item.id;
+          row.append(name, actions);
+          categoryManagerList.appendChild(row);
+        });
+      }
       let allLinks = [];
+      let sortables = [];
 
       function hashCode(text) {
         let hash = 0;
@@ -823,6 +2216,14 @@
           hash |= 0;
         }
         return Math.abs(hash);
+      }
+
+      function slugify(text) {
+        return String(text || "")
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
+          .replace(/^-+|-+$/g, "");
       }
 
       function colorPair(seed) {
@@ -851,6 +2252,9 @@
         }
 
         const img = document.createElement("img");
+        img.className =
+          "w-full h-full object-cover rounded-2xl transition-transform duration-300 hover:scale-110";
+        img.draggable = false;
         const faviconUrl = url
           ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(url)}&sz=128`
           : "";
@@ -870,118 +2274,557 @@
         }
       }
 
-      function groupByCategory(links) {
+            function groupByCategory(links) {
         const groups = {};
+        const order = [];
         links.forEach((item) => {
-          const key = (item.category || "未分类").trim();
+          const key = (item.category || "默认分类").trim();
           if (!groups[key]) {
             groups[key] = [];
+            order.push(key);
           }
           groups[key].push(item);
         });
-        return groups;
+        return { groups, order };
       }
 
-      function renderDockIcons() {
-        document.querySelectorAll(".dock .icon").forEach((icon) => {
-          const url = icon.dataset.url || "";
-          buildIcon(icon, url, "", false);
-        });
+      function renderDockLinks(links) {
+        try {
+          if (!dockGrid) return;
+          dockGrid.dataset.dock = "true";
+          const dockItems = links.filter((item) => item.is_dock);
+          const dockContainer = dockGrid.closest("#dock-container");
+          if (dockContainer) {
+            dockContainer.classList.toggle("dock-empty", !dockItems.length);
+          }
+          const slots = Array.from(dockGrid.querySelectorAll(".dock-slot"));
+            slots.forEach((slot) => {
+              slot.innerHTML = "";
+              slot.classList.toggle("empty", editing || deleting);
+            });
+
+          const itemsBySlot = new Map();
+          const looseItems = [];
+          dockItems.forEach((item) => {
+            const position = Number(item.position_index);
+            if (!Number.isNaN(position) && position >= 0 && position < slots.length) {
+              itemsBySlot.set(position, item);
+            } else {
+              looseItems.push(item);
+            }
+          });
+          const emptySlots = slots
+            .map((slot, index) => ({ slot, index }))
+            .filter(({ index }) => !itemsBySlot.has(index));
+          looseItems.forEach((item, idx) => {
+            if (emptySlots[idx]) {
+              itemsBySlot.set(emptySlots[idx].index, item);
+            }
+          });
+
+            itemsBySlot.forEach((item, index) => {
+              const slot = slots[index];
+              if (!slot) return;
+              slot.classList.remove("empty");
+              item.position_index = index;
+            const isPrivate = loggedIn && Number(item.is_private) === 1;
+            const card = document.createElement("a");
+            const showJiggle = editing || deleting;
+            card.className = showJiggle ? "app dock-item jiggle" : "app dock-item";
+            card.href = item.url;
+            card.target = "_blank";
+            card.rel = "noreferrer";
+            card.draggable = false;
+            card.dataset.id = item.id;
+            card.dataset.title = item.title || "";
+            card.dataset.originalTitle = item.title || "";
+            card.dataset.category = "";
+            card.dataset.dock = "true";
+            card.dataset.positionIndex = String(index);
+
+            const icon = document.createElement("div");
+                icon.className =
+                  "icon mb-2 border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:brightness-105 dark:shadow-black/30";
+                icon.draggable = false;
+                icon.style.isolation = "isolate";
+                icon.style.transform = "translateZ(0)";
+                icon.style.willChange = "transform";
+                icon.style.clipPath = "inset(0 round 1.25rem)";
+                icon.style.webkitClipPath = "inset(0 round 1.25rem)";
+            buildIcon(icon, item.url, item.icon, isPrivate);
+
+            const minus = document.createElement("button");
+            minus.className = "minus delete-badge";
+            minus.type = "button";
+            minus.textContent = "-";
+            minus.dataset.id = item.id;
+            icon.appendChild(minus);
+
+            const editBadge = document.createElement("button");
+            editBadge.className = "edit-badge";
+            editBadge.type = "button";
+            editBadge.dataset.id = item.id;
+            editBadge.innerHTML =
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 17.25V20h2.75l8.1-8.1-2.75-2.75-8.1 8.1Zm15.71-9.04a1 1 0 0 0 0-1.41l-2.5-2.5a1 1 0 0 0-1.41 0l-1.95 1.95 3.91 3.91 1.95-1.95Z"/></svg>';
+            icon.appendChild(editBadge);
+
+            const tooltip = document.createElement("div");
+            tooltip.className = "dock-tooltip";
+            tooltip.textContent = item.title || "未命名";
+            card.appendChild(tooltip);
+
+            const label = document.createElement("div");
+            label.className = "label text-slate-900 dark:text-white";
+            label.textContent = item.title || "未命名";
+            if (editing) {
+              label.classList.add("editable", "cursor-text");
+              label.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                if (!editing || label.querySelector("input")) {
+                  return;
+                }
+                const current = label.textContent.trim();
+                const input = document.createElement("input");
+                input.type = "text";
+                input.value = current;
+                input.className = "rename-input text-slate-900 dark:text-white";
+                label.textContent = "";
+                label.appendChild(input);
+                input.focus();
+                input.select();
+                const commit = (apply) => {
+                  const next = apply ? input.value.trim() : current;
+                  const finalTitle = next || "未命名";
+                  label.textContent = finalTitle;
+                  card.dataset.title = finalTitle;
+                  if (finalTitle !== current) {
+                    pendingChanges = true;
+                    scheduleAutoSave();
+                  }
+                };
+                input.addEventListener("keydown", (keyEvent) => {
+                  if (keyEvent.key === "Enter") {
+                    commit(true);
+                  }
+                  if (keyEvent.key === "Escape") {
+                    commit(false);
+                  }
+                });
+                input.addEventListener("blur", () => commit(true));
+              });
+            }
+
+            card.append(icon, label);
+              slot.appendChild(card);
+            });
+
+            if (currentMode === "delete") {
+              slots.forEach((slot) => {
+                if (slot.querySelector(".app")) return;
+                const placeholder = document.createElement("div");
+                placeholder.className = "app dock-item dock-add-placeholder add-placeholder";
+                placeholder.dataset.dock = "true";
+
+                const icon = document.createElement("div");
+                icon.className =
+                  "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
+                icon.textContent = "+";
+                placeholder.appendChild(icon);
+
+                placeholder.addEventListener("click", (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  editingLinkId = null;
+                  editingDockPosition = null;
+                  if (dockInput) {
+                    dockInput.checked = true;
+                  }
+                  formTitle.textContent = "添加导航";
+                  saveBtn.textContent = "保存";
+                  titleInput.value = "";
+                  urlInput.value = "";
+                  privateInput.checked = false;
+                  loadCategories();
+                  openModal(modal, { returnToSettings: true });
+                });
+
+                slot.appendChild(placeholder);
+              });
+            }
+        } catch (err) {
+          console.log("No data found");
+        }
+      }
+
+      function getDockCountLive() {
+        if (!dockGrid) {
+          return allLinks.filter((item) => item.is_dock).length;
+        }
+        return dockGrid.querySelectorAll(
+          ".dock-slot .app:not(.sortable-ghost):not(.sortable-chosen):not(.sortable-fallback)"
+        ).length;
+      }
+
+      function getFirstEmptyDockSlot() {
+        if (!dockGrid) return null;
+        const slots = Array.from(dockGrid.querySelectorAll(".dock-slot"));
+        const empty = slots.find((slot) => !slot.querySelector(".app"));
+        if (!empty) return null;
+        const index = Number(empty.dataset.slot);
+        return Number.isNaN(index) ? null : index;
       }
 
       function renderLinks(links) {
-        grid.innerHTML = "";
-        const groups = groupByCategory(links);
-        Object.keys(groups)
-          .sort((a, b) => a.localeCompare(b))
-          .forEach((category) => {
+        try {
+          const normalLinks = links.filter((item) => !item.is_dock);
+          grid.innerHTML = "";
+          const grouped = groupByCategory(normalLinks);
+          const minIconSize = 40;
+          const maxIconSize = 80;
+          const gridGap = 16;
+          grouped.order.forEach((category) => {
             const cardWrap = document.createElement("section");
             cardWrap.className =
-              "category-card bg-white/40 dark:bg-black/40 backdrop-blur-xl border border-white/20";
+              "category-card";
+            cardWrap.dataset.category = category;
+            cardWrap.dataset.original = category;
+            cardWrap.id = `category-${slugify(category)}`;
 
             const heading = document.createElement("div");
-            heading.className = "category-title font-bold text-slate-900 dark:text-white";
+            heading.className = "category-title category-title-capsule";
             heading.textContent = category;
             cardWrap.appendChild(heading);
 
+            const spacer = document.createElement("div");
+            spacer.className = "category-spacer";
+            cardWrap.appendChild(spacer);
+
             const innerGrid = document.createElement("div");
-            innerGrid.className = "category-grid";
+            innerGrid.className = "category-grid icon-page-container";
+            innerGrid.dataset.category = category;
+            innerGrid.dataset.dock = "false";
+            const itemCount = grouped.groups[category].length;
+            const scaleT = Math.min(1, Math.max(0, (itemCount - 4) / 12));
+            const iconSize = Math.round(maxIconSize - scaleT * (maxIconSize - minIconSize));
+            const availableWidth = Math.min(900, window.innerWidth - 120);
+            const perRow = Math.max(
+              4,
+              Math.min(6, Math.floor((availableWidth + gridGap) / (iconSize + gridGap)))
+            );
+            innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
+            innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
+            const pageSize = perRow;
+            heading.classList.add("cursor-text", "editable");
+            heading.addEventListener("click", (event) => {
+              event.stopPropagation();
+              if (currentMode !== "edit" || heading.querySelector("input")) {
+                return;
+              }
+              const current = heading.textContent.trim();
+              const input = document.createElement("input");
+              input.type = "text";
+              input.value = current;
+              input.className = "rename-input text-slate-900 dark:text-white";
+              heading.textContent = "";
+              heading.appendChild(input);
+              input.focus();
+              input.select();
 
-            groups[category].forEach((item) => {
-              const isPrivate = loggedIn && Number(item.is_private) === 1;
-              const card = document.createElement("a");
-              card.className = editing ? "app jiggle" : "app";
-              card.href = item.url;
-              card.target = "_blank";
-              card.rel = "noreferrer";
-              card.dataset.id = item.id;
-
-              const minus = document.createElement("button");
-              minus.className = "minus";
-              minus.type = "button";
-              minus.textContent = "−";
-              minus.setAttribute("onclick", `deleteLink(${item.id})`);
-              minus.addEventListener("click", (event) => {
-                event.preventDefault();
-                event.stopPropagation();
+              const commit = (apply) => {
+                const next = apply ? input.value.trim() : current;
+                const finalName = next || "默认分类";
+                heading.textContent = finalName;
+                cardWrap.dataset.category = finalName;
+                innerGrid.dataset.category = finalName;
+                innerGrid.querySelectorAll(".app").forEach((app) => {
+                  app.dataset.category = finalName;
+                });
+                if (finalName !== current) {
+                  pendingChanges = true;
+                  scheduleAutoSave();
+                }
+              };
+              input.addEventListener("keydown", (keyEvent) => {
+                if (keyEvent.key === "Enter") {
+                  commit(true);
+                }
+                if (keyEvent.key === "Escape") {
+                  commit(false);
+                }
               });
-              card.appendChild(minus);
-
-              const editBadge = document.createElement("button");
-              editBadge.className = "edit-badge";
-              editBadge.type = "button";
-              editBadge.textContent = "✎";
-              editBadge.addEventListener("click", (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                openEditModal(item);
-              });
-              card.appendChild(editBadge);
-
-              const icon = document.createElement("div");
-              icon.className =
-                "icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105";
-              buildIcon(icon, item.url, item.icon, isPrivate);
-
-              const label = document.createElement("div");
-              label.className = "label text-slate-900 dark:text-white";
-              label.textContent = item.title || "未命名";
-
-              const sublabel = document.createElement("div");
-              sublabel.className = "sublabel text-slate-900 dark:text-white";
-              sublabel.textContent = item.category || "";
-
-              card.append(icon, label, sublabel);
-              innerGrid.appendChild(card);
+              input.addEventListener("blur", () => commit(true));
             });
 
+            const items = grouped.groups[category];
+            const pages = [];
+            for (let i = 0; i < items.length; i += pageSize) {
+              pages.push(items.slice(i, i + pageSize));
+            }
+            const totalPages = pages.length;
+            const pageWidth = perRow * iconSize + (perRow - 1) * gridGap;
+            innerGrid.style.width = `${pageWidth}px`;
+            pages.forEach((pageItems, pageIndex) => {
+              const page = document.createElement("div");
+              page.className = "category-page";
+              page.style.width = `${pageWidth}px`;
+              page.style.setProperty("--cols", perRow);
+              page.style.setProperty("--icon-size", `${iconSize}px`);
+              page.style.setProperty("--grid-gap", `${gridGap}px`);
+              pageItems.forEach((item) => {
+                const isPrivate = loggedIn && Number(item.is_private) === 1;
+            const card = document.createElement("a");
+            const showJiggle = editing || deleting;
+            card.className = showJiggle ? "app jiggle" : "app";
+            card.href = item.url;
+            card.target = "_blank";
+            card.rel = "noreferrer";
+            card.draggable = false;
+                card.dataset.id = item.id;
+                card.dataset.title = item.title || "";
+                card.dataset.originalTitle = item.title || "";
+                card.dataset.category = category;
+
+                const icon = document.createElement("div");
+                icon.className =
+                  "icon mb-2 border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:brightness-105 dark:shadow-black/30";
+                icon.draggable = false;
+                icon.style.isolation = "isolate";
+                icon.style.transform = "translateZ(0)";
+                icon.style.willChange = "transform";
+                icon.style.clipPath = "inset(0 round 1.25rem)";
+                icon.style.webkitClipPath = "inset(0 round 1.25rem)";
+                buildIcon(icon, item.url, item.icon, isPrivate);
+
+                const minus = document.createElement("button");
+                minus.className = "minus delete-badge";
+                minus.type = "button";
+                minus.textContent = "-";
+                minus.dataset.id = item.id;
+                icon.appendChild(minus);
+
+                const editBadge = document.createElement("button");
+                editBadge.className = "edit-badge";
+                editBadge.type = "button";
+                editBadge.textContent = "编辑";
+                editBadge.dataset.id = item.id;
+                icon.appendChild(editBadge);
+
+                const label = document.createElement("div");
+                label.className = "icon-label-capsule";
+                const labelText = document.createElement("span");
+                labelText.className = "icon-label-text";
+                labelText.textContent = item.title || "未命名";
+                label.appendChild(labelText);
+                if (editing) {
+                  label.classList.add("editable", "cursor-text");
+                  label.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (!editing || label.querySelector("input")) {
+                      return;
+                    }
+                    const current = label.textContent.trim();
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    input.value = current;
+                    input.className = "rename-input text-slate-900 dark:text-white";
+                    label.textContent = "";
+                    label.appendChild(input);
+                    input.focus();
+                    input.select();
+                    const commit = (apply) => {
+                      const next = apply ? input.value.trim() : current;
+                      const finalTitle = next || "未命名";
+                      label.textContent = finalTitle;
+                      card.dataset.title = finalTitle;
+                      if (finalTitle !== current) {
+                        pendingChanges = true;
+                        scheduleAutoSave();
+                      }
+                    };
+                    input.addEventListener("keydown", (keyEvent) => {
+                      if (keyEvent.key === "Enter") {
+                        commit(true);
+                      }
+                      if (keyEvent.key === "Escape") {
+                        commit(false);
+                      }
+                    });
+                    input.addEventListener("blur", () => commit(true));
+                  });
+                }
+
+            card.append(icon, label);
+                page.appendChild(card);
+                });
+
+                if (currentMode === "delete" && pageIndex === pages.length - 1) {
+                  const placeholder = document.createElement("div");
+                  placeholder.className = "app add-placeholder";
+                  placeholder.dataset.category = category;
+                  placeholder.dataset.dock = "false";
+
+                  const icon = document.createElement("div");
+                  icon.className =
+                    "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
+                  icon.textContent = "+";
+                  placeholder.appendChild(icon);
+
+                  const label = document.createElement("div");
+                  label.className = "icon-label-capsule";
+                  const labelText = document.createElement("span");
+                  labelText.className = "icon-label-text";
+                  labelText.textContent = "新增";
+                  label.appendChild(labelText);
+                  placeholder.appendChild(label);
+
+                  placeholder.addEventListener("click", (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    editingLinkId = null;
+                    editingDockPosition = null;
+                    if (dockInput) {
+                      dockInput.checked = false;
+                    }
+                    formTitle.textContent = "添加导航";
+                    saveBtn.textContent = "保存";
+                    titleInput.value = "";
+                    urlInput.value = "";
+                    privateInput.checked = false;
+                    categoryInput.value = category;
+                    categorySelectLabel.textContent = category;
+                    loadCategories(category);
+                    openModal(modal, { returnToSettings: true });
+                  });
+
+                  page.appendChild(placeholder);
+                }
+
+                innerGrid.appendChild(page);
+              });
+
             cardWrap.appendChild(innerGrid);
+            if (totalPages > 1) {
+              const dots = document.createElement("div");
+              dots.className = "pagination-dots";
+              for (let i = 0; i < totalPages; i += 1) {
+                const dot = document.createElement("button");
+                dot.type = "button";
+                dot.className = i === 0 ? "pagination-dot active" : "pagination-dot";
+                dot.addEventListener("click", () => {
+                  innerGrid.scrollTo({ left: pageWidth * i, behavior: "smooth" });
+                });
+                dots.appendChild(dot);
+              }
+
+              const leftArrow = document.createElement("button");
+              leftArrow.type = "button";
+              leftArrow.className = "page-arrow left hidden";
+              leftArrow.innerHTML = "&lt;";
+              const rightArrow = document.createElement("button");
+              rightArrow.type = "button";
+              rightArrow.className = "page-arrow right";
+              rightArrow.innerHTML = "&gt;";
+
+              let currentPage = 0;
+              const updateControls = () => {
+                dots.querySelectorAll(".pagination-dot").forEach((dot, idx) => {
+                  dot.classList.toggle("active", idx === currentPage);
+                });
+                leftArrow.classList.toggle("hidden", currentPage === 0);
+                rightArrow.classList.toggle("hidden", currentPage === totalPages - 1);
+              };
+
+              leftArrow.addEventListener("click", () => {
+                currentPage = Math.max(0, currentPage - 1);
+                innerGrid.scrollTo({ left: pageWidth * currentPage, behavior: "smooth" });
+                updateControls();
+              });
+              rightArrow.addEventListener("click", () => {
+                currentPage = Math.min(totalPages - 1, currentPage + 1);
+                innerGrid.scrollTo({ left: pageWidth * currentPage, behavior: "smooth" });
+                updateControls();
+              });
+
+              let ticking = false;
+              innerGrid.addEventListener("scroll", () => {
+                if (ticking) return;
+                ticking = true;
+                requestAnimationFrame(() => {
+                  currentPage = Math.round(innerGrid.scrollLeft / pageWidth);
+                  updateControls();
+                  ticking = false;
+                });
+              });
+
+              updateControls();
+              cardWrap.appendChild(leftArrow);
+              cardWrap.appendChild(rightArrow);
+              cardWrap.appendChild(dots);
+            }
             grid.appendChild(cardWrap);
           });
-        document.body.classList.toggle("editing", editing);
+          if (currentMode === "delete") {
+            const addCard = document.createElement("section");
+            addCard.className = "category-card category-add-card";
+            const addBtn = document.createElement("button");
+            addBtn.type = "button";
+            addBtn.className = "add-category-btn";
+            addBtn.innerHTML = "<span>+ 新增分类</span>";
+            addBtn.addEventListener("click", (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              loadCategories().then((list) => {
+                renderCategoryManager(list);
+              });
+            openModal(categoryManagerModal, { returnToSettings: false });
+            });
+            addCard.appendChild(addBtn);
+            grid.appendChild(addCard);
+          }
+          renderCategoryNav(grouped.order);
+      document.body.classList.toggle("is-editing", editing);
+      document.body.classList.toggle("is-deleting", deleting);
+          initCategoryFisheye();
+          initSortables();
+        } catch (err) {
+          console.log("No data found");
+        }
       }
 
-      function renderSpotlightResults(links) {
-        spotlightResults.innerHTML = "";
-        links.forEach((item) => {
-          const isPrivate = loggedIn && Number(item.is_private) === 1;
-          const card = document.createElement("a");
-          card.className = "app";
-          card.href = item.url;
-          card.target = "_blank";
-          card.rel = "noreferrer";
+      function updateContainerState(container) {
+        if (!container) return;
+        const isDock = container.classList.contains("dock-slot");
+        const categoryName = isDock ? "" : container.dataset.category || "";
+        container.querySelectorAll(".app").forEach((app) => {
+          app.dataset.dock = isDock ? "true" : "false";
+          app.dataset.category = categoryName;
+        });
+      }
 
-          const icon = document.createElement("div");
-          icon.className =
-            "icon border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl transition-transform hover:scale-105";
-          buildIcon(icon, item.url, item.icon, isPrivate);
-
-          const label = document.createElement("div");
-          label.className = "label text-slate-900 dark:text-white";
-          label.textContent = item.title || "未命名";
-
-          card.append(icon, label);
-          spotlightResults.appendChild(card);
+        function renderCategoryNav(categories) {
+          const nav = document.querySelector("#categoryNav");
+          if (!nav) return;
+          nav.innerHTML = "";
+          categories.forEach((category) => {
+            const pill = document.createElement("button");
+            pill.type = "button";
+            pill.className = "category-pill";
+            pill.textContent = category;
+            pill.addEventListener("click", () => {
+              nav.querySelectorAll(".category-pill").forEach((btn) => {
+                btn.classList.remove("active");
+              });
+              pill.classList.add("active");
+              const target = document.getElementById(`category-${slugify(category)}`);
+              if (!target) return;
+              const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
+              const navHeight = nav.offsetHeight || 0;
+            const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
+            window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+          });
+          nav.appendChild(pill);
         });
       }
 
@@ -990,64 +2833,370 @@
         fetch(url)
           .then((res) => res.json())
           .then((data) => {
-            if (Array.isArray(data)) {
-              allLinks = data;
-              applySearch();
-            }
+              if (Array.isArray(data)) {
+                allLinks = data;
+                renderLinks(allLinks);
+                renderDockLinks(allLinks);
+              } else {
+                console.log("No data found");
+                renderLinks([]);
+                renderDockLinks([]);
+              }
           })
           .catch(() => {
             renderLinks([]);
+            renderDockLinks([]);
           });
       }
 
-      function setLoginState(next) {
-        loggedIn = next;
-        const label = loginBtn.querySelector("span");
-        if (label) {
-          label.textContent = loggedIn ? "退出" : "登录";
+      function destroySortables() {
+        sortables.forEach((instance) => {
+          try {
+            instance.destroy();
+          } catch (err) {}
+        });
+        sortables = [];
+      }
+
+      function clearDragImage(event) {
+        try {
+          const dataTransfer = event?.originalEvent?.dataTransfer;
+          if (dataTransfer && typeof dataTransfer.setDragImage === "function") {
+            dataTransfer.setDragImage(new Image(), 0, 0);
+          }
+        } catch (err) {}
+      }
+
+      function setSortablesEnabled(enabled) {
+        sortables.forEach((instance) => {
+          try {
+            instance.option("disabled", !enabled);
+          } catch (err) {}
+        });
+      }
+
+      function initSortables() {
+        console.log("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "sortUnlocked:", sortUnlocked);
+        if (!window.Sortable || !loggedIn || !sortUnlocked) {
+          destroySortables();
+          return;
         }
-        addBtn.classList.toggle("hidden", !loggedIn);
-        editBtn.classList.toggle("hidden", !loggedIn);
-        settingsBtn.classList.toggle("hidden", !loggedIn);
-        backupGroup.classList.toggle("hidden", !loggedIn);
-        fetchLinks();
+        destroySortables();
+
+          const categorySortable = new Sortable(grid, {
+            animation: 150,
+            draggable: ".category-card",
+            handle: ".category-title-capsule",
+            forceFallback: true,
+            disabled: false,
+            onStart: (event) => {
+              console.log("图标拖拽已捕获");
+              document.body.classList.add("is-dragging");
+              clearDragImage(event);
+            },
+          onEnd: () => {
+            console.log("排序数据已保存");
+            document.body.classList.remove("is-dragging");
+            pendingChanges = true;
+            scheduleAutoSave();
+          }
+        });
+        sortables.push(categorySortable);
+
+        document.querySelectorAll(".category-grid").forEach((container) => {
+          const rect = container.getBoundingClientRect();
+          console.log("Category grid rect:", rect.width, rect.height);
+          const sortable = new Sortable(container, {
+            animation: 250,
+            draggable: ".app",
+            handle: ".icon",
+            group: { name: "shared", pull: true, put: true },
+            sort: true,
+            forceFallback: true,
+            swap: false,
+            ghostClass: "sortable-ghost",
+            dragClass: "sortable-drag",
+            disabled: false,
+            onStart: (event) => {
+              console.log("图标拖拽已捕获");
+              document.body.classList.add("is-dragging");
+              clearDragImage(event);
+              if (event.item) {
+                event.item.classList.add("is-dragging");
+              }
+              if (dockGrid) {
+                dockGrid.classList.add("dock-drop");
+              }
+            },
+            onAdd: (event) => {
+              const card = event.item;
+              if (!card) return;
+              const id = card.dataset.id;
+              const categoryName = container.dataset.category || "";
+              updateLinkDockState(id, false, categoryName, null);
+            },
+            onEnd: (event) => {
+              console.log("排序数据已保存");
+              document.body.classList.remove("is-dragging");
+              if (event.item) {
+                event.item.classList.remove("is-dragging");
+              }
+              pendingChanges = true;
+              updateContainerState(event.from);
+              updateContainerState(event.to);
+              syncAllOrders();
+              if (dockGrid) {
+                dockGrid.classList.remove("dock-drop");
+              }
+            }
+          });
+          sortables.push(sortable);
+        });
+        if (dockGrid) {
+          dockGrid.querySelectorAll(".dock-slot").forEach((slot) => {
+            const rect = slot.getBoundingClientRect();
+            console.log("Dock slot rect:", rect.width, rect.height);
+            const dockSortable = new Sortable(slot, {
+              animation: 250,
+              draggable: ".app",
+              handle: ".icon",
+              group: { name: "shared", pull: true, put: true },
+              sort: true,
+              forceFallback: true,
+              swap: true,
+              swapThreshold: 0.6,
+              ghostClass: "sortable-ghost",
+              dragClass: "sortable-drag",
+              disabled: false,
+              onStart: (event) => {
+                console.log("图标拖拽已捕获");
+                document.body.classList.add("is-dragging");
+                clearDragImage(event);
+                dockGrid.classList.add("dock-drop");
+                if (event.item) {
+                  event.item.classList.add("is-dragging");
+                }
+              },
+              onMove: (event) => {
+                if (!event.to || !event.to.classList.contains("dock-slot")) {
+                  return true;
+                }
+                const fromDock = event.from && event.from.classList.contains("dock-slot");
+                if (event.from && event.from.classList.contains("dock-slot")) {
+                  return true;
+                }
+                const existing = event.to.querySelector(".app");
+                if (existing && !fromDock) {
+                  return false;
+                }
+                if (getDockCountLive() >= dockLimit) {
+                  showToast("快捷栏已满（限6个图标），请先移除多余项。");
+                  return false;
+                }
+                return true;
+              },
+              onAdd: (event) => {
+                const card = event.item;
+                if (!card) return;
+                const fromDock = event.from && event.from.classList.contains("dock-slot");
+                const existing = Array.from(event.to.querySelectorAll(".app")).find(
+                  (app) => app !== card
+                );
+                if (existing && !fromDock) {
+                  event.from && event.from.appendChild(card);
+                  return;
+                }
+                if (existing && event.from) {
+                  event.from.appendChild(existing);
+                }
+                const id = card.dataset.id;
+                const slotIndex = Number(event.to.dataset.slot);
+                if (getDockCountLive() > dockLimit) {
+                  showToast("快捷栏已满（限6个图标），请先移除多余项。");
+                  event.from && event.from.appendChild(card);
+                  return;
+                }
+                updateLinkDockState(id, true, "", slotIndex);
+                if (existing) {
+                  const fromCategory = event.from.dataset.category || "";
+                  const fromIsDock = event.from.classList.contains("dock-slot");
+                  const fromSlot = fromIsDock ? Number(event.from.dataset.slot) : null;
+                  updateLinkDockState(
+                    existing.dataset.id,
+                    fromIsDock,
+                    fromIsDock ? "" : fromCategory,
+                    fromIsDock ? fromSlot : null
+                  );
+                }
+              },
+              onRemove: () => {
+                updateContainerState(slot);
+              },
+              onEnd: (event) => {
+                console.log("排序数据已保存");
+                document.body.classList.remove("is-dragging");
+                if (event.item) {
+                  event.item.classList.remove("is-dragging");
+                }
+                pendingChanges = true;
+                updateContainerState(event.from);
+                updateContainerState(event.to);
+                dockGrid.classList.remove("dock-drop");
+                syncAllOrders();
+              }
+            });
+            sortables.push(dockSortable);
+          });
+        }
+      }
+
+      function setLoginState(next) {
+        try {
+          loggedIn = next;
+          if (!loggedIn) {
+            destroySortables();
+          }
+          const label = loginBtn ? loginBtn.querySelector("span") : null;
+          if (label) {
+            label.textContent = "登录";
+          }
+          if (loginBtn) {
+            loginBtn.classList.toggle("hidden", loggedIn);
+          }
+          if (avatarWrap) {
+            avatarWrap.classList.toggle("hidden", !loggedIn);
+          }
+          if (addBtn) {
+            addBtn.classList.toggle("hidden", !loggedIn);
+          }
+          if (settingsBtn) {
+            settingsBtn.classList.toggle("hidden", !loggedIn);
+          }
+          if (sortLockBtn) {
+            sortLockBtn.classList.toggle("hidden", !loggedIn);
+          }
+          if (editModeToggle) {
+            editModeToggle.checked = false;
+          }
+          if (deleteModeToggle) {
+            deleteModeToggle.checked = false;
+          }
+          setEditingState(false);
+          setDeleteState(false);
+          setSortLockState(false);
+          if (backupGroup) {
+            backupGroup.classList.toggle("hidden", !loggedIn);
+          }
+          fetchLinks();
+        } catch (err) {}
+      }
+
+      function applyUserProfile(name, avatarUrl) {
+        const safeName = name || "Admin";
+        if (userNameLabel) {
+          userNameLabel.textContent = safeName;
+        }
+        if (avatarText) {
+          const initial = safeName.trim().charAt(0).toUpperCase() || "A";
+          avatarText.textContent = initial;
+        }
+        if (avatarImg && avatarText) {
+          if (avatarUrl) {
+            avatarImg.src = avatarUrl;
+            avatarImg.classList.remove("hidden");
+            avatarText.classList.add("hidden");
+          } else {
+            avatarImg.classList.add("hidden");
+            avatarText.classList.remove("hidden");
+          }
+        }
+      }
+
+      function setAvatarMenuOpen(open) {
+        if (!avatarMenu || !avatarBtn) return;
+        if (open) {
+          avatarMenu.classList.remove("opacity-0", "pointer-events-none", "scale-95");
+          avatarMenu.classList.add("opacity-100", "pointer-events-auto", "scale-100");
+          avatarBtn.setAttribute("aria-expanded", "true");
+        } else {
+          avatarMenu.classList.add("opacity-0", "pointer-events-none", "scale-95");
+          avatarMenu.classList.remove("opacity-100", "pointer-events-auto", "scale-100");
+          avatarBtn.setAttribute("aria-expanded", "false");
+        }
+      }
+
+      if (avatarBtn) {
+        avatarBtn.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const isOpen = avatarMenu && avatarMenu.classList.contains("opacity-100");
+          setAvatarMenuOpen(!isOpen);
+        });
+      }
+
+      document.addEventListener("click", (event) => {
+        if (!avatarMenu) return;
+        if (event.target.closest("#avatarWrap")) {
+          return;
+        }
+        setAvatarMenuOpen(false);
+      });
+
+      if (avatarUploadBtn) {
+        avatarUploadBtn.addEventListener("click", () => {
+          if (!loggedIn) return;
+          if (avatarInput) {
+            avatarInput.click();
+          }
+          setAvatarMenuOpen(false);
+        });
+      }
+
+      if (avatarInput) {
+        avatarInput.addEventListener("change", () => {
+          if (!avatarInput.files || !avatarInput.files[0]) return;
+          const formData = new FormData();
+          formData.append("avatar", avatarInput.files[0]);
+          fetch("/api/settings/avatar", { method: "POST", body: formData })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.path) {
+                applyUserProfile(userNameLabel ? userNameLabel.textContent : "Admin", data.path);
+              }
+            })
+            .catch(() => {});
+        });
+      }
+
+      if (profileEditBtn) {
+        profileEditBtn.addEventListener("click", () => {
+          window.location.href = "/profile.html";
+          setAvatarMenuOpen(false);
+        });
+      }
+
+
+      if (logoutBtn) {
+        logoutBtn.addEventListener("click", () => {
+          fetch("/api/logout", { method: "POST" })
+            .then(() => window.location.reload())
+            .catch(() => {});
+        });
       }
 
       function applySearch() {
-        const keyword = searchInput.value.trim().toLowerCase();
-        if (!keyword) {
+        try {
           renderLinks(allLinks);
-          return;
+          renderDockLinks(allLinks);
+        } catch (err) {
+          console.log("No data found");
         }
-        const filtered = allLinks.filter((item) => {
-          const text = `${item.title || ""} ${item.url || ""} ${item.category || ""}`.toLowerCase();
-          return text.includes(keyword);
-        });
-        renderLinks(filtered);
-      }
-
-      searchInput.addEventListener("input", () => {
-        applySearch();
-      });
-      searchInput.addEventListener("focus", () => {
-        openSpotlight();
-      });
-
-      function applySpotlightSearch() {
-        const keyword = spotlightInput.value.trim().toLowerCase();
-        if (!keyword) {
-          renderSpotlightResults(allLinks);
-          return;
-        }
-        const filtered = allLinks.filter((item) => {
-          const text = `${item.title || ""} ${item.url || ""} ${item.category || ""}`.toLowerCase();
-          return text.includes(keyword);
-        });
-        renderSpotlightResults(filtered);
       }
 
       function deleteLink(id) {
         if (!loggedIn || !id) {
+          return;
+        }
+        if (!deleting && !window.confirm("确定要删除这个导航吗？")) {
           return;
         }
         fetch(`/api/links/${id}`, {
@@ -1058,499 +3207,1162 @@
             if (!res.ok) {
               throw new Error("Delete failed");
             }
-            window.location.reload(true);
+            allLinks = allLinks.filter((item) => String(item.id) !== String(id));
+            applySearch();
           })
           .catch(() => {});
       }
 
-      function openSpotlight() {
-        searchOverlay.classList.add("active");
-        spotlightInput.value = searchInput.value;
-        spotlightInput.focus();
-        applySpotlightSearch();
-      }
 
-      function closeSpotlight() {
-        searchOverlay.classList.remove("active");
-      }
-
-      searchOverlay.addEventListener("click", (event) => {
-        if (event.target === searchOverlay) {
-          closeSpotlight();
+      function handleBadgeAction(event) {
+        const editBtn = event.target.closest(".edit-badge");
+        const deleteBtn = event.target.closest(".delete-badge");
+        const card = event.target.closest(".app");
+        const id =
+          (editBtn && editBtn.dataset.id) ||
+          (deleteBtn && deleteBtn.dataset.id) ||
+          (card ? card.dataset.id : null);
+        if (!id) {
+          return;
         }
-      });
-      spotlightInput.addEventListener("input", () => {
-        searchInput.value = spotlightInput.value;
-        applySpotlightSearch();
+        if (editBtn || deleteBtn) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (editBtn) {
+            const item = allLinks.find((link) => String(link.id) === String(id));
+            if (item) {
+              openEditModal(item);
+            }
+            return;
+          }
+          if (deleteBtn) {
+            showDeleteBubble(card, id);
+            return;
+          }
+        }
+
+        if (currentMode !== "preview" && currentMode !== "sort") {
+          event.preventDefault();
+          event.stopPropagation();
+          if (currentMode === "edit") {
+            const item = allLinks.find((link) => String(link.id) === String(id));
+            if (item) {
+              openEditModal(item);
+            }
+            return;
+          }
+          if (currentMode === "delete") {
+            showDeleteBubble(card, id);
+          }
+        }
+      }
+
+      if (grid) {
+        grid.addEventListener("click", handleBadgeAction);
+      }
+      if (dockGrid) {
+        dockGrid.addEventListener("click", handleBadgeAction);
+      }
+      const dockContainer = document.querySelector("#dock-container");
+      if (dockContainer) {
+        dockContainer.addEventListener("click", handleBadgeAction);
+      }
+      document.addEventListener("click", (event) => {
+        if (event.target.closest(".delete-bubble")) {
+          return;
+        }
+        closeDeleteBubble();
       });
       document.addEventListener("keydown", (event) => {
-        if (event.key === "/" && !searchOverlay.classList.contains("active")) {
-          event.preventDefault();
-          openSpotlight();
-        } else if (event.key === "Escape" && searchOverlay.classList.contains("active")) {
-          closeSpotlight();
+        if (event.key === "Escape") {
+          return;
         }
       });
+
+      function showToast(message) {
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 1200);
+      }
+
+      function closeDeleteBubble() {
+        if (activeDeleteBubble) {
+          activeDeleteBubble.remove();
+          activeDeleteBubble = null;
+        }
+      }
+
+      function showDeleteBubble(card, id) {
+        if (!card) return;
+        closeDeleteBubble();
+        const bubble = document.createElement("div");
+        bubble.className = "delete-bubble";
+        bubble.innerHTML =
+          '<button type="button" class="confirm">确认</button><button type="button" class="cancel">取消</button>';
+        bubble.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        });
+        const confirmBtn = bubble.querySelector(".confirm");
+        const cancelBtn = bubble.querySelector(".cancel");
+        if (confirmBtn) {
+          confirmBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeDeleteBubble();
+            deleteLink(id);
+          });
+        }
+        if (cancelBtn) {
+          cancelBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            closeDeleteBubble();
+          });
+        }
+        card.appendChild(bubble);
+        activeDeleteBubble = bubble;
+      }
+
+      function applyBackground(color) {
+        document.body.style.backgroundColor = color || "";
+      }
+
+      function saveAppearanceSettings(payload) {
+        if (!loggedIn) {
+          return;
+        }
+        fetch("/api/settings", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8"
+          },
+          body: JSON.stringify(payload)
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Failed to save settings");
+            }
+            return res.json();
+          })
+          .then(() => {
+            if (payload.siteName && siteTitle) {
+              siteTitle.textContent = payload.siteName;
+              document.title = payload.siteName;
+            }
+            if (payload.backgroundColor !== undefined) {
+              applyBackground(payload.backgroundColor);
+            }
+            showToast("保存成功");
+          })
+          .catch(() => {
+            showToast("保存失败");
+          });
+      }
+
+      function updateLinkDockState(id, isDock, categoryName, positionIndex) {
+        const target = allLinks.find((item) => String(item.id) === String(id));
+        if (!target) return;
+        if (isDock && !target.is_dock && getDockCountLive() >= dockLimit) {
+          showToast("快捷栏已满（限6个图标），请先移除多余项。");
+          applySearch();
+          return;
+        }
+        const payload = {
+          title: target.title || "",
+          url: target.url || "",
+          category: isDock ? "" : categoryName || target.category || "",
+          is_private: target.is_private ? 1 : 0,
+          is_dock: isDock,
+          position_index: isDock && typeof positionIndex === "number" ? positionIndex : null
+        };
+        fetch(`/api/links/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify(payload)
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error("Failed");
+            target.is_dock = isDock;
+            target.category = payload.category;
+            target.position_index = payload.position_index;
+            applySearch();
+          })
+          .catch(() => {});
+      }
+
+      function queueAppearanceSave(payload) {
+        if (appearanceTimer) {
+          clearTimeout(appearanceTimer);
+        }
+        appearanceTimer = setTimeout(() => {
+          saveAppearanceSettings(payload);
+        }, 400);
+      }
+
+      function scheduleAutoSave() {
+        if (!loggedIn) return;
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+        }
+        saveTimer = setTimeout(() => {
+          saveEditingChanges()
+            .then(() => {
+              pendingChanges = false;
+              document.querySelectorAll(".category-card").forEach((card) => {
+                card.dataset.original = card.dataset.category || "";
+              });
+              showToast("保存成功");
+            })
+            .catch(() => {
+              showToast("保存失败");
+            });
+          }, 600);
+        }
+
+      function saveOrder(orderIds) {
+        if (!loggedIn) return;
+        if (!Array.isArray(orderIds)) return;
+        pendingChanges = true;
+        scheduleAutoSave();
+      }
+
+      function syncAllOrders() {
+        document.querySelectorAll(".category-grid").forEach((container) => {
+          updateContainerState(container);
+        });
+        document.querySelectorAll(".dock-slot").forEach((slot) => {
+          updateContainerState(slot);
+        });
+        pendingChanges = true;
+        scheduleAutoSave();
+      }
+
+      function setSortLockState(unlocked) {
+        if (!loggedIn) {
+          sortUnlocked = false;
+          document.body.classList.remove("sort-unlocked");
+          destroySortables();
+          return;
+        }
+        console.log("Sort lock toggled:", unlocked);
+        sortUnlocked = unlocked;
+        document.body.classList.toggle("sort-unlocked", sortUnlocked);
+        document.body.classList.toggle("app-unlocked", sortUnlocked);
+        document.body.classList.remove("is-editing");
+        window.isEditing = currentMode === "edit" || currentMode === "delete";
+        if (sortLockBtn) {
+          sortLockBtn.classList.toggle("text-blue-500", sortUnlocked);
+          sortLockBtn.classList.toggle("border-blue-400/40", sortUnlocked);
+          sortLockBtn.setAttribute("aria-pressed", sortUnlocked ? "true" : "false");
+          const closed = sortLockBtn.querySelector('[data-icon="lock-closed"]');
+          const open = sortLockBtn.querySelector('[data-icon="lock-open"]');
+          if (closed && open) {
+            closed.classList.toggle("hidden", sortUnlocked);
+            open.classList.toggle("hidden", !sortUnlocked);
+          }
+        }
+        if (sortUnlocked) {
+          setTimeout(() => {
+            initSortables();
+            setSortablesEnabled(true);
+            const containers = document.querySelectorAll(".category-grid");
+            console.log("检测到 " + containers.length + " 个分类容器已激活排序");
+          }, 150);
+        } else {
+          setSortablesEnabled(false);
+          destroySortables();
+        }
+      }
+
+      function applyMode(next) {
+        const modes = ["preview", "sort", "edit", "delete"];
+        if (!modes.includes(next)) {
+          next = "preview";
+        }
+        closeDeleteBubble();
+        document.querySelectorAll(".app.jiggle").forEach((el) => {
+          el.classList.remove("jiggle", "is-shaking");
+        });
+        document.body.classList.remove(
+          "mode-preview",
+          "mode-sort",
+          "mode-edit",
+          "mode-delete"
+        );
+        currentMode = next;
+        document.body.classList.add(`mode-${next}`);
+        modeButtons.forEach((btn) => {
+          btn.classList.toggle("active", btn.dataset.mode === next);
+        });
+
+        if (next === "sort") {
+          sortUnlocked = true;
+          setSortLockState(true);
+          editing = false;
+          deleting = false;
+        } else if (next === "edit") {
+          sortUnlocked = false;
+          setSortLockState(false);
+          editing = true;
+          deleting = false;
+        } else if (next === "delete") {
+          sortUnlocked = false;
+          setSortLockState(false);
+          editing = false;
+          deleting = true;
+        } else {
+          sortUnlocked = false;
+          setSortLockState(false);
+          editing = false;
+          deleting = false;
+        }
+        updateModeUI();
+        if (next === "preview") {
+          document.querySelectorAll(".dock-slot.empty").forEach((slot) => {
+            slot.classList.remove("empty");
+          });
+        }
+        try {
+          const selection = window.getSelection && window.getSelection();
+          if (selection && selection.removeAllRanges) {
+            selection.removeAllRanges();
+          }
+        } catch (err) {
+          console.warn("Selection reset failed", err);
+        }
+        console.log("当前全站模式已切换至：" + next);
+      }
+
+      function setActiveMode(next) {
+        console.log("检测到模式切换：正在清理所有排序实例...");
+        closeDeleteBubble();
+        destroySortables();
+        document.querySelectorAll(".app.jiggle, .icon.is-shaking, .app.is-shaking").forEach((el) => {
+          el.classList.remove("jiggle", "is-shaking");
+        });
+        document.body.classList.remove("sort-unlocked", "app-unlocked");
+        document.querySelectorAll(".rename-input").forEach((input) => {
+          try {
+            input.blur();
+          } catch (err) {}
+        });
+        document.querySelectorAll(".modal.active").forEach((modalEl) => {
+          modalEl.classList.remove("active");
+        });
+        document.body.classList.remove("modal-open");
+        applyMode(next);
+        if (Array.isArray(allLinks)) {
+          renderLinks(allLinks);
+          renderDockLinks(allLinks);
+        }
+        console.log("清理完成。");
+      }
+
+      function collectEditingPayload() {
+        const categoryCards = Array.from(document.querySelectorAll(".category-card"));
+        const categories = categoryCards.map((card, index) => ({
+          name: card.dataset.category || "",
+          sort_index: index
+        }));
+        const renames = categoryCards
+          .map((card) => ({
+            from: card.dataset.original || "",
+            to: card.dataset.category || ""
+          }))
+          .filter((item) => item.from && item.to && item.from !== item.to);
+
+        const links = [];
+        const linkTitles = [];
+        categoryCards.forEach((card) => {
+          const categoryName = card.dataset.category || "";
+          const items = card.querySelectorAll(".category-grid .app");
+          items.forEach((app, index) => {
+            links.push({
+              id: app.dataset.id,
+              sort_index: index,
+              category: categoryName,
+              is_dock: false
+            });
+            const originalTitle = app.dataset.originalTitle || "";
+            const currentTitle = app.dataset.title || "";
+            if (currentTitle && currentTitle !== originalTitle) {
+              linkTitles.push({ id: app.dataset.id, title: currentTitle });
+              app.dataset.originalTitle = currentTitle;
+            }
+          });
+        });
+        if (dockGrid) {
+          dockGrid.querySelectorAll(".dock-slot").forEach((slot) => {
+            const app = slot.querySelector(".app");
+            if (!app) return;
+            const positionIndex = Number(slot.dataset.slot);
+            links.push({
+              id: app.dataset.id,
+              sort_index: Number(positionIndex) || 0,
+              position_index: Number.isNaN(positionIndex) ? null : positionIndex,
+              category: "",
+              is_dock: true
+            });
+            const originalTitle = app.dataset.originalTitle || "";
+            const currentTitle = app.dataset.title || "";
+            if (currentTitle && currentTitle !== originalTitle) {
+              linkTitles.push({ id: app.dataset.id, title: currentTitle });
+              app.dataset.originalTitle = currentTitle;
+            }
+          });
+        }
+        return { categories, links, renames, linkTitles };
+      }
+
+      function saveEditingChanges() {
+        if (!loggedIn) {
+          return Promise.reject(new Error("Not logged in"));
+        }
+        const payload = collectEditingPayload();
+        return fetch("/api/editing/save", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json; charset=utf-8"
+          },
+          credentials: "same-origin",
+          body: JSON.stringify(payload)
+        }).then((res) => {
+          if (!res.ok) {
+            throw new Error("Failed to save");
+          }
+        });
+      }
+
+      function updateModeUI() {
+        try {
+          if (editModeToggle) {
+            editModeToggle.checked = false;
+          }
+          if (deleteModeToggle) {
+            deleteModeToggle.checked = false;
+          }
+          if (editToolbar) {
+            editToolbar.classList.toggle("active", false);
+          }
+          if (editStatusLabel) {
+            editStatusLabel.textContent = "";
+          }
+          document.body.classList.remove("is-editing", "is-deleting");
+        } catch (err) {}
+      }
+
+      function setEditingState(next) {
+        if (!next) {
+          setActiveMode("preview");
+          return;
+        }
+        setActiveMode("edit");
+      }
+
+      function setDeleteState(next) {
+        if (!next) {
+          setActiveMode("preview");
+          return;
+        }
+        setActiveMode("delete");
+      }
+
+      function refreshApp() {
+        fetchLinks();
+        loadCategories();
+      }
+
+      function initDockFisheye() {
+        const dock = document.querySelector("#dock-container");
+        if (!dock) return;
+        let rafId = null;
+        const maxDistance = 140;
+        const minScale = 1;
+        const maxScale = 1.5;
+
+        function resetScales() {
+          dock.querySelectorAll(".dock-item").forEach((item) => {
+            item.style.transform = "translateY(0) scale(1)";
+          });
+        }
+
+        function handleMove(event) {
+          if (editing || deleting || sortUnlocked) {
+            resetScales();
+            return;
+          }
+          const rect = dock.getBoundingClientRect();
+          const x = event.clientX - rect.left;
+          if (rafId) cancelAnimationFrame(rafId);
+          rafId = requestAnimationFrame(() => {
+            dock.querySelectorAll(".dock-item").forEach((item) => {
+              const itemRect = item.getBoundingClientRect();
+              const center = itemRect.left - rect.left + itemRect.width / 2;
+              const dist = Math.abs(x - center);
+              const t = Math.max(0, 1 - dist / maxDistance);
+              const scale = minScale + (maxScale - minScale) * t * t;
+              const lift = -10 * t;
+              item.style.transform = `translateY(${lift}px) scale(${scale})`;
+            });
+          });
+        }
+
+        dock.addEventListener("mousemove", handleMove);
+        dock.addEventListener("mouseleave", () => {
+          if (rafId) cancelAnimationFrame(rafId);
+          resetScales();
+        });
+      }
+
+      function initCategoryFisheye() {
+        const categoryGrids = document.querySelectorAll(".category-grid");
+        if (!categoryGrids.length) return;
+        categoryGrids.forEach((gridEl) => {
+          let rafId = null;
+          const maxDistance = 200;
+          const minScale = 1;
+          const maxScale = 1.3;
+          const neighborScale = 1.15;
+
+          function resetScales() {
+            gridEl.querySelectorAll(".app").forEach((item) => {
+              item.style.transform = "translateY(0) scale(1)";
+              item.style.zIndex = "";
+            });
+          }
+
+          function handleMove(event) {
+            if (sortUnlocked) {
+              resetScales();
+              return;
+            }
+            const rect = gridEl.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+              const items = Array.from(gridEl.querySelectorAll(".app"));
+              items.forEach((item) => {
+                const itemRect = item.getBoundingClientRect();
+                const centerX = itemRect.left - rect.left + itemRect.width / 2;
+                const centerY = itemRect.top - rect.top + itemRect.height / 2;
+                const dx = x - centerX;
+                const dy = y - centerY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const t = Math.max(0, 1 - dist / maxDistance);
+                const eased = t * t;
+                const scale = minScale + (maxScale - minScale) * eased;
+                const neighbor = minScale + (neighborScale - minScale) * eased;
+                const finalScale = Math.max(scale, neighbor);
+                const lift = -6 * eased;
+                item.style.transform = `translateY(${lift}px) scale(${finalScale})`;
+                item.style.zIndex = t > 0 ? "100" : "";
+              });
+            });
+          }
+
+          gridEl.addEventListener("mousemove", handleMove);
+          gridEl.addEventListener("mouseleave", () => {
+            if (rafId) cancelAnimationFrame(rafId);
+            resetScales();
+          });
+        });
+      }
+
+      function openEditModal(item) {
+        if (!item) return;
+        editingLinkId = item.id;
+        if (item && item.is_dock) {
+          const pos = Number(item.position_index);
+          editingDockPosition = Number.isNaN(pos) ? null : pos;
+        } else {
+          editingDockPosition = null;
+        }
+        formTitle.textContent = "编辑导航";
+        saveBtn.textContent = "保存修改";
+        titleInput.value = item.title || "";
+        urlInput.value = item.url || "";
+        categoryInput.value = item.is_dock ? "" : item.category || "";
+        privateInput.checked = Number(item.is_private) === 1;
+        if (dockInput) {
+          dockInput.checked = Boolean(item.is_dock);
+        }
+        loadCategories(item.is_dock ? "" : item.category || "");
+          openModal(modal, { returnToSettings: false });
+        }
+
+      function applyFontSettings() {
+        if (fontSizeInput) {
+          const size = Number(fontSizeInput.value);
+          if (!Number.isNaN(size) && size > 0) {
+            document.documentElement.style.setProperty("--base-size", `${size}px`);
+          }
+        }
+        document.body.classList.toggle("bold", boldToggle && boldToggle.checked);
+      }
+
+      function setTheme(mode, persist) {
+        const useDark = mode === "dark";
+        document.documentElement.classList.toggle("dark", useDark);
+        if (themeToggle) {
+          themeToggle.setAttribute("aria-pressed", useDark ? "true" : "false");
+        }
+        if (persist) {
+          localStorage.setItem("theme", useDark ? "dark" : "light");
+        }
+      }
+
+      function updateThemeButton() {
+        const isDark = document.documentElement.classList.contains("dark");
+        if (themeToggle) {
+          themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
+        }
+      }
+
+      function initMobilePosition() {}
+
+      if (themeToggle) {
+        try {
+          const storedTheme = localStorage.getItem("theme");
+          if (storedTheme) {
+            setTheme(storedTheme, false);
+          } else {
+            const prefersDark =
+              window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+            setTheme(prefersDark ? "dark" : "light", false);
+          }
+          themeToggle.addEventListener("click", () => {
+            const isDark = document.documentElement.classList.contains("dark");
+            setTheme(isDark ? "light" : "dark", true);
+          });
+        } catch (err) {}
+      }
+
+      if (menuToggle && controlGroup) {
+        menuToggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          controlGroup.classList.toggle("open");
+        });
+      }
+
+      if (loginBtn) {
+        try {
+          loginBtn.addEventListener("click", () => {
+            window.location.href = "/login.html";
+          });
+        } catch (err) {}
+      }
 
       addBtn.addEventListener("click", () => {
         if (!loggedIn) {
           window.location.href = "/login.html";
           return;
         }
-        editingLinkId = null;
-        formTitle.textContent = "添加导航";
-        saveBtn.textContent = "保存";
-        privateInput.checked = false;
-        fetch("/api/categories")
-          .then((res) => res.json())
-          .then((data) => {
-            if (Array.isArray(data)) {
-              categoryList.innerHTML = "";
-              data.forEach((name) => {
-                const option = document.createElement("option");
-                option.value = name;
-                categoryList.appendChild(option);
-              });
-            }
-          })
-          .catch(() => {});
-        modal.classList.add("active");
+        openModal(addMenuModal, { returnToSettings: true });
       });
-      editBtn.addEventListener("click", () => {
-        if (!loggedIn) {
-          window.location.href = "/login.html";
-          return;
-        }
-        editing = !editing;
-        editBtn.textContent = editing ? "完成" : "编辑";
-        applySearch();
-      });
-      cancelBtn.addEventListener("click", () => {
-        modal.classList.remove("active");
-      });
-      modal.addEventListener("click", (event) => {
-        if (event.target === modal) {
-          modal.classList.remove("active");
-        }
-      });
-      loginBtn.addEventListener("click", () => {
-        if (loggedIn) {
-          fetch("/api/logout", { method: "POST" }).finally(() => {
-            setLoginState(false);
+
+        cancelBtn.addEventListener("click", () => {
+          closeEditModalToPreview();
+        });
+
+        if (modalBackBtn) {
+          modalBackBtn.addEventListener("click", () => {
+            closeEditModalToPreview();
           });
-        } else {
-          window.location.href = "/login.html";
-        }
-      });
-      settingsBtn.addEventListener("click", () => {
-        settingsModal.classList.add("active");
-      });
-      settingsCloseBtn.addEventListener("click", () => {
-        settingsModal.classList.remove("active");
-      });
-      settingsModal.addEventListener("click", (event) => {
-        if (event.target === settingsModal) {
-          settingsModal.classList.remove("active");
-        }
-      });
-      function isMobileMenu() {
-        return !window.matchMedia("(min-width: 768px)").matches;
-      }
-
-      function updateMenuSide() {
-        if (!topControls || !isMobileMenu()) {
-          return;
-        }
-        const rect = topControls.getBoundingClientRect();
-        const side = rect.left + rect.width / 2 < window.innerWidth / 2 ? "left" : "right";
-        topControls.dataset.side = side;
-      }
-
-      function updateMenuDirection() {
-        if (!topControls || !controlGroup || !isMobileMenu()) {
-          return;
-        }
-        const rect = topControls.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        const needsUpward = spaceBelow < 250;
-        controlGroup.classList.toggle("flex-col", !needsUpward);
-        controlGroup.classList.toggle("flex-col-reverse", needsUpward);
-        controlGroup.classList.toggle("top-[calc(100%+15px)]", !needsUpward);
-        controlGroup.classList.toggle("bottom-[calc(100%+15px)]", needsUpward);
-        controlGroup.classList.toggle("mt-3", false);
-        controlGroup.classList.toggle("mb-3", false);
-      }
-
-      function applyMobilePosition(left, top) {
-        if (!topControls) return;
-        topControls.style.left = `${left}px`;
-        topControls.style.top = `${top}px`;
-        topControls.style.right = "auto";
-        topControls.style.bottom = "auto";
-        updateMenuSide();
-      }
-
-      function snapToEdge() {
-        if (!topControls || !isMobileMenu()) {
-          return;
-        }
-        const rect = topControls.getBoundingClientRect();
-        const margin = 10;
-        const screenCenterX = window.innerWidth / 2;
-        const centerX = rect.left + rect.width / 2;
-        const snapLeft =
-          centerX < screenCenterX ? margin : window.innerWidth - rect.width - margin;
-        applyMobilePosition(snapLeft, rect.top);
-        updateMenuDirection();
-        localStorage.setItem("menuPosition", JSON.stringify({ left: snapLeft, top: rect.top }));
-      }
-
-      function setMenuOpen(open) {
-        if (!menuToggle || !controlGroup) {
-          return;
-        }
-        const menuIcon = menuToggle.querySelector('[data-icon="menu"]');
-        const closeIcon = menuToggle.querySelector('[data-icon="close"]');
-        if (open) {
-          updateMenuDirection();
-          controlGroup.classList.remove("opacity-0", "pointer-events-none", "translate-y-2");
-          controlGroup.classList.add("opacity-100", "pointer-events-auto", "translate-y-0", "scale-100");
-          controlGroup.classList.remove("scale-95");
-          menuToggle.setAttribute("aria-expanded", "true");
-          if (menuIcon) menuIcon.classList.add("hidden");
-          if (closeIcon) closeIcon.classList.remove("hidden");
-        } else {
-          controlGroup.classList.add("opacity-0", "pointer-events-none", "translate-y-2");
-          controlGroup.classList.remove("opacity-100", "pointer-events-auto", "translate-y-0", "scale-100");
-          controlGroup.classList.add("scale-95");
-          menuToggle.setAttribute("aria-expanded", "false");
-          if (menuIcon) menuIcon.classList.remove("hidden");
-          if (closeIcon) closeIcon.classList.add("hidden");
-        }
-      }
-      if (menuToggle && controlGroup) {
-        let isDragging = false;
-        let moved = false;
-        let startX = 0;
-        let startY = 0;
-        let startLeft = 0;
-        let startTop = 0;
-        let offsetX = 0;
-        let offsetY = 0;
-        const dragThreshold = 8;
-
-        function onDragStart(clientX, clientY) {
-          if (!topControls || !isMobileMenu()) return;
-          const rect = topControls.getBoundingClientRect();
-          startLeft = rect.left;
-          startTop = rect.top;
-          startX = clientX;
-          startY = clientY;
-          offsetX = clientX - rect.left;
-          offsetY = clientY - rect.top;
-          isDragging = false;
-          moved = false;
-          topControls.style.transition = "none";
         }
 
-        function onDragMove(clientX, clientY) {
-          if (!topControls || !isMobileMenu()) return;
-          const dx = clientX - startX;
-          const dy = clientY - startY;
-          if (!isDragging && Math.hypot(dx, dy) > dragThreshold) {
-            isDragging = true;
-            moved = true;
-          }
-          if (!isDragging) return;
-          const rect = topControls.getBoundingClientRect();
-          const margin = 10;
-          const maxLeft = window.innerWidth - rect.width - margin;
-          const maxTop = window.innerHeight - rect.height - 10;
-          let nextLeft = clientX - offsetX;
-          let nextTop = clientY - offsetY;
-          if (nextLeft < margin) nextLeft = margin;
-          if (nextLeft > maxLeft) nextLeft = maxLeft;
-          if (nextTop < margin) nextTop = margin;
-          if (nextTop > maxTop) nextTop = maxTop;
-          applyMobilePosition(nextLeft, nextTop);
-        }
-
-        function onDragEnd() {
-          if (!topControls || !isMobileMenu()) return;
-          topControls.style.transition = "all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1)";
-          if (moved) {
-            snapToEdge();
-            return;
-          }
-          const isOpen = controlGroup.classList.contains("opacity-100");
-          setMenuOpen(!isOpen);
-        }
-
-        menuToggle.addEventListener("click", (event) => {
-          if (!isMobileMenu() || moved) {
-            moved = false;
-            event.preventDefault();
-            return;
-          }
-          const isOpen = controlGroup.classList.contains("opacity-100");
-          setMenuOpen(!isOpen);
+      if (addMenuCloseBtn) {
+        addMenuCloseBtn.addEventListener("click", () => {
+          closeModal(addMenuModal);
         });
-        menuToggle.addEventListener("mousedown", (event) => {
-          onDragStart(event.clientX, event.clientY);
-          const onMove = (moveEvent) => onDragMove(moveEvent.clientX, moveEvent.clientY);
-          const onUp = () => {
-            document.removeEventListener("mousemove", onMove);
-            document.removeEventListener("mouseup", onUp);
-            onDragEnd();
-          };
-          document.addEventListener("mousemove", onMove);
-          document.addEventListener("mouseup", onUp);
+      }
+      if (addLinkEntryBtn) {
+        addLinkEntryBtn.addEventListener("click", () => {
+          closeModal(addMenuModal);
+          editingLinkId = null;
+          editingDockPosition = null;
+          formTitle.textContent = "添加导航";
+          saveBtn.textContent = "保存";
+          titleInput.value = "";
+          urlInput.value = "";
+          privateInput.checked = false;
+          if (dockInput) {
+            dockInput.checked = false;
+          }
+          loadCategories();
+          openModal(modal, { returnToSettings: true });
         });
-        menuToggle.addEventListener("touchstart", (event) => {
-          const touch = event.touches[0];
-          if (!touch) return;
-          onDragStart(touch.clientX, touch.clientY);
+      }
+      if (categorySelectBtn) {
+        categorySelectBtn.addEventListener("click", (event) => {
           event.preventDefault();
-          const onMove = (moveEvent) => {
-            const moveTouch = moveEvent.touches[0];
-            if (!moveTouch) return;
-            onDragMove(moveTouch.clientX, moveTouch.clientY);
-          };
-          const onUp = () => {
-            document.removeEventListener("touchmove", onMove);
-            document.removeEventListener("touchend", onUp);
-            onDragEnd();
-          };
-          document.addEventListener("touchmove", onMove, { passive: false });
-          document.addEventListener("touchend", onUp);
-        });
-        document.addEventListener("click", (event) => {
-          if (!isMobileMenu()) {
-            return;
+          event.stopPropagation();
+          if (categorySelectMenu) {
+            categorySelectMenu.classList.toggle("open");
           }
-          const target = event.target;
-          if (!target || target.closest("#top-controls")) {
-            return;
-          }
-          setMenuOpen(false);
-        });
-        [loginBtn, settingsBtn, editBtn, addBtn, themeToggle].forEach((btn) => {
-          if (!btn) return;
-          btn.addEventListener("click", () => {
-            if (isMobileMenu()) {
-              setMenuOpen(false);
-            }
-          });
         });
       }
-
-      function initMobilePosition() {
-        if (!topControls || !isMobileMenu()) {
+      if (categorySelectMenu) {
+        categorySelectMenu.addEventListener("click", (event) => {
+          event.stopPropagation();
+        });
+      }
+      document.addEventListener("click", () => {
+        if (categorySelectMenu) {
+          categorySelectMenu.classList.remove("open");
+        }
+      });
+      if (manageCategoryEntryBtn) {
+        manageCategoryEntryBtn.addEventListener("click", () => {
+          closeModal(addMenuModal);
+          loadCategories().then((categories) => {
+            renderCategoryManager(categories);
+          });
+            openModal(categoryManagerModal, { returnToSettings: false });
+        });
+      }
+      function handleCreateCategory(event) {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        const name = newCategoryInput ? newCategoryInput.value.trim() : "";
+        if (!name) {
+          alert("分类名称不能为空");
           return;
         }
-        const stored = localStorage.getItem("menuPosition");
-        if (stored) {
-          try {
-            const pos = JSON.parse(stored);
-            if (typeof pos.left === "number" && typeof pos.top === "number") {
-              applyMobilePosition(pos.left, pos.top);
+        fetch("/api/categories", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json; charset=utf-8" },
+          body: JSON.stringify({ name })
+        })
+          .then((res) => parseCategoryResponse(res, "新增失败"))
+          .then((created) => {
+            if (newCategoryInput) {
+              newCategoryInput.value = "";
+            }
+            return loadCategories(created.name || name);
+          })
+          .then((updated) => {
+            renderCategoryManager(updated);
+          })
+          .catch((err) => {
+            alert(err.message || "新增失败");
+          });
+      }
+
+      if (createCategoryBtn) {
+        createCategoryBtn.addEventListener("click", handleCreateCategory);
+      }
+      if (categoryManagerModal) {
+        categoryManagerModal.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!target) return;
+          if (target.id === "createCategoryBtn" || target.closest("#createCategoryBtn")) {
+            handleCreateCategory(event);
+          }
+          const editButton = target.closest(".category-actions .icon-btn:not(.danger)");
+          const deleteButton = target.closest(".category-actions .icon-btn.danger");
+          if (editButton || deleteButton) {
+            event.preventDefault();
+            event.stopPropagation();
+            const row = target.closest(".category-row");
+            const buttonId = target.closest("button")?.dataset?.id || "";
+            const categoryId = buttonId || (row ? row.dataset.categoryId : "");
+            const nameEl = row ? row.querySelector(".category-name") : null;
+            if (!categoryId || !nameEl) {
+              alert("分类信息无效");
               return;
             }
-          } catch (err) {}
-        }
-        const rect = topControls.getBoundingClientRect();
-        const margin = 10;
-        const left = window.innerWidth - rect.width - margin;
-        const top = window.innerHeight - rect.height - 10;
-        applyMobilePosition(left, top);
-        updateMenuDirection();
+            if (editButton) {
+              const nextName = window.prompt("请输入新的分类名称", nameEl.textContent || "");
+              if (!nextName) return;
+              fetch(`/api/categories/${categoryId}`, {
+                method: "PUT",
+                credentials: "include",
+                headers: { "Content-Type": "application/json; charset=utf-8" },
+                body: JSON.stringify({ name: nextName })
+              })
+                .then((res) => parseCategoryResponse(res, "更新失败"))
+                .then((updated) => {
+                  nameEl.textContent = updated.name || nextName;
+                  loadCategories(updated.name || nextName);
+                  applySearch();
+                })
+                .catch((err) => {
+                  alert(err.message || "更新失败");
+                });
+            }
+            if (deleteButton) {
+              const confirmDelete = window.confirm(
+                "删除分类并删除其链接？点击取消将移动到“未分类”。"
+              );
+              const mode = confirmDelete ? "delete" : "move";
+              fetch(`/api/categories/${categoryId}?mode=${mode}`, {
+                method: "DELETE",
+                credentials: "include"
+              })
+                .then((res) => parseCategoryResponse(res, "删除失败"))
+                .then(() => {
+                  if (row) row.remove();
+                  loadCategories();
+                  fetchLinks();
+                })
+                .catch((err) => {
+                  alert(err.message || "删除失败");
+                });
+            }
+          }
+        });
+      }
+      if (newCategoryInput) {
+        newCategoryInput.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter") return;
+          event.preventDefault();
+          if (createCategoryBtn) {
+            createCategoryBtn.click();
+          }
+        });
+      }
+      if (categoryManagerCloseBtn) {
+        categoryManagerCloseBtn.addEventListener("click", () => {
+          returnToSettings = null;
+          closeModal(categoryManagerModal);
+          refreshApp();
+        });
+      }
+      if (categoryManagerDoneBtn) {
+        categoryManagerDoneBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          returnToSettings = null;
+          closeModal(categoryManagerModal);
+          refreshApp();
+        });
       }
 
-      window.addEventListener("resize", () => {
-        if (!topControls) return;
-        if (isMobileMenu()) {
-          initMobilePosition();
-          setMenuOpen(false);
-        } else {
-          topControls.style.left = "";
-          topControls.style.top = "";
-          topControls.style.right = "";
-          topControls.style.bottom = "";
-          topControls.classList.remove("items-start");
-          topControls.classList.add("items-end");
-          if (menuToggle) {
-            menuToggle.setAttribute("aria-expanded", "false");
+      if (settingsBtn) {
+        try {
+          settingsBtn.addEventListener("click", () => {
+            openModal(settingsModal);
+          });
+        } catch (err) {}
+      }
+
+      if (settingsCloseBtn) {
+        settingsCloseBtn.addEventListener("click", () => {
+          closeModal(settingsModal);
+        });
+      }
+
+      if (settingsBackdrop) {
+        settingsBackdrop.addEventListener("click", () => {
+          closeModal(settingsModal);
+        });
+      }
+
+      document.addEventListener("contextmenu", (event) => {
+        const target = event.target;
+        if (!target) return;
+        if (document.body.classList.contains("is-editing") || sortUnlocked) {
+          return;
+        }
+        if (target.closest("input, textarea")) return;
+        if (target.closest(".header-logo, .category-card, .dock-container")) {
+          event.preventDefault();
+        }
+      });
+
+        document.addEventListener("dragstart", (event) => {
+          if (window.isEditing || currentMode === "sort") {
+            return;
           }
+          event.preventDefault();
+        });
+
+      if (settingsSaveBtn) {
+        settingsSaveBtn.addEventListener("click", () => {
+          const payload = {
+            siteName: siteNameInput.value.trim()
+          };
+          saveAppearanceSettings(payload);
+        });
+      }
+
+      if (siteNameInput) {
+        siteNameInput.addEventListener("change", () => {
+          queueAppearanceSave({ siteName: siteNameInput.value.trim() });
+        });
+      }
+
+      if (bgColorInput) {
+        bgColorInput.addEventListener("input", () => {
+          applyBackground(bgColorInput.value);
+        });
+        bgColorInput.addEventListener("change", () => {
+          queueAppearanceSave({ backgroundColor: bgColorInput.value });
+        });
+      }
+
+      if (saveBgBtn) {
+        saveBgBtn.addEventListener("click", () => {
+          saveAppearanceSettings({ backgroundColor: bgColorInput.value });
+        });
+      }
+
+      if (resetBgBtn) {
+        resetBgBtn.addEventListener("click", () => {
+          if (bgColorInput) {
+            bgColorInput.value = "#f2f2f7";
+          }
+          saveAppearanceSettings({ backgroundColor: "" });
+        });
+      }
+
+      if (logoInput) {
+        logoInput.addEventListener("change", () => {
+          if (!logoInput.files || !logoInput.files[0]) return;
+          const formData = new FormData();
+          formData.append("logo", logoInput.files[0]);
+          fetch("/api/settings/logo", { method: "POST", body: formData })
+            .then((res) => res.json())
+            .then(() => {
+              showToast("保存成功");
+            })
+            .catch(() => {});
+        });
+      }
+
+      if (fontSizeInput) {
+        fontSizeInput.addEventListener("input", () => {
+          applyFontSettings();
+          queueAppearanceSave({});
+        });
+      }
+
+      if (boldToggle) {
+        boldToggle.addEventListener("change", () => {
+          applyFontSettings();
+          queueAppearanceSave({});
+        });
+      }
+
+      if (!editModeToggle) {
+        console.error("Switch ID not found");
+      }
+      if (!deleteModeToggle) {
+        console.error("Switch ID not found");
+      }
+
+      function handleEditModeToggle(checked) {
+        const editSwitch = document.getElementById("editModeSwitch");
+        const deleteSwitch = document.getElementById("deleteModeSwitch");
+        if (checked) {
+          if (deleteSwitch) {
+            deleteSwitch.checked = false;
+          }
+          document.body.classList.remove("is-deleting");
+          document.body.classList.add("is-editing");
+        } else {
+          document.body.classList.remove("is-editing");
         }
-      });
-      settingsSaveBtn.addEventListener("click", () => {
-        if (!loggedIn) {
-          window.location.href = "/login.html";
-          return;
+        alert("Edit mode toggled: " + checked);
+        console.log("Edit Mode:", checked);
+        setDeleteState(false);
+        setEditingState(checked);
+      }
+
+      function handleDeleteModeToggle(checked) {
+        const editSwitch = document.getElementById("editModeSwitch");
+        const deleteSwitch = document.getElementById("deleteModeSwitch");
+        if (checked) {
+          if (editSwitch) {
+            editSwitch.checked = false;
+          }
+          document.body.classList.remove("is-editing");
+          document.body.classList.add("is-deleting");
+        } else {
+          document.body.classList.remove("is-deleting");
         }
-        const payload = { siteName: siteNameInput.value.trim() };
-        if (!payload.siteName) {
-          return;
-        }
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error("Failed to save");
+        alert("Delete mode toggled: " + checked);
+        console.log("Delete Mode:", checked);
+        setEditingState(false);
+        setDeleteState(checked);
+      }
+
+      const editSwitch = document.getElementById("editModeSwitch");
+      const deleteSwitch = document.getElementById("deleteModeSwitch");
+      let modeSwitchBound = false;
+
+      if (editSwitch) {
+        editSwitch.addEventListener("change", function () {
+          handleEditModeToggle(this.checked);
+        });
+        modeSwitchBound = true;
+      }
+      if (deleteSwitch) {
+        deleteSwitch.addEventListener("change", function () {
+          handleDeleteModeToggle(this.checked);
+        });
+        modeSwitchBound = true;
+      }
+
+      if (!modeSwitchBound) {
+        document.addEventListener("change", (event) => {
+          const target = event.target;
+          if (!target || !target.id) return;
+          if (target.id === "editModeSwitch") {
+            handleEditModeToggle(target.checked);
+          }
+          if (target.id === "deleteModeSwitch") {
+            handleDeleteModeToggle(target.checked);
+          }
+        });
+      }
+
+      if (editDoneBtn) {
+        editDoneBtn.addEventListener("click", () => {
+          setActiveMode("preview");
+          if (settingsModal) {
+            openModal(settingsModal);
+          }
+        });
+      }
+
+      if (sortLockBtn) {
+        sortLockBtn.addEventListener("click", () => {
+          if (modeControl) {
+            const willOpen = !modeControl.classList.contains("open");
+            if (willOpen) {
+              modeControl.classList.add("open");
+            } else {
+              modeControl.classList.remove("open");
+              setActiveMode("preview");
             }
-            siteTitle.textContent = payload.siteName;
-            document.title = payload.siteName;
-            settingsModal.classList.remove("active");
-          })
-          .catch(() => {});
-      });
+          }
+        });
+      }
+
+      if (modeButtons.length) {
+        modeButtons.forEach((btn) => {
+          btn.addEventListener("click", () => {
+            setActiveMode(btn.dataset.mode);
+            if (modeControl) {
+              modeControl.classList.remove("open");
+            }
+          });
+        });
+      }
+
+      setActiveMode("preview");
+
       linkForm.addEventListener("submit", (event) => {
         event.preventDefault();
+        if (dockInput && dockInput.checked) {
+          const existing = allLinks.find((item) => String(item.id) === String(editingLinkId));
+          const alreadyDock = existing && existing.is_dock;
+          if (!alreadyDock && getDockCountLive() >= dockLimit) {
+            showToast("快捷栏已满（限6个图标），请先移除多余项。");
+            return;
+          }
+        }
+        let positionIndex = null;
+        if (dockInput && dockInput.checked) {
+          if (editingDockPosition !== null && !Number.isNaN(editingDockPosition)) {
+            positionIndex = editingDockPosition;
+          } else {
+            positionIndex = getFirstEmptyDockSlot();
+          }
+          if (positionIndex === null) {
+            showToast("快捷栏已满（限6个图标），请先移除多余项。");
+            return;
+          }
+        }
         const payload = {
           title: titleInput.value.trim(),
           url: urlInput.value.trim(),
-          category: categoryInput.value.trim(),
-          is_private: privateInput.checked ? 1 : 0
+          category: dockInput && dockInput.checked ? "" : categoryInput.value.trim(),
+          is_private: privateInput.checked ? 1 : 0,
+          is_dock: dockInput && dockInput.checked,
+          position_index: positionIndex
         };
+        const targetUrl = editingLinkId ? `/api/links/${editingLinkId}` : "/api/links";
         const method = editingLinkId ? "PUT" : "POST";
-        const url = editingLinkId ? `/api/links/${editingLinkId}` : "/api/links";
-        fetch(url, {
-          method,
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(payload)
-        })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error("Failed to save");
-            }
-            linkForm.reset();
-            modal.classList.remove("active");
-            window.location.reload(true);
+          fetch(targetUrl, {
+            method,
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            credentials: "same-origin",
+            body: JSON.stringify(payload)
           })
-          .catch(() => {});
-      });
+            .then((res) => {
+              if (!res.ok) throw new Error("Failed to save");
+              closeEditModalToPreview();
+              window.location.reload(true);
+            })
+            .catch(() => {});
+        });
 
-      function openEditModal(item) {
-        if (!loggedIn) {
-          window.location.href = "/login.html";
-          return;
-        }
-        editingLinkId = item.id;
-        formTitle.textContent = "编辑导航";
-        saveBtn.textContent = "保存修改";
-        titleInput.value = item.title || "";
-        urlInput.value = item.url || "";
-        categoryInput.value = item.category || "";
-        privateInput.checked = Number(item.is_private) === 1;
-        fetch("/api/categories")
-          .then((res) => res.json())
-          .then((data) => {
-            if (Array.isArray(data)) {
-              categoryList.innerHTML = "";
-              data.forEach((name) => {
-                const option = document.createElement("option");
-                option.value = name;
-                categoryList.appendChild(option);
-              });
-            }
-          })
-          .catch(() => {});
-        modal.classList.add("active");
-      }
-
-      function updateThemeButton() {
-        const isDark = document.documentElement.classList.contains("dark");
-        themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
-        themeToggle.setAttribute(
-          "aria-label",
-          isDark ? "切换到日间模式" : "切换到夜间模式"
-        );
-        updateModalInputStyles(isDark);
-      }
-
-      function updateModalInputStyles(isDark) {
-        const inputs = document.querySelectorAll(
-          "#modal input, #settingsModal input, #modal select, #settingsModal select"
-        );
-        inputs.forEach((input) => {
-          input.style.color = isDark ? "#ffffff" : "#1a1a1a";
-          input.style.backgroundColor = isDark
-            ? "rgba(15, 23, 42, 0.9)"
-            : "rgba(255, 255, 255, 0.9)";
+      if (exportBtn) {
+        exportBtn.addEventListener("click", () => {
+          fetch("/api/backup/export")
+            .then((res) => res.blob())
+            .then((blob) => {
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = "mynav-backup.json";
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              URL.revokeObjectURL(url);
+            })
+            .catch(() => {});
         });
       }
 
-      themeToggle.addEventListener("click", () => {
-        const isDark = document.documentElement.classList.contains("dark");
-        const next = isDark ? "light" : "dark";
-        document.documentElement.classList.toggle("dark", next === "dark");
-        localStorage.setItem("theme", next);
-        updateThemeButton();
-      });
-
-      function applyFontSettings() {
-        const size = Number(localStorage.getItem("fontSize") || "15");
-        const bold = localStorage.getItem("fontBold") === "1";
-        document.documentElement.style.setProperty("--base-size", `${size}px`);
-        document.body.classList.toggle("bold", bold);
-        fontSizeInput.value = String(size);
-        boldToggle.checked = bold;
+      if (importBtn) {
+        importBtn.addEventListener("click", () => {
+          if (!importFile || !importFile.files || !importFile.files[0]) return;
+          const formData = new FormData();
+          formData.append("backup", importFile.files[0]);
+          fetch("/api/backup/import", {
+            method: "POST",
+            body: formData
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error("Import failed");
+              }
+              return res.json();
+            })
+            .then(() => {
+              importFile.value = "";
+              fetchLinks();
+            })
+            .catch(() => {});
+        });
       }
-
-      fontSizeInput.addEventListener("input", (event) => {
-        const size = Number(event.target.value);
-        localStorage.setItem("fontSize", String(size));
-        document.documentElement.style.setProperty("--base-size", `${size}px`);
-      });
-
-      boldToggle.addEventListener("change", (event) => {
-        const next = event.target.checked;
-        localStorage.setItem("fontBold", next ? "1" : "0");
-        document.body.classList.toggle("bold", next);
-      });
-
-      importBtn.addEventListener("click", () => {
-        if (!loggedIn) {
-          window.location.href = "/login.html";
-          return;
-        }
-        if (!importFile.files[0]) {
-          return;
-        }
-        const formData = new FormData();
-        formData.append("db", importFile.files[0]);
-        fetch("/api/backup/import", {
-          method: "POST",
-          body: formData
-        })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error("Import failed");
-            }
-            return res.json();
-          })
-          .then(() => {
-            importFile.value = "";
-            fetchLinks();
-          })
-          .catch(() => {});
-      });
 
       fetch("/api/me")
         .then((res) => res.json())
         .then((data) => {
-          setLoginState(Boolean(data && data.loggedIn));
+          const logged = Boolean(data && data.loggedIn);
+          setLoginState(logged);
+          if (logged) {
+            applyUserProfile(data.userName || "Admin", data.userAvatar || "");
+          } else {
+            applyUserProfile("Admin", "");
+          }
         })
         .catch(() => {
           setLoginState(false);
         });
+
       fetch("/api/settings")
         .then((res) => res.json())
         .then((data) => {
@@ -1559,13 +4371,29 @@
             siteNameInput.value = data.siteName;
             document.title = data.siteName;
           }
+          if (data && data.backgroundColor) {
+            if (bgColorInput) {
+              bgColorInput.value = data.backgroundColor;
+            }
+            applyBackground(data.backgroundColor);
+          }
         })
         .catch(() => {});
 
+      fetchLinks();
       applyFontSettings();
-      renderDockIcons();
       updateThemeButton();
       initMobilePosition();
+      initDockFisheye();
+      initCategoryFisheye();
+      });
     </script>
   </body>
 </html>
+
+
+
+      .category-spacer {
+        height: 16px;
+        width: 100%;
+      }

@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>&#x6CE8;&#x518C;</title>
+    <style>
+      :root {
+        --bg-a: #f7f2ee;
+        --bg-b: #e7edf7;
+        --text: #17181a;
+        --muted: #6a6f7a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(800px 300px at 15% 0%, rgba(255, 255, 255, 0.8), transparent 70%),
+          radial-gradient(900px 400px at 80% 10%, rgba(255, 255, 255, 0.7), transparent 60%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+      }
+      .card {
+        width: min(380px, 100%);
+        background: rgba(255, 255, 255, 0.9);
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      h1 {
+        margin: 0 0 6px;
+        font-size: 22px;
+      }
+      p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.85);
+      }
+      button {
+        width: 100%;
+        border: none;
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.15);
+      }
+      .error {
+        margin-top: 10px;
+        color: #d64545;
+        font-size: 12px;
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>&#x6CE8;&#x518C;</h1>
+      <p>&#x521B;&#x5EFA;&#x65B0;&#x8D26;&#x53F7;</p>
+      <form id="registerForm">
+        <div class="field">
+          <label for="usernameInput">&#x7528;&#x6237;&#x540D;</label>
+          <input id="usernameInput" type="text" required />
+        </div>
+        <div class="field">
+          <label for="passwordInput">&#x5BC6;&#x7801;</label>
+          <input id="passwordInput" type="password" required />
+        </div>
+        <div class="field">
+          <label for="confirmInput">&#x786E;&#x8BA4;&#x5BC6;&#x7801;</label>
+          <input id="confirmInput" type="password" required />
+        </div>
+        <button type="submit">&#x6CE8;&#x518C;</button>
+        <div class="error" id="errorMsg"></div>
+      </form>
+    </div>
+
+    <script>
+      const form = document.querySelector("#registerForm");
+      const usernameInput = document.querySelector("#usernameInput");
+      const passwordInput = document.querySelector("#passwordInput");
+      const confirmInput = document.querySelector("#confirmInput");
+      const errorMsg = document.querySelector("#errorMsg");
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const username = usernameInput.value.trim();
+        const password = passwordInput.value;
+        const confirm = confirmInput.value;
+
+        if (!username || !password) {
+          return;
+        }
+        if (password !== confirm) {
+          errorMsg.textContent = "&#x4E24;&#x6B21;&#x5BC6;&#x7801;&#x4E0D;&#x4E00;&#x81F4;";
+          errorMsg.style.display = "block";
+          return;
+        }
+
+        fetch("/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ username, password })
+        })
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("Register failed");
+            }
+            window.location.href = "/login.html";
+          })
+          .catch(() => {
+            errorMsg.textContent = "&#x6CE8;&#x518C;&#x5931;&#x8D25;";
+            errorMsg.style.display = "block";
+          });
+      });
+    </script>
+  </body>
+</html>
