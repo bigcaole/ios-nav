@@ -117,7 +117,7 @@
         overflow: visible !important;
         overflow-x: visible !important;
         overflow-y: visible !important;
-        padding-bottom: 20px !important;
+        padding-bottom: 14px !important;
         backdrop-filter: blur(30px);
         -webkit-backdrop-filter: blur(30px);
       }
@@ -131,8 +131,8 @@
         justify-content: center;
         padding: 6px 16px;
         border-radius: 999px;
-        font-size: 13px;
-        font-weight: 500;
+        font-size: calc(var(--base-size) * 0.85);
+        font-weight: var(--label-weight);
         min-width: 80px;
         background: rgba(0, 0, 0, 0.3);
         color: #ffffff;
@@ -153,9 +153,9 @@
         gap: 16px;
         flex: 1;
         overflow: visible !important;
-        padding: 20px 0 24px 96px;
+        padding: 10px 0 12px 96px;
         grid-template-columns: repeat(4, minmax(0, var(--icon-size, 56px)));
-        grid-auto-rows: var(--icon-size, 56px);
+        grid-auto-rows: calc(var(--icon-size, 56px) + 24px);
         pointer-events: auto;
       }
       .category-grid::-webkit-scrollbar {
@@ -692,11 +692,13 @@
       #settingsModal .sheet .field label,
       #settingsModal .sheet .settings-row > span {
         color: #000000 !important;
+        font-weight: var(--label-weight) !important;
       }
       html.dark #settingsModal .sheet h2,
       html.dark #settingsModal .sheet .field label,
       html.dark #settingsModal .sheet .settings-row > span {
         color: #f8fafc !important;
+        font-weight: var(--label-weight) !important;
       }
       .edit-toolbar {
         position: fixed;
@@ -756,19 +758,19 @@
         align-items: center !important;
         justify-content: center !important;
         min-width: 40px;
-        height: 20px;
+        height: calc(var(--base-size) * 1.2);
         background-color: rgba(0, 0, 0, 0.5) !important;
         border-radius: 9999px;
         padding: 2px 8px;
-        margin-top: 6px;
+        margin-top: 4px;
       }
       html.dark .icon-label-capsule {
         background-color: rgba(255, 255, 255, 0.2) !important;
       }
       .icon-label-text {
         color: #ffffff !important;
-        font-size: 11px !important;
-        font-weight: 500 !important;
+        font-size: calc(var(--base-size) * 0.7) !important;
+        font-weight: var(--label-weight) !important;
         white-space: nowrap !important;
         overflow: visible !important;
       }
@@ -783,7 +785,7 @@
         transform: translateX(-50%);
         width: max-content;
         max-width: 90vw;
-        padding: 12px 24px;
+        padding: 18px 24px;
         border-radius: 24px;
         background: rgba(0, 0, 0, 0.2) !important;
         border: 1px solid rgba(255, 255, 255, 0.15);
@@ -795,8 +797,7 @@
         align-items: center;
         z-index: 9999;
         transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
-        overflow-x: auto;
-        overflow-y: visible;
+        overflow: visible;
       }
       html.dark .dock {
         background: rgba(15, 23, 42, 0.65) !important;
@@ -822,6 +823,7 @@
         gap: 16px;
         flex-wrap: nowrap;
         width: max-content;
+        overflow: visible;
       }
       .dock-add-placeholder .icon {
         color: rgba(248, 250, 252, 0.9);
@@ -1210,20 +1212,30 @@
         min-width: 0;
       }
       .logo-mark {
-        width: 28px;
-        height: 28px;
-        border-radius: 10px;
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
         background: linear-gradient(135deg, #3b82f6, #60a5fa);
         color: #ffffff;
         display: grid;
         place-items: center;
         font-weight: 700;
-        font-size: 14px;
-        box-shadow: 0 6px 14px rgba(59, 130, 246, 0.35);
+        font-size: 18px;
+        box-shadow: none;
+        overflow: hidden;
+      }
+      .logo-mark.has-logo {
+        background: transparent;
+      }
+      .logo-mark img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
       }
       .site-title {
-        font-size: 20px;
-        font-weight: 700;
+        font-size: calc(var(--base-size) * 1.35);
+        font-weight: var(--title-weight);
         color: #0f172a;
         text-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
         white-space: nowrap;
@@ -1234,7 +1246,7 @@
         color: #f8fafc;
       }
       .site-slogan {
-        font-size: 12px;
+        font-size: calc(var(--base-size) * 0.75);
         color: #64748b;
         white-space: nowrap;
       }
@@ -1533,7 +1545,8 @@
       }
       .sheet h2 {
         margin: 0 0 12px;
-        font-size: 18px;
+        font-size: calc(var(--base-size) * 1.15);
+        font-weight: var(--title-weight);
       }
       .field {
         display: grid;
@@ -1541,14 +1554,15 @@
         margin-bottom: 12px;
       }
       .field label {
-        font-size: 12px;
+        font-size: calc(var(--base-size) * 0.8);
         color: var(--muted);
+        font-weight: var(--label-weight);
       }
       .field input {
         border: 1px solid rgba(0, 0, 0, 0.1);
         border-radius: 14px;
         padding: 10px 12px;
-        font-size: 14px;
+        font-size: calc(var(--base-size) * 0.95);
         outline: none;
         background: rgba(255, 255, 255, 0.85);
       }
@@ -1611,7 +1625,10 @@
         justify-content: space-between;
         gap: 12px;
         margin: 10px 0;
-        font-size: 13px;
+        font-size: calc(var(--base-size) * 0.9);
+      }
+      .settings-row > span {
+        font-weight: var(--label-weight);
       }
       .settings-row input[type="range"] {
         width: 160px;
@@ -1640,7 +1657,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body class="text-slate-900 transition-colors duration-300 dark:text-white">
-    <div class="ios-bg fixed inset-0 -z-10"></div>
+    <div id="iosBg" class="ios-bg fixed inset-0 -z-10"></div>
     <div id="editToolbar" class="edit-toolbar">
       <span id="editStatusLabel" class="text-slate-900 dark:text-white font-medium">正在编辑...</span>
       <button
@@ -1654,7 +1671,10 @@
     <div id="toast" class="toast">保存成功</div>
     <header class="site-header header-logo">
         <div class="header-left">
-          <div class="logo-mark" aria-hidden="true">N</div>
+          <div class="logo-mark" aria-hidden="true">
+            <img id="siteLogoImg" class="hidden" alt="logo" />
+            <span id="siteLogoText">N</span>
+          </div>
           <div class="title-group">
             <div id="siteTitle" class="site-title">我的 iOS 风格导航</div>
             <div class="site-slogan">挑一个图标，直接打开网站。</div>
@@ -1960,38 +1980,6 @@
             </div>
           </div>
         </div>
-        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3">
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">&#x5185;&#x5BB9;&#x7BA1;&#x7406;</span>
-          </div>
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="currentColor" d="M12 5a7 7 0 1 1-7 7 7 7 0 0 1 7-7Zm0-2a9 9 0 1 0 9 9 9 9 0 0 0-9-9Zm1 8h3a1 1 0 0 1 0 2h-3v3a1 1 0 1 1-2 0v-3H8a1 1 0 1 1 0-2h3V8a1 1 0 1 1 2 0Z" />
-              </svg>
-              &#x6DFB;&#x52A0;&#x65B0;&#x94FE;&#x63A5;
-            </span>
-            <button
-              type="button"
-              class="btn rounded-xl bg-blue-600 text-white hover:bg-blue-700 font-medium"
-              id="addBtn"
-            >&#x6DFB;&#x52A0;</button>
-          </div>
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">编辑模式</span>
-            <label class="toggle">
-              <input id="editModeSwitch" type="checkbox" />
-              <span class="slider"></span>
-            </label>
-          </div>
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">删除模式</span>
-            <label class="toggle">
-              <input id="deleteModeSwitch" type="checkbox" />
-              <span class="slider"></span>
-            </label>
-          </div>
-        </div>
         <div class="settings-row">
           <span class="text-slate-800 dark:text-slate-100">字体大小</span>
           <input id="fontSizeInput" type="range" min="12" max="20" value="15" />
@@ -2102,7 +2090,11 @@
       const createCategoryBtn = document.querySelector("#createCategoryBtn");
       const categoryManagerList = document.querySelector("#categoryManagerList");
       const newCategoryPrivate = document.querySelector("#newCategoryPrivate");
+      const iosBg = document.querySelector("#iosBg");
       const siteTitle = document.querySelector("#siteTitle");
+      const logoMark = document.querySelector(".logo-mark");
+      const siteLogoImg = document.querySelector("#siteLogoImg");
+      const siteLogoText = document.querySelector("#siteLogoText");
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
       const bgColorInput = document.querySelector("#bgColorInput");
@@ -3428,6 +3420,24 @@
         }
       }
 
+      function applySiteLogo(logoPath) {
+        if (!siteLogoImg || !siteLogoText) return;
+        if (logoPath) {
+          siteLogoImg.src = logoPath;
+          siteLogoImg.classList.remove("hidden");
+          siteLogoText.classList.add("hidden");
+          if (logoMark) {
+            logoMark.classList.add("has-logo");
+          }
+        } else {
+          siteLogoImg.classList.add("hidden");
+          siteLogoText.classList.remove("hidden");
+          if (logoMark) {
+            logoMark.classList.remove("has-logo");
+          }
+        }
+      }
+
       function setAvatarMenuOpen(open) {
         if (!avatarMenu || !avatarBtn) return;
         if (open) {
@@ -3665,7 +3675,14 @@
       }
 
       function applyBackground(color) {
+        if (iosBg) {
+          iosBg.style.backgroundColor = color || "";
+        }
         document.body.style.backgroundColor = color || "";
+        const themeMeta = document.querySelector('meta[name="theme-color"]');
+        if (themeMeta && color) {
+          themeMeta.setAttribute("content", color);
+        }
       }
 
       function saveAppearanceSettings(payload) {
@@ -4218,13 +4235,15 @@
         } catch (err) {}
       }
 
-      addBtn.addEventListener("click", () => {
-        if (!loggedIn) {
-          window.location.href = "/login.html";
-          return;
-        }
-        openModal(addMenuModal, { returnToSettings: true });
-      });
+      if (addBtn) {
+        addBtn.addEventListener("click", () => {
+          if (!loggedIn) {
+            window.location.href = "/login.html";
+            return;
+          }
+          openModal(addMenuModal, { returnToSettings: true });
+        });
+      }
 
         cancelBtn.addEventListener("click", () => {
           closeEditModalToPreview();
@@ -4508,6 +4527,7 @@
           if (bgColorInput) {
             bgColorInput.value = "#f2f2f7";
           }
+          applyBackground("");
           saveAppearanceSettings({ backgroundColor: "" });
         });
       }
@@ -4519,7 +4539,8 @@
           formData.append("logo", logoInput.files[0]);
           fetch("/api/settings/logo", { method: "POST", body: formData })
             .then((res) => res.json())
-            .then(() => {
+            .then((data) => {
+              applySiteLogo(data && data.path ? data.path : "");
               showToast("保存成功");
             })
             .catch(() => {});
@@ -4537,79 +4558,6 @@
         boldToggle.addEventListener("change", () => {
           applyFontSettings();
           queueAppearanceSave({});
-        });
-      }
-
-      if (!editModeToggle) {
-        console.error("Switch ID not found");
-      }
-      if (!deleteModeToggle) {
-        console.error("Switch ID not found");
-      }
-
-      function handleEditModeToggle(checked) {
-        const editSwitch = document.getElementById("editModeSwitch");
-        const deleteSwitch = document.getElementById("deleteModeSwitch");
-        if (checked) {
-          if (deleteSwitch) {
-            deleteSwitch.checked = false;
-          }
-          document.body.classList.remove("is-deleting");
-          document.body.classList.add("is-editing");
-        } else {
-          document.body.classList.remove("is-editing");
-        }
-        alert("Edit mode toggled: " + checked);
-        console.log("Edit Mode:", checked);
-        setDeleteState(false);
-        setEditingState(checked);
-      }
-
-      function handleDeleteModeToggle(checked) {
-        const editSwitch = document.getElementById("editModeSwitch");
-        const deleteSwitch = document.getElementById("deleteModeSwitch");
-        if (checked) {
-          if (editSwitch) {
-            editSwitch.checked = false;
-          }
-          document.body.classList.remove("is-editing");
-          document.body.classList.add("is-deleting");
-        } else {
-          document.body.classList.remove("is-deleting");
-        }
-        alert("Delete mode toggled: " + checked);
-        console.log("Delete Mode:", checked);
-        setEditingState(false);
-        setDeleteState(checked);
-      }
-
-      const editSwitch = document.getElementById("editModeSwitch");
-      const deleteSwitch = document.getElementById("deleteModeSwitch");
-      let modeSwitchBound = false;
-
-      if (editSwitch) {
-        editSwitch.addEventListener("change", function () {
-          handleEditModeToggle(this.checked);
-        });
-        modeSwitchBound = true;
-      }
-      if (deleteSwitch) {
-        deleteSwitch.addEventListener("change", function () {
-          handleDeleteModeToggle(this.checked);
-        });
-        modeSwitchBound = true;
-      }
-
-      if (!modeSwitchBound) {
-        document.addEventListener("change", (event) => {
-          const target = event.target;
-          if (!target || !target.id) return;
-          if (target.id === "editModeSwitch") {
-            handleEditModeToggle(target.checked);
-          }
-          if (target.id === "deleteModeSwitch") {
-            handleDeleteModeToggle(target.checked);
-          }
         });
       }
 
@@ -4769,11 +4717,14 @@
             siteNameInput.value = data.siteName;
             document.title = data.siteName;
           }
-          if (data && data.backgroundColor) {
-            if (bgColorInput) {
+          if (data && data.siteLogo !== undefined) {
+            applySiteLogo(data.siteLogo || "");
+          }
+          if (data && data.backgroundColor !== undefined) {
+            if (bgColorInput && data.backgroundColor) {
               bgColorInput.value = data.backgroundColor;
             }
-            applyBackground(data.backgroundColor);
+            applyBackground(data.backgroundColor || "");
           }
         })
         .catch(() => {});
