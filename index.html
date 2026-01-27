@@ -292,8 +292,12 @@
       }
       .mode-sort .sortable-drag {
         opacity: 0.5 !important;
-        transform: scale(1.05) rotate(-2deg) !important;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.2);
+        transform: scale(1.1) rotate(-2deg) !important;
+        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.3);
+        animation: none !important;
+      }
+      .mode-sort .sortable-drag .icon {
+        animation: none !important;
       }
       .is-editing .icon,
       .is-editing .app {
@@ -310,6 +314,9 @@
       .sortable-drag,
       .sortable-chosen {
         z-index: 9999 !important;
+      }
+      .sortable-drag {
+        cursor: grabbing !important;
       }
       .is-editing * {
         pointer-events: auto !important;
@@ -551,19 +558,29 @@
       html.dark .editable {
         border-bottom-color: rgba(226, 232, 240, 0.6);
       }
-      @keyframes breathe {
+      @keyframes wiggle {
         0% {
-          transform: scale(1);
+          transform: translateZ(0) rotate(0deg);
+        }
+        25% {
+          transform: translateZ(0) rotate(-1.5deg);
         }
         50% {
-          transform: scale(1.03);
+          transform: translateZ(0) rotate(0deg);
+        }
+        75% {
+          transform: translateZ(0) rotate(1.5deg);
         }
         100% {
-          transform: scale(1);
+          transform: translateZ(0) rotate(0deg);
         }
       }
       .sort-unlocked .icon {
-        animation: breathe 1.6s ease-in-out infinite;
+        animation: wiggle 0.3s ease-in-out infinite;
+        transform-origin: 50% 60%;
+      }
+      .sort-unlocked .sortable-drag .icon {
+        animation: none !important;
       }
       .toast {
         position: fixed;
@@ -677,26 +694,32 @@
       }
       .dock {
         position: fixed;
-        left: 16px;
-        right: 16px;
-        bottom: 20px;
-        padding: 20px 18px;
-        border-radius: 34px;
-        background: rgba(0, 0, 0, 0.2);
+        left: 50%;
+        bottom: 24px;
+        transform: translateX(-50%);
+        width: max-content;
+        max-width: 90vw;
+        padding: 12px 24px;
+        border-radius: 24px;
+        background: rgba(0, 0, 0, 0.2) !important;
         border: 1px solid rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(22px);
-        -webkit-backdrop-filter: blur(22px);
-        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.25);
         display: flex;
         justify-content: center;
         align-items: center;
         z-index: 9999;
         transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
-        overflow: visible;
+        overflow-x: auto;
+        overflow-y: visible;
       }
       html.dark .dock {
-        background: rgba(15, 23, 42, 0.7);
+        background: rgba(15, 23, 42, 0.65) !important;
         border-color: rgba(255, 255, 255, 0.12);
+      }
+      .dock::-webkit-scrollbar {
+        display: none;
       }
       .dock-empty {
         min-height: 100px;
@@ -707,10 +730,10 @@
       .dock-grid {
         display: flex;
         align-items: center;
-        justify-content: space-evenly;
-        gap: 12px;
+        justify-content: center;
+        gap: 16px;
         flex-wrap: nowrap;
-        width: 100%;
+        width: max-content;
       }
       .dock-slot {
         width: 60px;
@@ -730,19 +753,18 @@
         border-color: rgba(148, 163, 184, 0.5);
         background: rgba(15, 23, 42, 0.35);
       }
+      body:not(.mode-sort):not(.mode-delete) .dock-slot.empty {
+        display: none;
+      }
       .dock-slot.empty,
       .dock-add-placeholder .icon {
         color: rgba(248, 250, 252, 0.9);
       }
       @media (min-width: 1024px) {
         .dock-grid {
-          display: grid;
-          grid-template-columns: repeat(6, 1fr);
-          column-gap: 12px;
+          display: flex;
           justify-content: center;
-          width: 348px;
-          max-width: 100%;
-          place-items: center;
+          width: max-content;
         }
       }
       .dock-item {
@@ -768,11 +790,13 @@
         aspect-ratio: 1 / 1;
         border-radius: 16px;
         padding: 10px;
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: transparent;
         box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
         -webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.12));
+        transition: background-color 0.2s ease;
+      }
+      .dock-item:hover .icon {
+        background: rgba(255, 255, 255, 0.5);
       }
       .dock-item .icon img {
         width: 100%;
@@ -1216,48 +1240,67 @@
       }
       .category-nav {
         display: flex;
-        gap: 8px;
+        gap: 16px;
         align-items: center;
         overflow-x: auto;
+        overflow-y: visible;
         white-space: nowrap;
         scrollbar-width: none;
-        max-width: min(80vw, 960px);
-        width: auto;
+        padding: 16px 50%;
+        scroll-snap-type: none;
+        scroll-behavior: auto;
+      }
+      html.dark #categoryNav {
+        background-color: rgba(17, 24, 39, 0.7) !important;
       }
       .category-nav::-webkit-scrollbar {
         display: none;
       }
       .category-pill {
-        border: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e5e7eb;
         padding: 6px 16px;
         border-radius: 999px;
         font-size: 14px;
         font-weight: 500;
-        color: #111827;
-        background: #eff6ff;
+        color: #374151;
+        background: transparent;
         cursor: pointer;
-        transition: background-color 0.2s ease, transform 0.2s ease;
+        position: relative;
+        z-index: 1;
+        transition: transform 0.3s ease-out, box-shadow 0.3s ease-out, color 0.2s ease, background-color 0.2s ease;
+        transform-origin: center center;
+        will-change: transform;
+        flex-shrink: 0;
       }
       .category-pill:hover {
-        background: #dbeafe;
-        transform: translateY(-1px);
+        background: #f3f4f6;
+        transform: scale(1.25);
+        z-index: 50;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+        color: #111827;
       }
       .category-pill.active {
-        background: #2563eb;
+        background: #000000;
         color: #ffffff;
-        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.3);
+        border-color: transparent;
+        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2);
       }
       html.dark .category-pill {
-        background: rgba(30, 58, 138, 0.2);
-        color: #ffffff;
+        color: #e5e7eb;
+        border-color: #374151;
       }
       html.dark .category-pill:hover {
-        background: rgba(30, 58, 138, 0.4);
+        background: #1f2937;
+        color: #ffffff;
       }
       html.dark .category-pill.active {
-        background: #3b82f6;
-        color: #ffffff;
-        box-shadow: 0 8px 16px rgba(59, 130, 246, 0.35);
+        background: #ffffff;
+        color: #111827;
+        border-color: transparent;
+        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.35);
       }
       .page-intro {
         padding-left: 24px;
@@ -1637,13 +1680,18 @@
     <div class="main-content">
       <div
         id="categoryNav"
-        class="category-nav fixed top-[76px] left-1/2 -translate-x-1/2 z-40 nav-header-bg backdrop-blur-xl ring-1 ring-black/5 dark:ring-white/10 rounded-full p-1.5 shadow-md"
+        class="fixed top-[76px] left-1/2 -translate-x-1/2 w-fit max-w-[90%] md:max-w-[65%] h-14 rounded-full shadow-lg ring-1 ring-white/50 backdrop-blur-xl flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide px-4 z-40"
+        style="background-color: rgba(255, 255, 255, 0.7) !important;"
       ></div>
       <main class="grid" id="appGrid"></main>
     </div>
 
     
-    <div id="dock-container" class="dock dock-container" aria-label="快捷栏">
+    <div
+      id="dock-container"
+      class="dock dock-container backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-2xl"
+      aria-label="快捷栏"
+    >
       <div class="dock-grid" id="dockGrid" data-dock="true">
         <div class="dock-slot" data-slot="0"></div>
         <div class="dock-slot" data-slot="1"></div>
@@ -2330,7 +2378,9 @@
             const isPrivate = loggedIn && Number(item.is_private) === 1;
             const card = document.createElement("a");
             const showJiggle = editing || deleting;
-            card.className = showJiggle ? "app dock-item jiggle" : "app dock-item";
+            card.className = showJiggle
+              ? "app dock-item jiggle icon-item"
+              : "app dock-item icon-item";
             card.href = item.url;
             card.target = "_blank";
             card.rel = "noreferrer";
@@ -2575,7 +2625,7 @@
                 const isPrivate = loggedIn && Number(item.is_private) === 1;
             const card = document.createElement("a");
             const showJiggle = editing || deleting;
-            card.className = showJiggle ? "app jiggle" : "app";
+            card.className = showJiggle ? "app jiggle icon-item" : "app icon-item";
             card.href = item.url;
             card.target = "_blank";
             card.rel = "noreferrer";
@@ -2807,10 +2857,23 @@
           const nav = document.querySelector("#categoryNav");
           if (!nav) return;
           nav.innerHTML = "";
+          if (!nav.dataset.wheelBound) {
+            nav.addEventListener(
+              "wheel",
+              (event) => {
+                if (event.deltaY !== 0) {
+                  event.preventDefault();
+                  nav.scrollLeft += event.deltaY;
+                }
+              },
+              { passive: false }
+            );
+            nav.dataset.wheelBound = "true";
+          }
           categories.forEach((category) => {
             const pill = document.createElement("button");
             pill.type = "button";
-            pill.className = "category-pill";
+            pill.className = "category-pill nav-item";
             pill.textContent = category;
             pill.addEventListener("click", () => {
               nav.querySelectorAll(".category-pill").forEach((btn) => {
@@ -2821,12 +2884,13 @@
               if (!target) return;
               const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
               const navHeight = nav.offsetHeight || 0;
-            const top = target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
-            window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+              const top =
+                target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
+              window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+            });
+            nav.appendChild(pill);
           });
-          nav.appendChild(pill);
-        });
-      }
+        }
 
       function fetchLinks() {
         const url = loggedIn ? "/api/links?includePrivate=1" : "/api/links";
@@ -2884,10 +2948,12 @@
         destroySortables();
 
           const categorySortable = new Sortable(grid, {
-            animation: 150,
+            animation: 300,
             draggable: ".category-card",
             handle: ".category-title-capsule",
             forceFallback: true,
+            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+            swapThreshold: 0.65,
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
@@ -2907,13 +2973,15 @@
           const rect = container.getBoundingClientRect();
           console.log("Category grid rect:", rect.width, rect.height);
           const sortable = new Sortable(container, {
-            animation: 250,
-            draggable: ".app",
-            handle: ".icon",
+            animation: 300,
+            draggable: ".icon-item",
+            handle: ".icon-item",
             group: { name: "shared", pull: true, put: true },
             sort: true,
             forceFallback: true,
             swap: false,
+            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
+            swapThreshold: 0.65,
             ghostClass: "sortable-ghost",
             dragClass: "sortable-drag",
             disabled: false,
@@ -2957,14 +3025,15 @@
             const rect = slot.getBoundingClientRect();
             console.log("Dock slot rect:", rect.width, rect.height);
             const dockSortable = new Sortable(slot, {
-              animation: 250,
-              draggable: ".app",
-              handle: ".icon",
+              animation: 300,
+              draggable: ".icon-item",
+              handle: ".icon-item",
               group: { name: "shared", pull: true, put: true },
               sort: true,
               forceFallback: true,
               swap: true,
-              swapThreshold: 0.6,
+              swapThreshold: 0.65,
+              easing: "cubic-bezier(0.25, 1, 0.5, 1)",
               ghostClass: "sortable-ghost",
               dragClass: "sortable-drag",
               disabled: false,
