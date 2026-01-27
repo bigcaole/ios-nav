@@ -121,6 +121,110 @@
         backdrop-filter: blur(30px);
         -webkit-backdrop-filter: blur(30px);
       }
+      .view-card .grid {
+        display: grid;
+        grid-template-columns: repeat(var(--card-cols, 1), minmax(0, 1fr));
+        gap: 18px;
+        align-items: stretch;
+      }
+      .view-card .category-card {
+        align-items: center;
+        padding: 16px;
+      }
+      .view-card .category-title {
+        margin: 0 auto 10px;
+        position: relative;
+        z-index: 2;
+      }
+      .view-card .category-spacer {
+        height: 20px;
+      }
+      .view-card .category-title {
+        pointer-events: none;
+      }
+      .view-card .card-page .app {
+        position: relative;
+        z-index: 3;
+      }
+      .view-card .card-hover-label {
+        z-index: 120;
+      }
+      .view-card .category-grid {
+        padding: 10px 6px 14px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        grid-auto-rows: calc(var(--icon-size, 56px) + 22px);
+        justify-content: center;
+      }
+      .view-card .icon-label-capsule {
+        margin-top: 3px;
+      }
+      .view-card .app:hover .icon {
+        transform: scale(1.18);
+      }
+      .card-pages {
+        width: 100%;
+        overflow-x: hidden;
+        overflow-y: visible;
+        position: relative;
+      }
+      .card-pages-track {
+        display: flex;
+        width: 100%;
+        transition: transform 0.45s cubic-bezier(0.25, 1, 0.5, 1);
+      }
+      .card-page {
+        min-width: 100%;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+        justify-items: center;
+        grid-auto-rows: calc(var(--icon-size, 56px) + 22px);
+        padding: 40px 6px 8px;
+        overflow: visible;
+      }
+      .card-compact .icon-label-capsule {
+        display: none !important;
+      }
+      .card-compact .category-grid,
+      .card-compact .card-page {
+        grid-auto-rows: calc(var(--icon-size, 56px) + 10px);
+      }
+      .card-hover-label {
+        position: absolute;
+        bottom: calc(100% + 4px);
+        left: 50%;
+        transform: translateX(-50%) translateY(4px);
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #ffffff;
+        font-size: 11px;
+        line-height: 1;
+        white-space: nowrap;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        z-index: 60;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+      }
+      html.dark .card-hover-label {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .card-compact .app:hover .card-hover-label {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
+      .card-compact .app {
+        overflow: visible !important;
+      }
+      .card-compact .app.fisheye-active .card-hover-label {
+        opacity: 1;
+        visibility: visible;
+        transform: translateX(-50%) translateY(0);
+      }
       html.dark .category-card {
         background: rgba(30, 41, 59, 0.6);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -147,24 +251,17 @@
         line-height: 1;
       }
       .category-grid {
-        display: grid;
-        align-items: start;
-        justify-content: start;
+        display: flex;
+        align-items: flex-start;
         gap: 16px;
         flex: 1;
+        flex-wrap: wrap;
         overflow: visible !important;
         padding: 10px 0 12px 96px;
-        grid-template-columns: repeat(4, minmax(0, var(--icon-size, 56px)));
-        grid-auto-rows: calc(var(--icon-size, 56px) + 24px);
         pointer-events: auto;
       }
       .category-grid::-webkit-scrollbar {
         display: none;
-      }
-      @media (min-width: 768px) {
-        .category-grid {
-          grid-template-columns: repeat(6, minmax(0, var(--icon-size, 56px)));
-        }
       }
       .pagination-dots {
         display: flex;
@@ -841,6 +938,25 @@
         z-index: 2;
         transition: transform 0.2s ease-out;
       }
+      @media (max-width: 640px) {
+        .dock {
+          max-width: 94vw;
+          padding: 10px 12px;
+          overflow-x: hidden;
+        }
+        .dock-grid {
+          width: 100%;
+          justify-content: space-evenly;
+          gap: 10px;
+        }
+        .dock-item {
+          width: clamp(40px, 12vw, 56px);
+          height: clamp(40px, 12vw, 56px);
+        }
+        .dock-item .icon {
+          padding: 8px;
+        }
+      }
       .dock-item .minus,
       .dock-item .edit-badge {
         z-index: 3;
@@ -1188,6 +1304,30 @@
         fill: #facc15;
         filter: drop-shadow(0 0 2px rgba(250, 204, 21, 0.4));
       }
+      @media (max-width: 640px) {
+        .mobile-preview-lock .app,
+        .mobile-preview-lock .icon,
+        .mobile-preview-lock .category-card,
+        .mobile-preview-lock .dock-container,
+        .mobile-preview-lock .category-title {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          user-select: none;
+        }
+      }
+      #controlGroup.open {
+        opacity: 1;
+        pointer-events: auto;
+        --tw-translate-y: 0px;
+        --tw-scale-x: 1;
+        --tw-scale-y: 1;
+      }
+      #menuToggle.open [data-icon="menu"] {
+        display: none;
+      }
+      #menuToggle.open [data-icon="close"] {
+        display: block;
+      }
       #avatarBtn {
         overflow: hidden;
         filter: none;
@@ -1356,6 +1496,14 @@
       }
       html.dark #categoryNav {
         background-color: rgba(30, 41, 59, 0.6) !important;
+      }
+      #categoryNav {
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+      }
+      #categoryNav::-webkit-scrollbar {
+        display: none;
       }
       .category-nav::-webkit-scrollbar {
         display: none;
@@ -1730,6 +1878,25 @@
           <span class="hidden md:inline">设置</span>
         </button>
         <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="viewToggleBtn"
+          aria-label="切换分类视图"
+        >
+          <svg class="h-4 w-4 view-icon-grid" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm9 0h7v7h-7v-7Z"
+            />
+          </svg>
+          <svg class="h-4 w-4 view-icon-card hidden" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm0 2v3h14V6H5Zm0 5v7h14v-7H5Z"
+            />
+          </svg>
+          <span class="hidden md:inline">视图</span>
+        </button>
+        <button
           class="hidden flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-10 h-10 md:w-12 md:h-12"
           id="sortLockBtn"
           aria-label="排序锁定"
@@ -1985,6 +2152,10 @@
           <input id="fontSizeInput" type="range" min="12" max="20" value="15" />
         </div>
         <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">图标大小</span>
+          <input id="iconSizeInput" type="range" min="0" max="100" value="100" />
+        </div>
+        <div class="settings-row">
           <span class="text-slate-800 dark:text-slate-100">加粗文字</span>
           <label class="toggle">
             <input id="boldToggle" type="checkbox" />
@@ -2071,6 +2242,7 @@
       const controlGroup = document.querySelector("#controlGroup");
       const modeControl = document.querySelector("#modeControl");
       const modeButtons = modeControl ? Array.from(modeControl.querySelectorAll(".mode-btn")) : [];
+      const viewToggleBtn = document.querySelector("#viewToggleBtn");
       const linkForm = document.querySelector("#linkForm");
       const themeToggle = document.querySelector("#themeToggle");
       const formTitle = document.querySelector("#formTitle");
@@ -2102,6 +2274,7 @@
       const resetBgBtn = document.querySelector("#resetBgBtn");
       const fontSizeInput = document.querySelector("#fontSizeInput");
       const boldToggle = document.querySelector("#boldToggle");
+      const iconSizeInput = document.querySelector("#iconSizeInput");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
       const importBtn = document.querySelector("#importBtn");
@@ -2117,6 +2290,10 @@
       let editing = false;
       let deleting = false;
       let currentMode = "preview";
+      const savedViewMode = localStorage.getItem("viewMode");
+      let viewMode =
+        window.innerWidth < 768 ? "card" : savedViewMode || "list";
+      let iconScale = 1;
         let editingLinkId = null;
         let editingDockPosition = null;
         let returnToSettings = null;
@@ -2481,12 +2658,24 @@
           const key = (item.category || "默认分类").trim();
           if (!groups[key]) {
             groups[key] = [];
-            order.push(key);
           }
           if (item.category_private) {
             privacy[key] = true;
           }
           groups[key].push(item);
+        });
+        const preferredOrder = Array.isArray(allCategories)
+          ? allCategories.map((c) => c.name).filter(Boolean)
+          : [];
+        preferredOrder.forEach((name) => {
+          if (groups[name]) {
+            order.push(name);
+          }
+        });
+        Object.keys(groups).forEach((name) => {
+          if (!order.includes(name)) {
+            order.push(name);
+          }
         });
         return { groups, order, privacy };
       }
@@ -2672,15 +2861,26 @@
       function renderLinks(links) {
         try {
           const normalLinks = links.filter((item) => !item.is_dock);
+          const isCardView = viewMode === "card";
+          if (grid) {
+            grid.classList.toggle("card-layout", isCardView);
+          }
           grid.innerHTML = "";
           const grouped = groupByCategory(normalLinks);
           const minIconSize = 40;
           const maxIconSize = 80;
           const gridGap = 16;
+          if (isCardView && grid) {
+            const availableWidth = Math.min(1200, window.innerWidth - 48);
+            const targetCardWidth = 320;
+            const rawCols = availableWidth / targetCardWidth;
+            const cols = Math.max(1, Math.round(rawCols));
+            grid.style.setProperty("--card-cols", cols);
+          }
           grouped.order.forEach((category) => {
             const cardWrap = document.createElement("section");
             cardWrap.className =
-              "category-card";
+              isCardView ? "category-card card-view" : "category-card";
             cardWrap.dataset.category = category;
             cardWrap.dataset.original = category;
             cardWrap.id = `category-${slugify(category)}`;
@@ -2709,9 +2909,15 @@
             innerGrid.className = "category-grid icon-page-container";
             innerGrid.dataset.category = category;
             innerGrid.dataset.dock = "false";
+            innerGrid.style.gap = `${gridGap}px`;
             const itemCount = grouped.groups[category].length;
             const scaleT = Math.min(1, Math.max(0, (itemCount - 4) / 12));
-            const iconSize = Math.round(maxIconSize - scaleT * (maxIconSize - minIconSize));
+            const baseSize = Math.round(maxIconSize - scaleT * (maxIconSize - minIconSize));
+            const minScaleSize = 52;
+            const clampedBase = Math.max(baseSize, minScaleSize);
+            const iconSize = Math.round(
+              minScaleSize + (clampedBase - minScaleSize) * iconScale
+            );
             const availableWidth = Math.min(900, window.innerWidth - 120);
             const perRow = Math.max(
               4,
@@ -2719,6 +2925,7 @@
             );
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
+            innerGrid.style.maxWidth = `${availableWidth}px`;
             const pageSize = perRow;
             heading.classList.add("cursor-text", "editable");
             heading.addEventListener("click", (event) => {
@@ -2764,7 +2971,24 @@
             const items = grouped.groups[category];
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
-            items.forEach((item) => {
+            if (isCardView) {
+              const maxCardIcon = 72;
+              const minCardIcon = 52;
+              const t = Math.min(1, Math.max(0, (items.length - 1) / 8));
+              let cardIconSize = Math.round(
+                maxCardIcon - t * (maxCardIcon - minCardIcon)
+              );
+              const scaledBase = Math.max(cardIconSize, minCardIcon);
+              cardIconSize = Math.round(
+                minCardIcon + (scaledBase - minCardIcon) * iconScale
+              );
+              if (items.length > 6) {
+                cardIconSize = Math.min(maxCardIcon, cardIconSize + 6);
+              }
+              cardWrap.style.setProperty("--icon-size", `${cardIconSize}px`);
+              cardWrap.classList.toggle("card-compact", items.length > 6);
+            }
+            const renderItem = (item) => {
                 const isPrivate =
                   loggedIn && (Number(item.is_private) === 1 || item.category_private);
             const card = document.createElement("a");
@@ -2850,8 +3074,115 @@
                 }
 
             card.append(icon, label);
-            innerGrid.appendChild(card);
-            });
+            if (isCardView && items.length > 6) {
+              const hoverLabel = document.createElement("div");
+              hoverLabel.className = "card-hover-label";
+              hoverLabel.textContent = item.title || "未命名";
+              card.appendChild(hoverLabel);
+            }
+            return card;
+            };
+
+            const usePagedCards = isCardView && currentMode === "preview";
+            if (usePagedCards && items.length > 9) {
+              const pagesContainer = document.createElement("div");
+              pagesContainer.className = "card-pages";
+              const track = document.createElement("div");
+              track.className = "card-pages-track";
+              const totalPages = Math.ceil(items.length / 9);
+              let currentPage = 0;
+              let touchStartX = 0;
+              let touchActive = false;
+              for (let i = 0; i < totalPages; i += 1) {
+                const page = document.createElement("div");
+                page.className = "card-page";
+                const slice = items.slice(i * 9, i * 9 + 9);
+                slice.forEach((item) => {
+                  page.appendChild(renderItem(item));
+                });
+                track.appendChild(page);
+              }
+              pagesContainer.appendChild(track);
+
+              const dots = document.createElement("div");
+              dots.className = "pagination-dots";
+              const updateDots = () => {
+                dots.querySelectorAll(".pagination-dot").forEach((dot, idx) => {
+                  dot.classList.toggle("active", idx === currentPage);
+                });
+              };
+              for (let i = 0; i < totalPages; i += 1) {
+                const dot = document.createElement("div");
+                dot.className = "pagination-dot";
+                dot.addEventListener("click", () => {
+                  currentPage = i;
+                  track.style.transform = `translateX(-${currentPage * 100}%)`;
+                  updateDots();
+                });
+                dots.appendChild(dot);
+              }
+              updateDots();
+
+              const leftArrow = document.createElement("button");
+              leftArrow.type = "button";
+              leftArrow.className = "page-arrow left";
+              leftArrow.innerHTML = "&lt;";
+              const rightArrow = document.createElement("button");
+              rightArrow.type = "button";
+              rightArrow.className = "page-arrow right";
+              rightArrow.innerHTML = "&gt;";
+              const updateArrows = () => {
+                leftArrow.classList.toggle("hidden", currentPage === 0);
+                rightArrow.classList.toggle("hidden", currentPage === totalPages - 1);
+              };
+              leftArrow.addEventListener("click", () => {
+                if (currentPage === 0) return;
+                currentPage -= 1;
+                track.style.transform = `translateX(-${currentPage * 100}%)`;
+                updateDots();
+                updateArrows();
+              });
+              rightArrow.addEventListener("click", () => {
+                if (currentPage >= totalPages - 1) return;
+                currentPage += 1;
+                track.style.transform = `translateX(-${currentPage * 100}%)`;
+                updateDots();
+                updateArrows();
+              });
+              pagesContainer.addEventListener("touchstart", (event) => {
+                const touch = event.touches[0];
+                if (!touch) return;
+                touchStartX = touch.clientX;
+                touchActive = true;
+              });
+              pagesContainer.addEventListener("touchend", (event) => {
+                if (!touchActive) return;
+                touchActive = false;
+                const touch = event.changedTouches[0];
+                if (!touch) return;
+                const deltaX = touch.clientX - touchStartX;
+                if (Math.abs(deltaX) < 30) return;
+                if (deltaX < 0 && currentPage < totalPages - 1) {
+                  currentPage += 1;
+                } else if (deltaX > 0 && currentPage > 0) {
+                  currentPage -= 1;
+                }
+                track.style.transform = `translateX(-${currentPage * 100}%)`;
+                updateDots();
+                updateArrows();
+              });
+              updateArrows();
+
+              cardWrap.appendChild(pagesContainer);
+              cardWrap.appendChild(dots);
+              cardWrap.appendChild(leftArrow);
+              cardWrap.appendChild(rightArrow);
+            } else {
+              items.forEach((item) => {
+                innerGrid.appendChild(renderItem(item));
+              });
+              cardWrap.appendChild(innerGrid);
+            }
 
             if (currentMode === "delete") {
               const placeholder = document.createElement("div");
@@ -2895,7 +3226,9 @@
               innerGrid.appendChild(placeholder);
             }
 
-            cardWrap.appendChild(innerGrid);
+            if (!usePagedCards || items.length <= 9) {
+              cardWrap.appendChild(innerGrid);
+            }
             grid.appendChild(cardWrap);
           });
           if (currentMode === "delete") {
@@ -2985,7 +3318,9 @@
             visibleCards.push(card);
             return;
           }
-          const hasIcons = Boolean(card.querySelector(".category-grid .app"));
+          const hasIcons = Boolean(
+            card.querySelector(".category-grid .app, .card-page .app")
+          );
           if (hasIcons) {
             card.classList.remove("category-empty");
             visibleCards.push(card);
@@ -3003,16 +3338,21 @@
           if (!nav) return;
           nav.innerHTML = "";
           if (!nav.dataset.wheelBound) {
-            nav.addEventListener(
-              "wheel",
-              (event) => {
-                if (event.deltaY !== 0) {
-                  event.preventDefault();
-                  nav.scrollLeft += event.deltaY;
-                }
-              },
-              { passive: false }
-            );
+            const canWheel =
+              window.matchMedia &&
+              window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+            if (canWheel) {
+              nav.addEventListener(
+                "wheel",
+                (event) => {
+                  if (event.deltaY !== 0) {
+                    event.preventDefault();
+                    nav.scrollLeft += event.deltaY;
+                  }
+                },
+                { passive: false }
+              );
+            }
             nav.dataset.wheelBound = "true";
           }
           categories.forEach((category) => {
@@ -3685,6 +4025,32 @@
         }
       }
 
+      function applyViewMode(mode) {
+        viewMode = mode;
+        localStorage.setItem("viewMode", mode);
+        document.body.classList.toggle("view-card", mode === "card");
+        if (viewToggleBtn) {
+          const gridIcon = viewToggleBtn.querySelector(".view-icon-grid");
+          const cardIcon = viewToggleBtn.querySelector(".view-icon-card");
+          if (gridIcon && cardIcon) {
+            if (mode === "card") {
+              gridIcon.classList.add("hidden");
+              cardIcon.classList.remove("hidden");
+            } else {
+              gridIcon.classList.remove("hidden");
+              cardIcon.classList.add("hidden");
+            }
+          }
+        }
+      }
+
+      function updateMobileLongPressLock() {
+        const isMobile =
+          window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+        const shouldLock = isMobile && currentMode === "preview";
+        document.body.classList.toggle("mobile-preview-lock", shouldLock);
+      }
+
       function saveAppearanceSettings(payload) {
         if (!loggedIn) {
           return;
@@ -3709,6 +4075,9 @@
             }
             if (payload.backgroundColor !== undefined) {
               applyBackground(payload.backgroundColor);
+            }
+            if (payload.iconScale !== undefined) {
+              applyIconScale(payload.iconScale);
             }
             showToast("保存成功");
           })
@@ -3929,6 +4298,7 @@
         });
         document.body.classList.remove("modal-open");
         applyMode(next);
+        updateMobileLongPressLock();
         if (Array.isArray(allLinks)) {
           renderLinks(allLinks);
           renderDockLinks(allLinks);
@@ -4092,11 +4462,13 @@
       }
 
       function initCategoryFisheye() {
-        const categoryGrids = document.querySelectorAll(".category-grid");
+        const categoryGrids = document.querySelectorAll(".category-grid, .card-page");
         if (!categoryGrids.length) return;
         categoryGrids.forEach((gridEl) => {
+          if (gridEl.dataset.fisheyeBound) return;
+          gridEl.dataset.fisheyeBound = "true";
           let rafId = null;
-          const maxDistance = 200;
+          const baseMaxDistance = gridEl.classList.contains("card-page") ? 160 : 200;
           const minScale = 1;
           const maxScale = 1.3;
           const neighborScale = 1.15;
@@ -4105,6 +4477,7 @@
             gridEl.querySelectorAll(".app").forEach((item) => {
               item.style.transform = "translateY(0) scale(1)";
               item.style.zIndex = "";
+              item.classList.remove("fisheye-active");
             });
           }
 
@@ -4125,7 +4498,7 @@
                 const dx = x - centerX;
                 const dy = y - centerY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                const t = Math.max(0, 1 - dist / maxDistance);
+                const t = Math.max(0, 1 - dist / baseMaxDistance);
                 const eased = t * t;
                 const scale = minScale + (maxScale - minScale) * eased;
                 const neighbor = minScale + (neighborScale - minScale) * eased;
@@ -4133,6 +4506,13 @@
                 const lift = -6 * eased;
                 item.style.transform = `translateY(${lift}px) scale(${finalScale})`;
                 item.style.zIndex = t > 0 ? "100" : "";
+                if (item.closest(".card-compact") || item.closest(".card-page")) {
+                  if (t > 0.12) {
+                    item.classList.add("fisheye-active");
+                  } else {
+                    item.classList.remove("fisheye-active");
+                  }
+                }
               });
             });
           }
@@ -4183,6 +4563,13 @@
         document.body.classList.toggle("bold", boldToggle && boldToggle.checked);
       }
 
+      function applyIconScale(value) {
+        const next = Number(value);
+        if (Number.isNaN(next)) return;
+        iconScale = Math.min(1, Math.max(0, next / 100));
+        renderLinks(allLinks);
+      }
+
       function setTheme(mode, persist) {
         const useDark = mode === "dark";
         document.documentElement.classList.toggle("dark", useDark);
@@ -4224,6 +4611,7 @@
         menuToggle.addEventListener("click", (event) => {
           event.stopPropagation();
           controlGroup.classList.toggle("open");
+          menuToggle.classList.toggle("open");
         });
       }
 
@@ -4497,6 +4885,9 @@
           const payload = {
             siteName: siteNameInput.value.trim()
           };
+          if (iconSizeInput) {
+            payload.iconScale = iconSizeInput.value;
+          }
           saveAppearanceSettings(payload);
         });
       }
@@ -4561,6 +4952,13 @@
         });
       }
 
+      if (iconSizeInput) {
+        iconSizeInput.addEventListener("input", () => {
+          applyIconScale(iconSizeInput.value);
+          queueAppearanceSave({ iconScale: iconSizeInput.value });
+        });
+      }
+
       if (editDoneBtn) {
         editDoneBtn.addEventListener("click", () => {
           setActiveMode("preview");
@@ -4602,7 +5000,18 @@
         });
       }
 
+      if (viewToggleBtn) {
+        viewToggleBtn.addEventListener("click", () => {
+          const next = viewMode === "card" ? "list" : "card";
+          applyViewMode(next);
+          renderLinks(allLinks);
+          renderDockLinks(allLinks);
+        });
+      }
+
       setActiveMode("preview");
+      applyViewMode(viewMode);
+      updateMobileLongPressLock();
 
       linkForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -4725,6 +5134,13 @@
               bgColorInput.value = data.backgroundColor;
             }
             applyBackground(data.backgroundColor || "");
+          }
+          if (data && data.iconScale !== undefined) {
+            const value = Math.max(0, Math.min(100, Number(data.iconScale)));
+            if (iconSizeInput) {
+              iconSizeInput.value = Number.isNaN(value) ? 100 : String(value);
+            }
+            applyIconScale(Number.isNaN(value) ? 100 : value);
           }
         })
         .catch(() => {});

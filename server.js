@@ -134,6 +134,7 @@ async function initDb() {
       {
         siteName: "我的 iOS 风格导航",
         backgroundColor: "",
+        iconScale: 100,
         siteLogo: "",
         userName: process.env.ADMIN_USERNAME,
         userAvatar: ""
@@ -219,6 +220,14 @@ function parseCookies(req) {
   }, {});
 }
 
+function getSecureCookieFlag(req) {
+  const forwarded = req.headers["x-forwarded-proto"];
+  if (req.secure || forwarded === "https") {
+    return "Secure; ";
+  }
+  return "";
+}
+
 function signToken(userId) {
   return jwt.sign({ sub: userId }, jwtSecret, { expiresIn: "7d" });
 }
@@ -267,6 +276,7 @@ function normalizeSettings(settings, fallbackName) {
     siteName: safe.siteName || "我的 iOS 风格导航",
     siteLogo: safe.siteLogo || "",
     backgroundColor: safe.backgroundColor || "",
+    iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || ""
   };
@@ -665,10 +675,14 @@ app.get("/api/settings", async (req, res) => {
 });
 
 app.put("/api/settings", requireAuth, async (req, res) => {
-  const { siteName, backgroundColor, userName } = req.body || {};
+  const { siteName, backgroundColor, userName, iconScale } = req.body || {};
   const updates = {};
   if (siteName !== undefined) updates.siteName = String(siteName);
   if (backgroundColor !== undefined) updates.backgroundColor = String(backgroundColor);
+  if (iconScale !== undefined) {
+    const scale = Math.max(0, Math.min(100, Number(iconScale)));
+    if (!Number.isNaN(scale)) updates.iconScale = scale;
+  }
   if (userName !== undefined) updates.userName = String(userName);
   if (!Object.keys(updates).length) {
     res.status(400).json({ error: "No updates" });
@@ -747,6 +761,7 @@ async function handleRegister(req, res) {
       {
         siteName: "我的 iOS 风格导航",
         backgroundColor: "",
+        iconScale: 100,
         siteLogo: "",
         userName: safeUsername,
         userAvatar: ""
@@ -788,7 +803,7 @@ async function handleLogin(req, res) {
       return;
     }
     const token = signToken(user.id);
-    const secure = process.env.NODE_ENV === "production" ? "Secure; " : "";
+    const secure = getSecureCookieFlag(req);
     res.setHeader(
       "Set-Cookie",
       `token=${token}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=604800`
@@ -803,7 +818,11 @@ app.post("/login", handleLogin);
 app.post("/api/login", handleLogin);
 
 app.post("/api/logout", (req, res) => {
-  res.setHeader("Set-Cookie", "token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+  const secure = getSecureCookieFlag(req);
+  res.setHeader(
+    "Set-Cookie",
+    `token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; ${secure}`
+  );
   res.json({ ok: true });
 });
 
