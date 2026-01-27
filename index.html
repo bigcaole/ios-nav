@@ -140,38 +140,31 @@
         transition: all 0.25s ease;
         white-space: nowrap;
         width: fit-content;
+        gap: 6px;
+      }
+      .category-lock {
+        font-size: 12px;
+        line-height: 1;
       }
       .category-grid {
-        display: flex;
-        align-items: center;
-        gap: 24px;
+        display: grid;
+        align-items: start;
+        justify-content: start;
+        gap: 16px;
         flex: 1;
         overflow: visible !important;
-        overflow-x: visible !important;
-        overflow-y: visible !important;
-        flex-wrap: nowrap;
-        scroll-snap-type: x mandatory;
-        scroll-padding: 8px;
-        scroll-behavior: smooth;
         padding: 20px 0 24px 96px;
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+        grid-template-columns: repeat(4, minmax(0, var(--icon-size, 56px)));
+        grid-auto-rows: var(--icon-size, 56px);
         pointer-events: auto;
       }
       .category-grid::-webkit-scrollbar {
         display: none;
       }
-      .category-page {
-        flex: 0 0 100%;
-        min-width: 100%;
-        display: grid;
-        grid-auto-flow: column;
-        grid-auto-columns: var(--icon-size, 40px);
-        grid-template-rows: repeat(1, var(--icon-size, 40px));
-        gap: var(--grid-gap, 16px);
-        scroll-snap-align: start;
-        justify-content: flex-start;
-        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      @media (min-width: 768px) {
+        .category-grid {
+          grid-template-columns: repeat(6, minmax(0, var(--icon-size, 56px)));
+        }
       }
       .pagination-dots {
         display: flex;
@@ -243,11 +236,11 @@
       .is-editing .category-grid,
       .is-editing .category-card,
       .is-editing .dock-grid,
-      .is-editing .dock-slot,
+      .is-editing .dock-item,
       .app-unlocked .category-grid,
       .app-unlocked .category-card,
       .app-unlocked .dock-grid,
-      .app-unlocked .dock-slot {
+      .app-unlocked .dock-item {
         pointer-events: auto !important;
         user-select: auto !important;
         -webkit-user-drag: element !important;
@@ -270,34 +263,111 @@
       .mode-sort .icon:hover,
       .mode-sort .app:hover .icon {
         transform: none !important;
+        box-shadow: none !important;
+      }
+      body.mode-sort {
+        scrollbar-width: none;
+      }
+      body.mode-sort::-webkit-scrollbar {
+        display: none;
       }
       .mode-sort .category-grid {
         min-height: 50px;
       }
-      .mode-sort * {
+      .mode-sort .category-grid {
+        min-height: 50px;
+      }
+      .mode-sort .app {
+        transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+        will-change: transform;
+      }
+      .mode-sort .icon {
+        transition: none !important;
+      }
+      .mode-sort .icon {
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+        -webkit-box-reflect: none !important;
+      }
+      .mode-sort .dock-tooltip,
+      .mode-sort .dock-label-capsule,
+      .mode-sort .icon-label-capsule {
+        transition: none !important;
+        transform: none !important;
+        opacity: 1 !important;
+      }
+      .mode-sort .dock-item .icon {
+        -webkit-box-reflect: none !important;
+      }
+      .mode-sort .app:not(.sortable-drag) {
+        transform: none !important;
+      }
+      .mode-sort .app:not(.sortable-drag) .icon {
+        transform: none !important;
+        transition: none !important;
+      }
+      .mode-sort .app,
+      .mode-sort .icon,
+      .mode-sort .icon-item,
+      .mode-sort .category-grid,
+      .mode-sort .dock-grid,
+      .mode-sort .category-card {
         pointer-events: auto !important;
         user-select: none !important;
         -webkit-user-drag: none !important;
         cursor: grab !important;
       }
       .mode-sort .sortable-ghost {
-        background: rgba(255, 255, 255, 0.12);
-        border: 1px dashed rgba(255, 255, 255, 0.5);
+        background: rgba(255, 255, 255, 0.45) !important;
+        border: 2px dashed rgba(255, 255, 255, 0.6) !important;
         border-radius: 16px;
-        opacity: 0.3;
+        opacity: 0.7 !important;
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+      }
+      .mode-sort .sortable-ghost .icon,
+      .mode-sort .sortable-ghost .icon-label-capsule,
+      .mode-sort .sortable-ghost .dock-tooltip,
+      .mode-sort .sortable-ghost .label,
+      .mode-sort .sortable-ghost img,
+      .mode-sort .sortable-ghost svg,
+      .mode-sort .sortable-ghost button {
+        opacity: 0 !important;
+        visibility: hidden !important;
       }
       html.dark .mode-sort .sortable-ghost {
-        background: rgba(15, 23, 42, 0.35);
-        border-color: rgba(226, 232, 240, 0.35);
+        background: rgba(15, 23, 42, 0.5) !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+        opacity: 0.75 !important;
       }
       .mode-sort .sortable-drag {
-        opacity: 0.5 !important;
-        transform: scale(1.1) rotate(-2deg) !important;
-        box-shadow: 0 16px 32px rgba(15, 23, 42, 0.3);
+        opacity: 1 !important;
+        background: transparent !important;
+        box-shadow: 0 16px 32px rgba(0, 0, 0, 0.22);
+        filter: drop-shadow(0 10px 20px rgba(0, 0, 0, 0.18));
+        transition: none !important;
         animation: none !important;
+        will-change: transform;
+      }
+      .mode-sort .sortable-fallback {
+        position: fixed !important;
+        margin: 0 !important;
+        background: transparent !important;
+        box-shadow: 0 18px 36px rgba(0, 0, 0, 0.28);
+        filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.25));
+        border-radius: 16px;
+        pointer-events: none !important;
+        cursor: grabbing !important;
+        transition: none !important;
+        z-index: 99999 !important;
+        will-change: transform;
       }
       .mode-sort .sortable-drag .icon {
         animation: none !important;
+        transform: translateY(-6px) scale(1.08) !important;
+      }
+      .mode-sort .icon-item {
+        touch-action: none;
       }
       .is-editing .icon,
       .is-editing .app {
@@ -315,8 +385,24 @@
       .sortable-chosen {
         z-index: 9999 !important;
       }
+      .sortable-ghost,
+      .sortable-fallback {
+        pointer-events: none !important;
+      }
+      .mode-sort .sortable-chosen {
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35);
+        border-radius: 16px;
+      }
+      .sortable-fallback {
+        pointer-events: none !important;
+        cursor: grabbing !important;
+      }
       .sortable-drag {
         cursor: grabbing !important;
+      }
+      .mode-sort .sortable-fallback,
+      .mode-sort .sortable-ghost {
+        pointer-events: none !important;
       }
       .is-editing * {
         pointer-events: auto !important;
@@ -329,28 +415,26 @@
       }
       .app-unlocked .category-grid,
       .app-unlocked .dock-grid,
-      .app-unlocked .dock-slot {
+      .app-unlocked .dock-item {
         user-select: auto !important;
         pointer-events: auto !important;
         cursor: grab;
       }
       .app-unlocked .category-grid:active,
       .app-unlocked .dock-grid:active,
-      .app-unlocked .dock-slot:active {
+      .app-unlocked .dock-item:active {
         cursor: grabbing;
       }
-      .is-dragging .app,
-      .is-dragging .icon {
-        transform: none !important;
-        transition: none !important;
-      }
-      .is-dragging .icon {
+      .is-dragging .app:not(.sortable-drag) .icon {
         filter: none !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
       }
+      .mode-sort .app:hover .icon-label-capsule {
+        transform: none !important;
+      }
       .is-dragging .app {
-        opacity: 0.7;
+        opacity: 1;
       }
       .app-unlocked * {
         pointer-events: auto !important;
@@ -724,6 +808,10 @@
       .dock-empty {
         min-height: 100px;
       }
+      .mode-sort .dock-full {
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.55);
+        border-color: rgba(239, 68, 68, 0.35);
+      }
       .sort-unlocked #dock-container {
         min-height: 110px !important;
       }
@@ -735,37 +823,8 @@
         flex-wrap: nowrap;
         width: max-content;
       }
-      .dock-slot {
-        width: 60px;
-        height: 60px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 16px;
-        position: relative;
-        overflow: visible;
-      }
-      .dock-slot.empty {
-        border: 1px dashed rgba(148, 163, 184, 0.8);
-        background: rgba(255, 255, 255, 0.15);
-      }
-      html.dark .dock-slot.empty {
-        border-color: rgba(148, 163, 184, 0.5);
-        background: rgba(15, 23, 42, 0.35);
-      }
-      body:not(.mode-sort):not(.mode-delete) .dock-slot.empty {
-        display: none;
-      }
-      .dock-slot.empty,
       .dock-add-placeholder .icon {
         color: rgba(248, 250, 252, 0.9);
-      }
-      @media (min-width: 1024px) {
-        .dock-grid {
-          display: flex;
-          justify-content: center;
-          width: max-content;
-        }
       }
       .dock-item {
         width: 60px;
@@ -807,23 +866,35 @@
       .dock .label {
         display: none;
       }
-      .dock-tooltip {
+      .dock .icon-label-capsule {
+        display: none;
+      }
+      .dock-label-capsule {
         position: absolute;
-        bottom: 58px;
+        bottom: calc(100% + 10px);
         left: 50%;
         transform: translateX(-50%) translateY(6px);
-        padding: 6px 10px;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.7);
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(0, 0, 0, 0.55);
         color: #ffffff;
         font-size: 11px;
+        line-height: 1;
         white-space: nowrap;
         opacity: 0;
+        visibility: hidden;
         pointer-events: none;
+        z-index: 60;
         transition: opacity 0.2s ease, transform 0.2s ease;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
       }
-      .dock-item:hover .dock-tooltip {
+      html.dark .dock-label-capsule {
+        background: rgba(0, 0, 0, 0.5);
+      }
+      .dock-item:hover .dock-label-capsule {
         opacity: 1;
+        visibility: visible;
         transform: translateX(-50%) translateY(0);
       }
       
@@ -948,6 +1019,11 @@
         color: #2563eb;
         display: inline-flex;
       }
+      .select-lock {
+        margin-left: auto;
+        color: #ef4444;
+        font-size: 12px;
+      }
       .select-manage {
         color: #2563eb;
       }
@@ -969,6 +1045,9 @@
         border-radius: 14px;
         background: #f9fafb;
         border: 1px solid #e2e8f0;
+      }
+      .category-row .toggle {
+        flex-shrink: 0;
       }
       html.dark .category-row {
         background: #1f2937;
@@ -1250,8 +1329,21 @@
         scroll-snap-type: none;
         scroll-behavior: auto;
       }
+      .category-spacer {
+        height: 24px;
+        width: 100%;
+      }
+      .mode-sort .category-drag-handle {
+        cursor: grab;
+      }
+      .category-card.category-empty {
+        display: none;
+      }
+      #categoryNav {
+        background-color: rgba(0, 0, 0, 0.2) !important;
+      }
       html.dark #categoryNav {
-        background-color: rgba(17, 24, 39, 0.7) !important;
+        background-color: rgba(30, 41, 59, 0.6) !important;
       }
       .category-nav::-webkit-scrollbar {
         display: none;
@@ -1680,8 +1772,7 @@
     <div class="main-content">
       <div
         id="categoryNav"
-        class="fixed top-[76px] left-1/2 -translate-x-1/2 w-fit max-w-[90%] md:max-w-[65%] h-14 rounded-full shadow-lg ring-1 ring-white/50 backdrop-blur-xl flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide px-4 z-40"
-        style="background-color: rgba(255, 255, 255, 0.7) !important;"
+        class="fixed top-[76px] left-1/2 -translate-x-1/2 w-fit max-w-[90%] md:max-w-[65%] h-14 rounded-full shadow-lg ring-1 ring-white/50 dark:ring-white/10 backdrop-blur-xl flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide px-4 z-40"
       ></div>
       <main class="grid" id="appGrid"></main>
     </div>
@@ -1692,14 +1783,7 @@
       class="dock dock-container backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-2xl"
       aria-label="快捷栏"
     >
-      <div class="dock-grid" id="dockGrid" data-dock="true">
-        <div class="dock-slot" data-slot="0"></div>
-        <div class="dock-slot" data-slot="1"></div>
-        <div class="dock-slot" data-slot="2"></div>
-        <div class="dock-slot" data-slot="3"></div>
-        <div class="dock-slot" data-slot="4"></div>
-        <div class="dock-slot" data-slot="5"></div>
-      </div>
+      <div class="dock-grid" id="dockGrid" data-dock="true"></div>
     </div>
 
     <div class="modal" id="modal">
@@ -1811,6 +1895,13 @@
               placeholder="请输入分类名称"
             />
             <button class="btn bg-blue-600 text-white border border-blue-600/60" id="createCategoryBtn">新增</button>
+          </div>
+          <div class="toggle-row mt-2">
+            <span class="text-slate-800 dark:text-slate-100">隐私分类</span>
+            <label class="toggle">
+              <input id="newCategoryPrivate" type="checkbox" />
+              <span class="slider"></span>
+            </label>
           </div>
         </div>
         <div class="category-manager-list" id="categoryManagerList"></div>
@@ -2010,6 +2101,7 @@
       const newCategoryInput = document.querySelector("#newCategoryInput");
       const createCategoryBtn = document.querySelector("#createCategoryBtn");
       const categoryManagerList = document.querySelector("#categoryManagerList");
+      const newCategoryPrivate = document.querySelector("#newCategoryPrivate");
       const siteTitle = document.querySelector("#siteTitle");
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
@@ -2040,6 +2132,7 @@
         let sortUnlocked = false;
         let activeDeleteBubble = null;
         const dockLimit = 6;
+        let dockFullWarned = false;
       let saveTimer = null;
       let appearanceTimer = null;
 
@@ -2090,9 +2183,16 @@
           const btn = document.createElement("button");
           btn.type = "button";
           btn.className = "select-item";
+          btn.dataset.private = item.is_private ? "1" : "0";
           const label = document.createElement("span");
           label.textContent = item.name;
           btn.appendChild(label);
+          if (item.is_private) {
+            const lock = document.createElement("span");
+            lock.className = "select-lock";
+            lock.textContent = "🔒";
+            btn.appendChild(lock);
+          }
           if (item.name === current) {
             const check = document.createElement("span");
             check.className = "select-check";
@@ -2106,6 +2206,7 @@
             categorySelectLabel.textContent = item.name;
             categorySelectMenu.classList.remove("open");
             renderCategorySelect(categories, item.name);
+            syncPrivateToggleForCategory(item.name);
           });
           categorySelectMenu.appendChild(btn);
         });
@@ -2128,6 +2229,7 @@
 
         categoryInput.value = current || "";
         categorySelectLabel.textContent = current || "选择分类";
+        syncPrivateToggleForCategory(current);
       }
 
       async function parseCategoryResponse(res, fallbackMessage) {
@@ -2167,8 +2269,9 @@
               if (typeof item === "string") {
                 return { id: item, name: item };
               }
-              return { id: item.id, name: item.name };
+              return { id: item.id, name: item.name, is_private: Boolean(item.is_private) };
             });
+            allCategories = categories;
             renderCategorySelect(categories, selectedName);
             return categories;
           })
@@ -2176,6 +2279,22 @@
             alert(err.message || "加载分类失败");
             return [];
           });
+      }
+
+      function getCategoryByName(name) {
+        if (!name) return null;
+        return allCategories.find((item) => item.name === name) || null;
+      }
+
+      function syncPrivateToggleForCategory(name) {
+        if (!privateInput) return;
+        const info = getCategoryByName(name);
+        if (info && info.is_private) {
+          privateInput.checked = true;
+          privateInput.disabled = true;
+        } else {
+          privateInput.disabled = false;
+        }
       }
 
       function renderCategoryManager(categories) {
@@ -2194,6 +2313,44 @@
           const name = document.createElement("div");
           name.className = "category-name text-slate-900 dark:text-slate-100 font-bold opacity-100 pl-1";
           name.textContent = item.name || "未命名分类";
+          if (item.is_private) {
+            const lock = document.createElement("span");
+            lock.className = "category-lock";
+            lock.textContent = "🔒";
+            name.appendChild(lock);
+          }
+          const privacy = document.createElement("label");
+          privacy.className = "toggle";
+          const privacyInput = document.createElement("input");
+          privacyInput.type = "checkbox";
+          privacyInput.className = "category-private-toggle";
+          privacyInput.dataset.id = item.id;
+          privacyInput.checked = Boolean(item.is_private);
+          const privacySlider = document.createElement("span");
+          privacySlider.className = "slider";
+          privacy.append(privacyInput, privacySlider);
+          privacyInput.addEventListener("change", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const checked = privacyInput.checked;
+            const nameText = name.textContent.replace("🔒", "").trim();
+            fetch(`/api/categories/${item.id}`, {
+              method: "PUT",
+              credentials: "include",
+              headers: { "Content-Type": "application/json; charset=utf-8" },
+              body: JSON.stringify({ name: nameText, is_private: checked })
+            })
+              .then((res) => parseCategoryResponse(res, "更新失败"))
+              .then((updated) => {
+                loadCategories(updated.name || nameText).then((list) => {
+                  renderCategoryManager(list);
+                });
+                fetchLinks();
+              })
+              .catch((err) => {
+                alert(err.message || "更新失败");
+              });
+          });
           const actions = document.createElement("div");
           actions.className = "category-actions";
 
@@ -2216,8 +2373,9 @@
                 return res.json();
               })
               .then((updated) => {
-                name.textContent = updated.name || nextName;
-                loadCategories(updated.name || nextName);
+                loadCategories(updated.name || nextName).then((list) => {
+                  renderCategoryManager(list);
+                });
                 applySearch();
               })
               .catch((err) => {
@@ -2250,11 +2408,12 @@
 
           actions.append(editBtn, deleteBtn);
           row.dataset.categoryId = item.id;
-          row.append(name, actions);
+          row.append(name, privacy, actions);
           categoryManagerList.appendChild(row);
         });
       }
       let allLinks = [];
+      let allCategories = [];
       let sortables = [];
 
       function hashCode(text) {
@@ -2325,15 +2484,19 @@
             function groupByCategory(links) {
         const groups = {};
         const order = [];
+        const privacy = {};
         links.forEach((item) => {
           const key = (item.category || "默认分类").trim();
           if (!groups[key]) {
             groups[key] = [];
             order.push(key);
           }
+          if (item.category_private) {
+            privacy[key] = true;
+          }
           groups[key].push(item);
         });
-        return { groups, order };
+        return { groups, order, privacy };
       }
 
       function renderDockLinks(links) {
@@ -2345,36 +2508,21 @@
           if (dockContainer) {
             dockContainer.classList.toggle("dock-empty", !dockItems.length);
           }
-          const slots = Array.from(dockGrid.querySelectorAll(".dock-slot"));
-            slots.forEach((slot) => {
-              slot.innerHTML = "";
-              slot.classList.toggle("empty", editing || deleting);
-            });
-
-          const itemsBySlot = new Map();
-          const looseItems = [];
-          dockItems.forEach((item) => {
-            const position = Number(item.position_index);
-            if (!Number.isNaN(position) && position >= 0 && position < slots.length) {
-              itemsBySlot.set(position, item);
-            } else {
-              looseItems.push(item);
-            }
-          });
-          const emptySlots = slots
-            .map((slot, index) => ({ slot, index }))
-            .filter(({ index }) => !itemsBySlot.has(index));
-          looseItems.forEach((item, idx) => {
-            if (emptySlots[idx]) {
-              itemsBySlot.set(emptySlots[idx].index, item);
-            }
+          dockGrid.innerHTML = "";
+          dockItems.sort((a, b) => {
+            const ai = Number(a.position_index);
+            const bi = Number(b.position_index);
+            const aValid = Number.isFinite(ai);
+            const bValid = Number.isFinite(bi);
+            if (aValid && bValid && ai !== bi) return ai - bi;
+            if (aValid !== bValid) return aValid ? -1 : 1;
+            const as = Number(a.sort_index) || 0;
+            const bs = Number(b.sort_index) || 0;
+            if (as !== bs) return as - bs;
+            return String(a.id).localeCompare(String(b.id));
           });
 
-            itemsBySlot.forEach((item, index) => {
-              const slot = slots[index];
-              if (!slot) return;
-              slot.classList.remove("empty");
-              item.position_index = index;
+          dockItems.forEach((item, index) => {
             const isPrivate = loggedIn && Number(item.is_private) === 1;
             const card = document.createElement("a");
             const showJiggle = editing || deleting;
@@ -2393,14 +2541,14 @@
             card.dataset.positionIndex = String(index);
 
             const icon = document.createElement("div");
-                icon.className =
-                  "icon mb-2 border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:brightness-105 dark:shadow-black/30";
-                icon.draggable = false;
-                icon.style.isolation = "isolate";
-                icon.style.transform = "translateZ(0)";
-                icon.style.willChange = "transform";
-                icon.style.clipPath = "inset(0 round 1.25rem)";
-                icon.style.webkitClipPath = "inset(0 round 1.25rem)";
+            icon.className =
+              "icon mb-2 border border-white/20 bg-white/40 dark:bg-black/40 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out hover:-translate-y-1 hover:shadow-xl hover:brightness-105 dark:shadow-black/30";
+            icon.draggable = false;
+            icon.style.isolation = "isolate";
+            icon.style.transform = "translateZ(0)";
+            icon.style.willChange = "transform";
+            icon.style.clipPath = "inset(0 round 1.25rem)";
+            icon.style.webkitClipPath = "inset(0 round 1.25rem)";
             buildIcon(icon, item.url, item.icon, isPrivate);
 
             const minus = document.createElement("button");
@@ -2419,7 +2567,7 @@
             icon.appendChild(editBadge);
 
             const tooltip = document.createElement("div");
-            tooltip.className = "dock-tooltip";
+            tooltip.className = "dock-label-capsule";
             tooltip.textContent = item.title || "未命名";
             card.appendChild(tooltip);
 
@@ -2466,63 +2614,67 @@
             }
 
             card.append(icon, label);
-              slot.appendChild(card);
-            });
+            dockGrid.appendChild(card);
+          });
 
-            if (currentMode === "delete") {
-              slots.forEach((slot) => {
-                if (slot.querySelector(".app")) return;
-                const placeholder = document.createElement("div");
-                placeholder.className = "app dock-item dock-add-placeholder add-placeholder";
-                placeholder.dataset.dock = "true";
+          if (currentMode === "delete" && dockItems.length < dockLimit) {
+            for (let i = dockItems.length; i < dockLimit; i += 1) {
+              const placeholder = document.createElement("div");
+              placeholder.className = "app dock-item dock-add-placeholder add-placeholder";
+              placeholder.dataset.dock = "true";
 
-                const icon = document.createElement("div");
-                icon.className =
-                  "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
-                icon.textContent = "+";
-                placeholder.appendChild(icon);
+              const icon = document.createElement("div");
+              icon.className =
+                "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
+              icon.textContent = "+";
+              placeholder.appendChild(icon);
 
-                placeholder.addEventListener("click", (event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  editingLinkId = null;
-                  editingDockPosition = null;
-                  if (dockInput) {
-                    dockInput.checked = true;
-                  }
-                  formTitle.textContent = "添加导航";
-                  saveBtn.textContent = "保存";
-                  titleInput.value = "";
-                  urlInput.value = "";
-                  privateInput.checked = false;
-                  loadCategories();
-                  openModal(modal, { returnToSettings: true });
-                });
-
-                slot.appendChild(placeholder);
+              placeholder.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                editingLinkId = null;
+                editingDockPosition = null;
+                if (dockInput) {
+                  dockInput.checked = true;
+                }
+                formTitle.textContent = "添加导航";
+                saveBtn.textContent = "保存";
+                titleInput.value = "";
+                urlInput.value = "";
+                privateInput.checked = false;
+                loadCategories();
+                openModal(modal, { returnToSettings: true });
               });
+
+              dockGrid.appendChild(placeholder);
             }
+          }
         } catch (err) {
           console.log("No data found");
         }
       }
 
-      function getDockCountLive() {
+      function getDockCountLive(excludeId) {
         if (!dockGrid) {
           return allLinks.filter((item) => item.is_dock).length;
         }
-        return dockGrid.querySelectorAll(
-          ".dock-slot .app:not(.sortable-ghost):not(.sortable-chosen):not(.sortable-fallback)"
-        ).length;
+        const items = dockGrid.querySelectorAll(
+          ".dock-item:not(.dock-add-placeholder):not(.sortable-ghost):not(.sortable-chosen):not(.sortable-fallback)"
+        );
+        let count = 0;
+        items.forEach((item) => {
+          if (excludeId && String(item.dataset.id) === String(excludeId)) {
+            return;
+          }
+          count += 1;
+        });
+        return count;
       }
 
       function getFirstEmptyDockSlot() {
         if (!dockGrid) return null;
-        const slots = Array.from(dockGrid.querySelectorAll(".dock-slot"));
-        const empty = slots.find((slot) => !slot.querySelector(".app"));
-        if (!empty) return null;
-        const index = Number(empty.dataset.slot);
-        return Number.isNaN(index) ? null : index;
+        const count = getDockCountLive();
+        return count < dockLimit ? count : null;
       }
 
       function renderLinks(links) {
@@ -2540,14 +2692,25 @@
             cardWrap.dataset.category = category;
             cardWrap.dataset.original = category;
             cardWrap.id = `category-${slugify(category)}`;
+            if (grouped.privacy && grouped.privacy[category]) {
+              cardWrap.dataset.private = "true";
+            } else {
+              cardWrap.dataset.private = "false";
+            }
 
             const heading = document.createElement("div");
             heading.className = "category-title category-title-capsule";
             heading.textContent = category;
+            if (grouped.privacy && grouped.privacy[category]) {
+              const lock = document.createElement("span");
+              lock.className = "category-lock";
+              lock.textContent = "🔒";
+              heading.appendChild(lock);
+            }
             cardWrap.appendChild(heading);
 
             const spacer = document.createElement("div");
-            spacer.className = "category-spacer";
+            spacer.className = "category-spacer category-drag-handle";
             cardWrap.appendChild(spacer);
 
             const innerGrid = document.createElement("div");
@@ -2607,22 +2770,11 @@
             });
 
             const items = grouped.groups[category];
-            const pages = [];
-            for (let i = 0; i < items.length; i += pageSize) {
-              pages.push(items.slice(i, i + pageSize));
-            }
-            const totalPages = pages.length;
-            const pageWidth = perRow * iconSize + (perRow - 1) * gridGap;
-            innerGrid.style.width = `${pageWidth}px`;
-            pages.forEach((pageItems, pageIndex) => {
-              const page = document.createElement("div");
-              page.className = "category-page";
-              page.style.width = `${pageWidth}px`;
-              page.style.setProperty("--cols", perRow);
-              page.style.setProperty("--icon-size", `${iconSize}px`);
-              page.style.setProperty("--grid-gap", `${gridGap}px`);
-              pageItems.forEach((item) => {
-                const isPrivate = loggedIn && Number(item.is_private) === 1;
+            innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
+            innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
+            items.forEach((item) => {
+                const isPrivate =
+                  loggedIn && (Number(item.is_private) === 1 || item.category_private);
             const card = document.createElement("a");
             const showJiggle = editing || deleting;
             card.className = showJiggle ? "app jiggle icon-item" : "app icon-item";
@@ -2706,113 +2858,52 @@
                 }
 
             card.append(icon, label);
-                page.appendChild(card);
-                });
+            innerGrid.appendChild(card);
+            });
 
-                if (currentMode === "delete" && pageIndex === pages.length - 1) {
-                  const placeholder = document.createElement("div");
-                  placeholder.className = "app add-placeholder";
-                  placeholder.dataset.category = category;
-                  placeholder.dataset.dock = "false";
+            if (currentMode === "delete") {
+              const placeholder = document.createElement("div");
+              placeholder.className = "app add-placeholder";
+              placeholder.dataset.category = category;
+              placeholder.dataset.dock = "false";
 
-                  const icon = document.createElement("div");
-                  icon.className =
-                    "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
-                  icon.textContent = "+";
-                  placeholder.appendChild(icon);
+              const icon = document.createElement("div");
+              icon.className =
+                "icon border border-white/20 bg-white/20 dark:bg-black/30 backdrop-blur-xl rounded-2xl shadow-sm transition-all duration-300 ease-out";
+              icon.textContent = "+";
+              placeholder.appendChild(icon);
 
-                  const label = document.createElement("div");
-                  label.className = "icon-label-capsule";
-                  const labelText = document.createElement("span");
-                  labelText.className = "icon-label-text";
-                  labelText.textContent = "新增";
-                  label.appendChild(labelText);
-                  placeholder.appendChild(label);
+              const label = document.createElement("div");
+              label.className = "icon-label-capsule";
+              const labelText = document.createElement("span");
+              labelText.className = "icon-label-text";
+              labelText.textContent = "新增";
+              label.appendChild(labelText);
+              placeholder.appendChild(label);
 
-                  placeholder.addEventListener("click", (event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    editingLinkId = null;
-                    editingDockPosition = null;
-                    if (dockInput) {
-                      dockInput.checked = false;
-                    }
-                    formTitle.textContent = "添加导航";
-                    saveBtn.textContent = "保存";
-                    titleInput.value = "";
-                    urlInput.value = "";
-                    privateInput.checked = false;
-                    categoryInput.value = category;
-                    categorySelectLabel.textContent = category;
-                    loadCategories(category);
-                    openModal(modal, { returnToSettings: true });
-                  });
-
-                  page.appendChild(placeholder);
+              placeholder.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                editingLinkId = null;
+                editingDockPosition = null;
+                if (dockInput) {
+                  dockInput.checked = false;
                 }
-
-                innerGrid.appendChild(page);
+                formTitle.textContent = "添加导航";
+                saveBtn.textContent = "保存";
+                titleInput.value = "";
+                urlInput.value = "";
+                privateInput.checked = false;
+                categoryInput.value = category;
+                categorySelectLabel.textContent = category;
+                loadCategories(category);
+                openModal(modal, { returnToSettings: true });
               });
+
+              innerGrid.appendChild(placeholder);
+            }
 
             cardWrap.appendChild(innerGrid);
-            if (totalPages > 1) {
-              const dots = document.createElement("div");
-              dots.className = "pagination-dots";
-              for (let i = 0; i < totalPages; i += 1) {
-                const dot = document.createElement("button");
-                dot.type = "button";
-                dot.className = i === 0 ? "pagination-dot active" : "pagination-dot";
-                dot.addEventListener("click", () => {
-                  innerGrid.scrollTo({ left: pageWidth * i, behavior: "smooth" });
-                });
-                dots.appendChild(dot);
-              }
-
-              const leftArrow = document.createElement("button");
-              leftArrow.type = "button";
-              leftArrow.className = "page-arrow left hidden";
-              leftArrow.innerHTML = "&lt;";
-              const rightArrow = document.createElement("button");
-              rightArrow.type = "button";
-              rightArrow.className = "page-arrow right";
-              rightArrow.innerHTML = "&gt;";
-
-              let currentPage = 0;
-              const updateControls = () => {
-                dots.querySelectorAll(".pagination-dot").forEach((dot, idx) => {
-                  dot.classList.toggle("active", idx === currentPage);
-                });
-                leftArrow.classList.toggle("hidden", currentPage === 0);
-                rightArrow.classList.toggle("hidden", currentPage === totalPages - 1);
-              };
-
-              leftArrow.addEventListener("click", () => {
-                currentPage = Math.max(0, currentPage - 1);
-                innerGrid.scrollTo({ left: pageWidth * currentPage, behavior: "smooth" });
-                updateControls();
-              });
-              rightArrow.addEventListener("click", () => {
-                currentPage = Math.min(totalPages - 1, currentPage + 1);
-                innerGrid.scrollTo({ left: pageWidth * currentPage, behavior: "smooth" });
-                updateControls();
-              });
-
-              let ticking = false;
-              innerGrid.addEventListener("scroll", () => {
-                if (ticking) return;
-                ticking = true;
-                requestAnimationFrame(() => {
-                  currentPage = Math.round(innerGrid.scrollLeft / pageWidth);
-                  updateControls();
-                  ticking = false;
-                });
-              });
-
-              updateControls();
-              cardWrap.appendChild(leftArrow);
-              cardWrap.appendChild(rightArrow);
-              cardWrap.appendChild(dots);
-            }
             grid.appendChild(cardWrap);
           });
           if (currentMode === "delete") {
@@ -2838,6 +2929,7 @@
       document.body.classList.toggle("is-deleting", deleting);
           initCategoryFisheye();
           initSortables();
+          updateEmptyCategories();
         } catch (err) {
           console.log("No data found");
         }
@@ -2845,12 +2937,73 @@
 
       function updateContainerState(container) {
         if (!container) return;
-        const isDock = container.classList.contains("dock-slot");
+        const isDock =
+          container.dataset.dock === "true" ||
+          (dockGrid && container === dockGrid);
         const categoryName = isDock ? "" : container.dataset.category || "";
         container.querySelectorAll(".app").forEach((app) => {
           app.dataset.dock = isDock ? "true" : "false";
           app.dataset.category = categoryName;
         });
+      }
+
+      function normalizeDockItem(card) {
+        if (!card) return;
+        card.classList.add("dock-item");
+        const capsule = card.querySelector(".icon-label-capsule");
+        if (capsule) capsule.remove();
+        const label = card.querySelector(".label");
+        if (label) label.remove();
+        if (!card.querySelector(".dock-label-capsule")) {
+          const capsule = document.createElement("div");
+          capsule.className = "dock-label-capsule";
+          capsule.textContent = card.dataset.title || "未命名";
+          card.appendChild(capsule);
+        }
+      }
+
+      function normalizeCategoryItem(card) {
+        if (!card) return;
+        card.classList.remove("dock-item");
+        const tooltip = card.querySelector(".dock-tooltip");
+        if (tooltip) tooltip.remove();
+        const label = card.querySelector(".label");
+        if (label) label.remove();
+        if (!card.querySelector(".icon-label-capsule")) {
+          const capsule = document.createElement("div");
+          capsule.className = "icon-label-capsule";
+          const text = document.createElement("span");
+          text.className = "icon-label-text";
+          text.textContent = card.dataset.title || "未命名";
+          capsule.appendChild(text);
+          card.appendChild(capsule);
+        }
+      }
+
+      function updateEmptyCategories() {
+        if (currentMode === "sort" || sortUnlocked) {
+          return;
+        }
+        if (!grid) return;
+        const cards = Array.from(grid.querySelectorAll(".category-card"));
+        const visibleCards = [];
+        const emptyCards = [];
+        cards.forEach((card) => {
+          if (card.classList.contains("category-add-card")) {
+            visibleCards.push(card);
+            return;
+          }
+          const hasIcons = Boolean(card.querySelector(".category-grid .app"));
+          if (hasIcons) {
+            card.classList.remove("category-empty");
+            visibleCards.push(card);
+          } else {
+            card.classList.add("category-empty");
+            emptyCards.push(card);
+          }
+        });
+        visibleCards.forEach((card) => grid.appendChild(card));
+        emptyCards.forEach((card) => grid.appendChild(card));
       }
 
         function renderCategoryNav(categories) {
@@ -2948,10 +3101,13 @@
         destroySortables();
 
           const categorySortable = new Sortable(grid, {
-            animation: 300,
-            draggable: ".category-card",
-            handle: ".category-title-capsule",
+            animation: 250,
+            draggable: ".category-card:not(.category-empty)",
+            handle: ".category-drag-handle",
             forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: 3,
+            fallbackClass: "sortable-fallback",
             easing: "cubic-bezier(0.25, 1, 0.5, 1)",
             swapThreshold: 0.65,
             disabled: false,
@@ -2960,11 +3116,17 @@
               document.body.classList.add("is-dragging");
               clearDragImage(event);
             },
-          onEnd: () => {
-            console.log("排序数据已保存");
-            document.body.classList.remove("is-dragging");
-            pendingChanges = true;
-            scheduleAutoSave();
+            onEnd: (event) => {
+              console.log("排序数据已保存");
+              document.body.classList.remove("is-dragging");
+              const moved =
+                event &&
+                (event.from !== event.to || event.oldIndex !== event.newIndex);
+              if (moved) {
+                pendingChanges = true;
+                scheduleAutoSave();
+                updateEmptyCategories();
+              }
           }
         });
         sortables.push(categorySortable);
@@ -2973,15 +3135,38 @@
           const rect = container.getBoundingClientRect();
           console.log("Category grid rect:", rect.width, rect.height);
           const sortable = new Sortable(container, {
-            animation: 300,
+            animation: 320,
             draggable: ".icon-item",
-            handle: ".icon-item",
-            group: { name: "shared", pull: true, put: true },
+            handle: ".icon",
+            group: {
+              name: "shared",
+              pull: true,
+              put: (to, from, dragEl) => {
+                if (to !== dockGrid) return true;
+                if (from === dockGrid) return true;
+                const draggedId = dragEl && dragEl.dataset ? dragEl.dataset.id : null;
+                return getDockCountLive(draggedId) < dockLimit;
+              }
+            },
             sort: true,
+            filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
+            preventOnFilter: false,
             forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: 0,
+            fallbackClass: "sortable-fallback",
+            delay: 0,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 2,
+            dragoverBubble: false,
+            invertSwap: true,
+            invertedSwapThreshold: 0.3,
+            scroll: true,
+            scrollSensitivity: 80,
+            scrollSpeed: 12,
             swap: false,
-            easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-            swapThreshold: 0.65,
+            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+            swapThreshold: 0.7,
             ghostClass: "sortable-ghost",
             dragClass: "sortable-drag",
             disabled: false,
@@ -2991,16 +3176,45 @@
               clearDragImage(event);
               if (event.item) {
                 event.item.classList.add("is-dragging");
+                event.item.draggable = false;
+                event.item.setAttribute("draggable", "false");
+                event.item.querySelectorAll("img").forEach((img) => {
+                  img.draggable = false;
+                  img.setAttribute("draggable", "false");
+                });
               }
               if (dockGrid) {
                 dockGrid.classList.add("dock-drop");
               }
+            },
+            onMove: (event) => {
+              if (!dockGrid) return true;
+              const dockContainer = dockGrid.closest("#dock-container");
+              if (!dockContainer) return true;
+              if (event.to === dockGrid) {
+                const draggedId = event.dragged && event.dragged.dataset ? event.dragged.dataset.id : null;
+                const full = getDockCountLive(draggedId) >= dockLimit;
+                dockContainer.classList.toggle("dock-full", full);
+                if (full) {
+                  if (!dockFullWarned) {
+                    showToast("快捷栏已满（限6个图标），请先移除多余项。");
+                    dockFullWarned = true;
+                  }
+                  return false;
+                }
+                dockFullWarned = false;
+              } else {
+                dockContainer.classList.remove("dock-full");
+                dockFullWarned = false;
+              }
+              return true;
             },
             onAdd: (event) => {
               const card = event.item;
               if (!card) return;
               const id = card.dataset.id;
               const categoryName = container.dataset.category || "";
+              normalizeCategoryItem(card);
               updateLinkDockState(id, false, categoryName, null);
             },
             onEnd: (event) => {
@@ -3008,114 +3222,147 @@
               document.body.classList.remove("is-dragging");
               if (event.item) {
                 event.item.classList.remove("is-dragging");
+                event.item.draggable = false;
+                event.item.setAttribute("draggable", "false");
               }
-              pendingChanges = true;
-              updateContainerState(event.from);
-              updateContainerState(event.to);
-              syncAllOrders();
+              if (dockGrid) {
+                const dockContainer = dockGrid.closest("#dock-container");
+                if (dockContainer) dockContainer.classList.remove("dock-full");
+                dockFullWarned = false;
+              }
+              const moved =
+                event &&
+                (event.from !== event.to || event.oldIndex !== event.newIndex);
+              if (moved) {
+                pendingChanges = true;
+                updateContainerState(event.from);
+                updateContainerState(event.to);
+                syncAllOrders();
+              }
               if (dockGrid) {
                 dockGrid.classList.remove("dock-drop");
               }
+              updateEmptyCategories();
             }
           });
           sortables.push(sortable);
         });
         if (dockGrid) {
-          dockGrid.querySelectorAll(".dock-slot").forEach((slot) => {
-            const rect = slot.getBoundingClientRect();
-            console.log("Dock slot rect:", rect.width, rect.height);
-            const dockSortable = new Sortable(slot, {
-              animation: 300,
-              draggable: ".icon-item",
-              handle: ".icon-item",
-              group: { name: "shared", pull: true, put: true },
-              sort: true,
-              forceFallback: true,
-              swap: true,
-              swapThreshold: 0.65,
-              easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-              ghostClass: "sortable-ghost",
-              dragClass: "sortable-drag",
-              disabled: false,
-              onStart: (event) => {
-                console.log("图标拖拽已捕获");
-                document.body.classList.add("is-dragging");
-                clearDragImage(event);
-                dockGrid.classList.add("dock-drop");
-                if (event.item) {
-                  event.item.classList.add("is-dragging");
-                }
-              },
-              onMove: (event) => {
-                if (!event.to || !event.to.classList.contains("dock-slot")) {
-                  return true;
-                }
-                const fromDock = event.from && event.from.classList.contains("dock-slot");
-                if (event.from && event.from.classList.contains("dock-slot")) {
-                  return true;
-                }
-                const existing = event.to.querySelector(".app");
-                if (existing && !fromDock) {
-                  return false;
-                }
-                if (getDockCountLive() >= dockLimit) {
-                  showToast("快捷栏已满（限6个图标），请先移除多余项。");
-                  return false;
-                }
-                return true;
-              },
-              onAdd: (event) => {
-                const card = event.item;
-                if (!card) return;
-                const fromDock = event.from && event.from.classList.contains("dock-slot");
-                const existing = Array.from(event.to.querySelectorAll(".app")).find(
-                  (app) => app !== card
-                );
-                if (existing && !fromDock) {
-                  event.from && event.from.appendChild(card);
-                  return;
-                }
-                if (existing && event.from) {
-                  event.from.appendChild(existing);
-                }
-                const id = card.dataset.id;
-                const slotIndex = Number(event.to.dataset.slot);
-                if (getDockCountLive() > dockLimit) {
-                  showToast("快捷栏已满（限6个图标），请先移除多余项。");
-                  event.from && event.from.appendChild(card);
-                  return;
-                }
-                updateLinkDockState(id, true, "", slotIndex);
-                if (existing) {
-                  const fromCategory = event.from.dataset.category || "";
-                  const fromIsDock = event.from.classList.contains("dock-slot");
-                  const fromSlot = fromIsDock ? Number(event.from.dataset.slot) : null;
-                  updateLinkDockState(
-                    existing.dataset.id,
-                    fromIsDock,
-                    fromIsDock ? "" : fromCategory,
-                    fromIsDock ? fromSlot : null
-                  );
-                }
-              },
-              onRemove: () => {
-                updateContainerState(slot);
-              },
-              onEnd: (event) => {
-                console.log("排序数据已保存");
-                document.body.classList.remove("is-dragging");
-                if (event.item) {
-                  event.item.classList.remove("is-dragging");
-                }
-                pendingChanges = true;
-                updateContainerState(event.from);
-                updateContainerState(event.to);
-                dockGrid.classList.remove("dock-drop");
-                syncAllOrders();
+          const rect = dockGrid.getBoundingClientRect();
+          console.log("Dock grid rect:", rect.width, rect.height);
+          const dockSortable = new Sortable(dockGrid, {
+            animation: 320,
+            draggable: ".dock-item",
+            handle: ".icon",
+            group: { name: "shared", pull: true, put: true },
+            sort: true,
+            filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
+            preventOnFilter: false,
+            forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: 0,
+            fallbackClass: "sortable-fallback",
+            delay: 0,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 2,
+            dragoverBubble: false,
+            invertSwap: true,
+            invertedSwapThreshold: 0.3,
+            scroll: true,
+            scrollSensitivity: 80,
+            scrollSpeed: 12,
+            swap: false,
+            swapThreshold: 0.7,
+            easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
+            ghostClass: "sortable-ghost",
+            dragClass: "sortable-drag",
+            disabled: false,
+            onStart: (event) => {
+              console.log("图标拖拽已捕获");
+              document.body.classList.add("is-dragging");
+              clearDragImage(event);
+              dockGrid.classList.add("dock-drop");
+              if (event.item) {
+                event.item.classList.add("is-dragging");
+                event.item.draggable = false;
+                event.item.setAttribute("draggable", "false");
+                event.item.querySelectorAll("img").forEach((img) => {
+                  img.draggable = false;
+                  img.setAttribute("draggable", "false");
+                });
               }
-            });
-            sortables.push(dockSortable);
+            },
+            onMove: (event) => {
+              if (event.to !== dockGrid) return true;
+              const fromDock = event.from === dockGrid;
+              const draggedId = event.dragged && event.dragged.dataset ? event.dragged.dataset.id : null;
+              const dockContainer = dockGrid.closest("#dock-container");
+              const full = !fromDock && getDockCountLive(draggedId) >= dockLimit;
+              if (dockContainer) {
+                dockContainer.classList.toggle("dock-full", full);
+              }
+              if (full) {
+                if (!dockFullWarned) {
+                  showToast("快捷栏已满（限6个图标），请先移除多余项。");
+                  dockFullWarned = true;
+                }
+                return false;
+              }
+              dockFullWarned = false;
+              return true;
+            },
+            onUpdate: () => {
+              updateContainerState(dockGrid);
+              syncAllOrders();
+            },
+            onRemove: (event) => {
+              if (event.item) {
+                normalizeCategoryItem(event.item);
+              }
+            },
+            onAdd: (event) => {
+              const card = event.item;
+              if (!card) return;
+              const fromDock = event.from === dockGrid;
+              const draggedId = card ? card.dataset.id : null;
+              if (!fromDock && getDockCountLive(draggedId) > dockLimit) {
+                showToast("快捷栏已满（限6个图标），请先移除多余项。");
+                event.from && event.from.appendChild(card);
+                return;
+              }
+              const id = card.dataset.id;
+              normalizeDockItem(card);
+              updateLinkDockState(id, true, "", null);
+            },
+            onEnd: (event) => {
+              console.log("排序数据已保存");
+              document.body.classList.remove("is-dragging");
+              if (event.item) {
+                event.item.classList.remove("is-dragging");
+                event.item.draggable = false;
+                event.item.setAttribute("draggable", "false");
+              }
+              const moved =
+                event &&
+                (event.from !== event.to || event.oldIndex !== event.newIndex);
+              if (moved) {
+                pendingChanges = true;
+                updateContainerState(dockGrid);
+                dockGrid.classList.remove("dock-drop");
+                const dockContainer = dockGrid.closest("#dock-container");
+                if (dockContainer) dockContainer.classList.remove("dock-full");
+                dockFullWarned = false;
+                syncAllOrders();
+                updateEmptyCategories();
+              } else {
+                dockGrid.classList.remove("dock-drop");
+                const dockContainer = dockGrid.closest("#dock-container");
+                if (dockContainer) dockContainer.classList.remove("dock-full");
+                dockFullWarned = false;
+              }
+            }
           });
+          sortables.push(dockSortable);
         }
       }
 
@@ -3294,6 +3541,11 @@
         if (!id) {
           return;
         }
+        if (currentMode === "sort" || document.body.classList.contains("is-dragging")) {
+          event.preventDefault();
+          event.stopPropagation();
+          return;
+        }
         if (editBtn || deleteBtn) {
           event.preventDefault();
           event.stopPropagation();
@@ -3336,6 +3588,17 @@
       if (dockContainer) {
         dockContainer.addEventListener("click", handleBadgeAction);
       }
+      document.addEventListener(
+        "click",
+        (event) => {
+          if (currentMode !== "sort") return;
+          const link = event.target.closest(".app");
+          if (!link) return;
+          event.preventDefault();
+          event.stopPropagation();
+        },
+        true
+      );
       document.addEventListener("click", (event) => {
         if (event.target.closest(".delete-bubble")) {
           return;
@@ -3345,6 +3608,11 @@
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
           return;
+        }
+      });
+      document.addEventListener("selectstart", (event) => {
+        if (currentMode === "sort") {
+          event.preventDefault();
         }
       });
 
@@ -3435,16 +3703,20 @@
       function updateLinkDockState(id, isDock, categoryName, positionIndex) {
         const target = allLinks.find((item) => String(item.id) === String(id));
         if (!target) return;
-        if (isDock && !target.is_dock && getDockCountLive() >= dockLimit) {
+        if (isDock && !target.is_dock && getDockCountLive(target.id) >= dockLimit) {
           showToast("快捷栏已满（限6个图标），请先移除多余项。");
-          applySearch();
+          if (currentMode !== "sort" && !sortUnlocked) {
+            applySearch();
+          }
           return;
         }
+        const categoryInfo = !isDock ? getCategoryByName(categoryName) : null;
+        const enforcedPrivate = Boolean(categoryInfo && categoryInfo.is_private);
         const payload = {
           title: target.title || "",
           url: target.url || "",
           category: isDock ? "" : categoryName || target.category || "",
-          is_private: target.is_private ? 1 : 0,
+          is_private: enforcedPrivate ? 1 : target.is_private ? 1 : 0,
           is_dock: isDock,
           position_index: isDock && typeof positionIndex === "number" ? positionIndex : null
         };
@@ -3458,7 +3730,11 @@
             target.is_dock = isDock;
             target.category = payload.category;
             target.position_index = payload.position_index;
-            applySearch();
+            target.is_private = payload.is_private ? 1 : 0;
+            target.category_private = enforcedPrivate;
+            if (currentMode !== "sort" && !sortUnlocked) {
+              applySearch();
+            }
           })
           .catch(() => {});
       }
@@ -3502,10 +3778,27 @@
       function syncAllOrders() {
         document.querySelectorAll(".category-grid").forEach((container) => {
           updateContainerState(container);
+          const categoryName = container.dataset.category || "";
+          container.querySelectorAll(".app").forEach((app, index) => {
+            const target = allLinks.find((item) => String(item.id) === String(app.dataset.id));
+            if (!target) return;
+            const categoryInfo = getCategoryByName(categoryName);
+            target.is_dock = false;
+            target.category = categoryName;
+            target.sort_index = index;
+            target.category_private = categoryInfo ? categoryInfo.is_private : false;
+          });
         });
-        document.querySelectorAll(".dock-slot").forEach((slot) => {
-          updateContainerState(slot);
-        });
+        if (dockGrid) {
+          updateContainerState(dockGrid);
+          dockGrid.querySelectorAll(".dock-item").forEach((app, index) => {
+            const target = allLinks.find((item) => String(item.id) === String(app.dataset.id));
+            if (!target) return;
+            target.is_dock = true;
+            target.category = "";
+            target.position_index = index;
+          });
+        }
         pendingChanges = true;
         scheduleAutoSave();
       }
@@ -3590,11 +3883,6 @@
           deleting = false;
         }
         updateModeUI();
-        if (next === "preview") {
-          document.querySelectorAll(".dock-slot.empty").forEach((slot) => {
-            slot.classList.remove("empty");
-          });
-        }
         try {
           const selection = window.getSelection && window.getSelection();
           if (selection && selection.removeAllRanges) {
@@ -3665,14 +3953,11 @@
           });
         });
         if (dockGrid) {
-          dockGrid.querySelectorAll(".dock-slot").forEach((slot) => {
-            const app = slot.querySelector(".app");
-            if (!app) return;
-            const positionIndex = Number(slot.dataset.slot);
+          dockGrid.querySelectorAll(".dock-item").forEach((app, index) => {
             links.push({
               id: app.dataset.id,
-              sort_index: Number(positionIndex) || 0,
-              position_index: Number.isNaN(positionIndex) ? null : positionIndex,
+              sort_index: index,
+              position_index: index,
               category: "",
               is_dock: true
             });
@@ -3760,8 +4045,7 @@
         }
 
         function handleMove(event) {
-          if (editing || deleting || sortUnlocked) {
-            resetScales();
+          if (editing || deleting || sortUnlocked || currentMode === "sort") {
             return;
           }
           const rect = dock.getBoundingClientRect();
@@ -3782,6 +4066,9 @@
 
         dock.addEventListener("mousemove", handleMove);
         dock.addEventListener("mouseleave", () => {
+          if (editing || deleting || sortUnlocked || currentMode === "sort") {
+            return;
+          }
           if (rafId) cancelAnimationFrame(rafId);
           resetScales();
         });
@@ -3805,8 +4092,7 @@
           }
 
           function handleMove(event) {
-            if (sortUnlocked) {
-              resetScales();
+            if (sortUnlocked || currentMode === "sort") {
               return;
             }
             const rect = gridEl.getBoundingClientRect();
@@ -3836,6 +4122,9 @@
 
           gridEl.addEventListener("mousemove", handleMove);
           gridEl.addEventListener("mouseleave", () => {
+            if (sortUnlocked || currentMode === "sort") {
+              return;
+            }
             if (rafId) cancelAnimationFrame(rafId);
             resetScales();
           });
@@ -3855,12 +4144,15 @@
         saveBtn.textContent = "保存修改";
         titleInput.value = item.title || "";
         urlInput.value = item.url || "";
-        categoryInput.value = item.is_dock ? "" : item.category || "";
+        const categoryName = item.is_dock ? "" : item.category || "";
+        categoryInput.value = categoryName;
         privateInput.checked = Number(item.is_private) === 1;
         if (dockInput) {
           dockInput.checked = Boolean(item.is_dock);
         }
-        loadCategories(item.is_dock ? "" : item.category || "");
+        loadCategories(categoryName).then(() => {
+          syncPrivateToggleForCategory(categoryName);
+        });
           openModal(modal, { returnToSettings: false });
         }
 
@@ -3985,6 +4277,17 @@
           categorySelectMenu.classList.remove("open");
         }
       });
+      if (dockInput) {
+        dockInput.addEventListener("change", () => {
+          if (dockInput.checked) {
+            if (privateInput) {
+              privateInput.disabled = false;
+            }
+          } else {
+            syncPrivateToggleForCategory(categoryInput ? categoryInput.value : "");
+          }
+        });
+      }
       if (manageCategoryEntryBtn) {
         manageCategoryEntryBtn.addEventListener("click", () => {
           closeModal(addMenuModal);
@@ -4004,16 +4307,20 @@
           alert("分类名称不能为空");
           return;
         }
+        const isPrivate = Boolean(newCategoryPrivate && newCategoryPrivate.checked);
         fetch("/api/categories", {
           method: "POST",
           credentials: "include",
           headers: { "Content-Type": "application/json; charset=utf-8" },
-          body: JSON.stringify({ name })
+          body: JSON.stringify({ name, is_private: isPrivate })
         })
           .then((res) => parseCategoryResponse(res, "新增失败"))
           .then((created) => {
             if (newCategoryInput) {
               newCategoryInput.value = "";
+            }
+            if (newCategoryPrivate) {
+              newCategoryPrivate.checked = false;
             }
             return loadCategories(created.name || name);
           })
@@ -4138,6 +4445,10 @@
       document.addEventListener("contextmenu", (event) => {
         const target = event.target;
         if (!target) return;
+        if (currentMode === "sort") {
+          event.preventDefault();
+          return;
+        }
         if (document.body.classList.contains("is-editing") || sortUnlocked) {
           return;
         }
@@ -4148,7 +4459,15 @@
       });
 
         document.addEventListener("dragstart", (event) => {
-          if (window.isEditing || currentMode === "sort") {
+          if (currentMode === "sort" || sortUnlocked) {
+            return;
+          }
+          if (window.isEditing) {
+            return;
+          }
+          const target = event.target;
+          if (target && target.closest(".app, .icon, .icon-item")) {
+            event.preventDefault();
             return;
           }
           event.preventDefault();
@@ -4305,6 +4624,13 @@
 
       if (sortLockBtn) {
         sortLockBtn.addEventListener("click", () => {
+          if (currentMode !== "preview") {
+            setActiveMode("preview");
+            if (modeControl) {
+              modeControl.classList.remove("open");
+            }
+            return;
+          }
           if (modeControl) {
             const willOpen = !modeControl.classList.contains("open");
             if (willOpen) {
@@ -4352,11 +4678,14 @@
             return;
           }
         }
+        const selectedCategory = dockInput && dockInput.checked ? "" : categoryInput.value.trim();
+        const categoryInfo = selectedCategory ? getCategoryByName(selectedCategory) : null;
+        const enforcedPrivate = categoryInfo && categoryInfo.is_private;
         const payload = {
           title: titleInput.value.trim(),
           url: urlInput.value.trim(),
-          category: dockInput && dockInput.checked ? "" : categoryInput.value.trim(),
-          is_private: privateInput.checked ? 1 : 0,
+          category: selectedCategory,
+          is_private: enforcedPrivate ? 1 : privateInput.checked ? 1 : 0,
           is_dock: dockInput && dockInput.checked,
           position_index: positionIndex
         };
@@ -4459,10 +4788,3 @@
     </script>
   </body>
 </html>
-
-
-
-      .category-spacer {
-        height: 16px;
-        width: 100%;
-      }

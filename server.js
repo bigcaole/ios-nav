@@ -82,11 +82,13 @@ async function initDb() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
+      is_private BOOLEAN DEFAULT FALSE,
       sort_index INTEGER DEFAULT 0,
       UNIQUE (user_id, name)
     )
   `);
   await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS user_id UUID`);
+  await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE`);
   await pool.query(`
     DO $$
     BEGIN
@@ -314,19 +316,25 @@ async function ensureCategory(client, userId, name) {
   return result.rows[0].id;
 }
 
-async function getCategoryId(client, userId, name) {
+async function getCategoryInfo(client, userId, name) {
   const clean = String(name || "").trim();
   if (!clean) {
-    return null;
+    return { id: null, is_private: false };
   }
   const result = await client.query(
-    "SELECT id FROM categories WHERE user_id = $1 AND name = $2",
+    "SELECT id, is_private FROM categories WHERE user_id = $1 AND name = $2",
     [userId, clean]
   );
   if (result.rowCount) {
-    return result.rows[0].id;
+    return { id: result.rows[0].id, is_private: Boolean(result.rows[0].is_private) };
   }
-  return ensureCategory(client, userId, clean);
+  const id = await ensureCategory(client, userId, clean);
+  return { id, is_private: false };
+}
+
+async function getCategoryId(client, userId, name) {
+  const info = await getCategoryInfo(client, userId, name);
+  return info.id;
 }
 
 app.get("/api/links", async (req, res) => {
@@ -340,11 +348,12 @@ app.get("/api/links", async (req, res) => {
     const params = [user.id];
     let where = "WHERE links.user_id = $1";
     if (!authUser) {
-      where += " AND links.is_private = FALSE";
+      where += " AND links.is_private = FALSE AND COALESCE(categories.is_private, FALSE) = FALSE";
     }
     const result = await pool.query(
       `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
-              categories.name AS category
+              categories.name AS category,
+              COALESCE(categories.is_private, FALSE) AS category_private
        FROM links
        LEFT JOIN categories ON links.category_id = categories.id
        ${where}
@@ -531,10 +540,10 @@ app.get("/api/categories", requireAuth, async (req, res) => {
       return;
     }
     const result = await pool.query(
-      "SELECT id, name FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
+      "SELECT id, name, is_private FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
       [userId]
     );
-    res.json(result.rows.map((row) => ({ id: row.id, name: row.name })));
+    res.json(result.rows.map((row) => ({ id: row.id, name: row.name, is_private: row.is_private })));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -542,6 +551,7 @@ app.get("/api/categories", requireAuth, async (req, res) => {
 
 app.post("/api/categories", requireAuth, async (req, res) => {
   const name = String(req.body?.name || "").trim();
+  const isPrivate = Boolean(req.body?.is_private);
   if (!name) {
     res.status(400).json({ error: "Invalid name" });
     return;
@@ -553,8 +563,8 @@ app.post("/api/categories", requireAuth, async (req, res) => {
   }
   try {
     const result = await pool.query(
-      "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, 0) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name",
-      [userId, name]
+      "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, 0) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name, is_private",
+      [userId, name, isPrivate]
     );
     res.json(result.rows[0]);
   } catch (err) {
@@ -564,8 +574,10 @@ app.post("/api/categories", requireAuth, async (req, res) => {
 
 app.put("/api/categories/:id", requireAuth, async (req, res) => {
   const id = String(req.params.id || "");
-  const name = String(req.body?.name || "").trim();
-  if (!id || !name) {
+  const name = req.body?.name !== undefined ? String(req.body?.name || "").trim() : null;
+  const isPrivate =
+    req.body?.is_private === undefined ? null : Boolean(req.body?.is_private);
+  if (!id || (name !== null && !name)) {
     res.status(400).json({ error: "Invalid payload" });
     return;
   }
@@ -576,8 +588,8 @@ app.put("/api/categories/:id", requireAuth, async (req, res) => {
   }
   try {
     const result = await pool.query(
-      "UPDATE categories SET name = $1 WHERE user_id = $2 AND id = $3 RETURNING id, name",
-      [name, userId, id]
+      "UPDATE categories SET name = COALESCE($1, name), is_private = COALESCE($2, is_private) WHERE user_id = $3 AND id = $4 RETURNING id, name, is_private",
+      [name, isPrivate, userId, id]
     );
     if (!result.rowCount) {
       res.status(404).json({ error: "Not found" });
@@ -832,11 +844,14 @@ app.post("/api/links", requireAuth, async (req, res) => {
   const safeTitle = String(title).trim();
   const safeUrl = String(url).trim();
   const safeCategory = category ? String(category) : "";
-  const privateValue = Boolean(is_private);
   const dockValue = Boolean(is_dock);
   const positionIndex = Number(position_index);
   try {
-    const categoryId = dockValue ? null : await getCategoryId(pool, req.user.id, safeCategory);
+    const categoryInfo = dockValue
+      ? { id: null, is_private: false }
+      : await getCategoryInfo(pool, req.user.id, safeCategory);
+    const privateValue = categoryInfo.is_private ? true : Boolean(is_private);
+    const categoryId = categoryInfo.id;
     const result = await pool.query(
       "INSERT INTO links (user_id, title, url, icon, category_id, is_private, is_dock, position_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
       [
@@ -883,7 +898,6 @@ app.put("/api/links/:id", requireAuth, async (req, res) => {
   const safeTitle = String(title).trim();
   const safeUrl = String(url).trim();
   const safeCategory = category ? String(category) : "";
-  const privateValue = Boolean(is_private);
   const positionIndex = Number(position_index);
   try {
     const current = await pool.query(
@@ -908,7 +922,11 @@ app.put("/api/links/:id", requireAuth, async (req, res) => {
         // Keep existing icon on download failure
       }
     }
-    const categoryId = dockValue ? null : await getCategoryId(pool, req.user.id, safeCategory);
+    const categoryInfo = dockValue
+      ? { id: null, is_private: false }
+      : await getCategoryInfo(pool, req.user.id, safeCategory);
+    const privateValue = categoryInfo.is_private ? true : Boolean(is_private);
+    const categoryId = categoryInfo.id;
     await pool.query(
       "UPDATE links SET title = $1, url = $2, icon = $3, category_id = $4, is_private = $5, is_dock = $6, position_index = $7 WHERE id = $8 AND user_id = $9",
       [
@@ -960,12 +978,13 @@ app.get("/api/backup/export", requireAuth, async (req, res) => {
     );
     const settings = settingsResult.rows[0] ? settingsResult.rows[0].settings : {};
     const categoriesResult = await pool.query(
-      "SELECT id, name, sort_index FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
+      "SELECT id, name, is_private, sort_index FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
       [req.user.id]
     );
     const linksResult = await pool.query(
       `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
-              categories.name AS category
+              categories.name AS category,
+              COALESCE(categories.is_private, FALSE) AS category_private
        FROM links
        LEFT JOIN categories ON links.category_id = categories.id
        WHERE links.user_id = $1
@@ -1012,9 +1031,10 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
       for (const item of categories) {
         const name = String(item?.name || "").trim();
         if (!name) continue;
+        const isPrivate = Boolean(item?.is_private);
         const result = await client.query(
-          "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, $3) RETURNING id",
-          [req.user.id, name, Number(item.sort_index) || 0]
+          "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4) RETURNING id",
+          [req.user.id, name, isPrivate, Number(item.sort_index) || 0]
         );
         categoryMap.set(name, result.rows[0].id);
       }
@@ -1026,9 +1046,10 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
         const categoryName = item?.category ? String(item.category).trim() : "";
         let categoryId = categoryName ? categoryMap.get(categoryName) || null : null;
         if (categoryName && !categoryId) {
+          const isPrivate = Boolean(item?.category_private);
           const result = await client.query(
-            "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, $3) RETURNING id",
-            [req.user.id, categoryName, 0]
+            "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4) RETURNING id",
+            [req.user.id, categoryName, isPrivate, 0]
           );
           categoryId = result.rows[0].id;
           categoryMap.set(categoryName, categoryId);
