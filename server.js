@@ -4,13 +4,15 @@ const express = require("express");
 const multer = require("multer");
 const fetch = require("node-fetch");
 const bcrypt = require("bcrypt");
+const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const { Pool } = require("pg");
 
 const app = express();
+const adminApp = express();
 const port = process.env.PORT || 3000;
+const adminPort = process.env.ADMIN_PORT || 3001;
 const jwtSecret = process.env.JWT_SECRET;
-
 if (!process.env.DATABASE_URL) {
   console.error("Missing DATABASE_URL environment variable.");
   process.exit(1);
@@ -36,12 +38,28 @@ const assetStorage = multer.diskStorage({
 });
 const assetUpload = multer({ storage: assetStorage });
 
+const registerAttempts = new Map();
+const REGISTER_WINDOW_MS = 10 * 60 * 1000;
+const REGISTER_MAX_ATTEMPTS = 8;
+
 fs.mkdirSync(uploadDir, { recursive: true });
 fs.mkdirSync(iconDir, { recursive: true });
 fs.mkdirSync(publicUploadDir, { recursive: true });
 
 app.use(express.json());
 app.use((req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  next();
+});
+adminApp.use(express.json());
+adminApp.use((err, req, res, next) => {
+  if (err) {
+    res.status(400).json({ error: "invalid_json" });
+    return;
+  }
+  next();
+});
+adminApp.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   next();
 });
@@ -67,8 +85,42 @@ async function initDb() {
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
+      email TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
       avatar_url TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`);
+  await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (email)`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS invite_codes (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      code TEXT UNIQUE NOT NULL,
+      created_by UUID REFERENCES users(id) ON DELETE CASCADE,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      expires_at TIMESTAMPTZ NOT NULL,
+      used_at TIMESTAMPTZ,
+      used_by UUID REFERENCES users(id) ON DELETE SET NULL
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      admin_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      action TEXT NOT NULL,
+      detail JSONB DEFAULT '{}'::jsonb,
+      ip TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS admin_login_attempts (
+      username TEXT PRIMARY KEY,
+      failed_count INTEGER DEFAULT 0,
+      locked_until TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
   await pool.query(`
@@ -122,26 +174,7 @@ async function initDb() {
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS is_dock BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS position_index INTEGER`);
 
-  const existing = await pool.query("SELECT id FROM users LIMIT 1");
-  if (!existing.rowCount && process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD) {
-    const hash = await bcrypt.hash(process.env.ADMIN_PASSWORD, 10);
-    const result = await pool.query(
-      "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
-      [process.env.ADMIN_USERNAME, hash]
-    );
-    await pool.query("INSERT INTO user_settings (user_id, settings) VALUES ($1, $2)", [
-      result.rows[0].id,
-      {
-        siteName: "我的 iOS 风格导航",
-        backgroundColor: "",
-        iconScale: 100,
-        siteLogo: "",
-        userName: process.env.ADMIN_USERNAME,
-        userAvatar: ""
-      }
-    ]);
-    console.log("Seeded admin user from environment variables.");
-  }
+  await ensureAdminUser();
 
   const usersResult = await pool.query("SELECT id FROM users");
   for (const user of usersResult.rows) {
@@ -220,6 +253,115 @@ function parseCookies(req) {
   }, {});
 }
 
+function getClientIp(req) {
+  const forwarded = req.headers["x-forwarded-for"];
+  const raw = Array.isArray(forwarded) ? forwarded[0] : forwarded;
+  const ip = raw ? String(raw).split(",")[0].trim() : req.socket.remoteAddress || "";
+  return ip.replace("::ffff:", "");
+}
+
+function checkRegisterRateLimit(req, res) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const entry = registerAttempts.get(ip) || { count: 0, resetAt: now + REGISTER_WINDOW_MS };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + REGISTER_WINDOW_MS;
+  }
+  entry.count += 1;
+  registerAttempts.set(ip, entry);
+  if (entry.count > REGISTER_MAX_ATTEMPTS) {
+    const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+    res.status(429).json({ error: "Too many attempts", retryAfter });
+    return false;
+  }
+  return true;
+}
+
+async function checkRegistrationAccess() {
+  const result = await pool.query("SELECT COUNT(*)::int AS total FROM users");
+  const total = result.rows[0] ? Number(result.rows[0].total) : 0;
+  if (total === 0) {
+    return { allowed: true, reason: "bootstrap" };
+  }
+  return { allowed: false, reason: "closed" };
+}
+
+async function getRegisterWindow() {
+  const adminId = await getAdminId();
+  if (!adminId) {
+    return { open: false, until: null };
+  }
+  const result = await pool.query("SELECT settings FROM user_settings WHERE user_id = $1", [
+    adminId
+  ]);
+  const settings = result.rows[0] && result.rows[0].settings ? result.rows[0].settings : {};
+  const until = settings.registerOpenUntil ? new Date(settings.registerOpenUntil) : null;
+  if (!until || Number.isNaN(until.getTime())) {
+    return { open: false, until: null };
+  }
+  return { open: Date.now() < until.getTime(), until };
+}
+
+async function setRegisterWindow(open, hours = 12) {
+  const adminId = await getAdminId();
+  if (!adminId) return null;
+  const result = await pool.query("SELECT settings FROM user_settings WHERE user_id = $1", [
+    adminId
+  ]);
+  const current = result.rows[0] && result.rows[0].settings ? result.rows[0].settings : {};
+  const next = { ...current };
+  if (open) {
+    const until = new Date(Date.now() + hours * 60 * 60 * 1000);
+    next.registerOpenUntil = until.toISOString();
+  } else {
+    delete next.registerOpenUntil;
+  }
+  await pool.query(
+    "INSERT INTO user_settings (user_id, settings) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET settings = EXCLUDED.settings",
+    [adminId, next]
+  );
+  return next.registerOpenUntil || null;
+}
+
+async function getTurnstileConfig() {
+  const siteKey = process.env.TURNSTILE_SITE_KEY || "";
+  const secretKey = process.env.TURNSTILE_SECRET_KEY || "";
+  const enabledFlag = String(process.env.TURNSTILE_ENABLED || "").toLowerCase();
+  const enabled = enabledFlag === "true" || enabledFlag === "1" || enabledFlag === "yes";
+  return {
+    enabled: Boolean(enabled && siteKey && secretKey),
+    siteKey,
+    secretKey
+  };
+}
+
+async function verifyTurnstile(token, ip) {
+  const config = await getTurnstileConfig();
+  if (!config.enabled) {
+    return { ok: true, reason: "disabled" };
+  }
+  if (!config.secretKey) {
+    return { ok: false, reason: "missing_secret" };
+  }
+  if (!token) {
+    return { ok: false, reason: "missing_token" };
+  }
+  const params = new URLSearchParams();
+  params.append("secret", config.secretKey);
+  params.append("response", token);
+  if (ip) {
+    params.append("remoteip", ip);
+  }
+  const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: params.toString()
+  });
+  const data = await response.json().catch(() => ({}));
+  return { ok: Boolean(data && data.success), data };
+}
+
 function getSecureCookieFlag(req) {
   const forwarded = req.headers["x-forwarded-proto"];
   if (req.secure || forwarded === "https") {
@@ -230,6 +372,56 @@ function getSecureCookieFlag(req) {
 
 function signToken(userId) {
   return jwt.sign({ sub: userId }, jwtSecret, { expiresIn: "7d" });
+}
+
+function signAdminToken(userId) {
+  return jwt.sign({ sub: userId, admin: true }, jwtSecret, { expiresIn: "8h" });
+}
+
+function signAdminSetupToken(userId, secret) {
+  return jwt.sign({ sub: userId, stage: "setup", secret }, jwtSecret, {
+    expiresIn: "10m"
+  });
+}
+
+function signUserSetupToken(userId, secret) {
+  return jwt.sign({ sub: userId, stage: "user_setup", secret }, jwtSecret, {
+    expiresIn: "10m"
+  });
+}
+
+async function getAdminAuthUser(req) {
+  const cookies = parseCookies(req);
+  const token = cookies.admin_token;
+  if (!token) return null;
+  try {
+    const payload = jwt.verify(token, jwtSecret);
+    if (!payload || !payload.sub) return null;
+    const isAdmin = await isAdminUserId(payload.sub);
+    if (!isAdmin) return null;
+    const result = await pool.query(
+      "SELECT id, username, avatar_url FROM users WHERE id = $1",
+      [payload.sub]
+    );
+    return result.rows[0] || null;
+  } catch (err) {
+    return null;
+  }
+}
+
+function requireAdmin(req, res, next) {
+  getAdminAuthUser(req)
+    .then((user) => {
+      if (!user) {
+        res.status(401).json({ error: "unauthorized" });
+        return;
+      }
+      req.admin = user;
+      next();
+    })
+    .catch(() => {
+      res.status(500).json({ error: "Database error" });
+    });
 }
 
 async function getAuthUser(req) {
@@ -278,7 +470,8 @@ function normalizeSettings(settings, fallbackName) {
     backgroundColor: safe.backgroundColor || "",
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     userName: safe.userName || fallbackName || "Admin",
-    userAvatar: safe.userAvatar || ""
+    userAvatar: safe.userAvatar || "",
+    userTotpEnabled: Boolean(safe.userTotpEnabled)
   };
 }
 
@@ -291,6 +484,50 @@ async function getSettingsForUser(userId, fallbackName) {
     return normalizeSettings({}, fallbackName);
   }
   return normalizeSettings(result.rows[0].settings, fallbackName);
+}
+
+async function getAdminTotpSecret(adminId) {
+  const result = await pool.query(
+    "SELECT settings FROM user_settings WHERE user_id = $1",
+    [adminId]
+  );
+  const settings = result.rows[0] && result.rows[0].settings ? result.rows[0].settings : {};
+  return settings.adminTotpSecret ? String(settings.adminTotpSecret) : "";
+}
+
+async function setAdminTotpSecret(adminId, secret) {
+  await updateUserSettings(adminId, { adminTotpSecret: secret });
+}
+
+async function getUserTotpSettings(userId) {
+  const result = await pool.query(
+    "SELECT settings FROM user_settings WHERE user_id = $1",
+    [userId]
+  );
+  const settings = result.rows[0] && result.rows[0].settings ? result.rows[0].settings : {};
+  return {
+    enabled: Boolean(settings.userTotpEnabled),
+    secret: settings.userTotpSecret ? String(settings.userTotpSecret) : ""
+  };
+}
+
+async function setUserTotpSecret(userId, secret) {
+  await updateUserSettings(userId, { userTotpSecret: secret, userTotpEnabled: true });
+}
+
+async function clearUserTotp(userId) {
+  await updateUserSettings(userId, { userTotpSecret: "", userTotpEnabled: false });
+}
+
+async function getAdminId() {
+  const result = await pool.query("SELECT id FROM users ORDER BY created_at ASC LIMIT 1");
+  return result.rows[0] ? result.rows[0].id : null;
+}
+
+async function isAdminUserId(userId) {
+  if (!userId) return false;
+  const adminId = await getAdminId();
+  return adminId && String(adminId) === String(userId);
 }
 
 async function updateUserSettings(userId, updates) {
@@ -307,11 +544,214 @@ async function updateUserSettings(userId, updates) {
   return next;
 }
 
+async function logAdminAction(adminId, action, detail, req) {
+  try {
+    const ip = getClientIp(req);
+    await pool.query(
+      "INSERT INTO admin_logs (admin_id, action, detail, ip) VALUES ($1, $2, $3, $4)",
+      [adminId || null, action, detail || {}, ip || null]
+    );
+  } catch (err) {
+    // ignore log errors
+  }
+}
+
+async function getAdminLockState(username) {
+  const result = await pool.query(
+    "SELECT failed_count, locked_until FROM admin_login_attempts WHERE username = $1",
+    [username]
+  );
+  if (!result.rowCount) {
+    return { locked: false, failed: 0 };
+  }
+  const row = result.rows[0];
+  const lockedUntil = row.locked_until ? new Date(row.locked_until) : null;
+  if (lockedUntil && lockedUntil > new Date()) {
+    const remainingMs = lockedUntil.getTime() - Date.now();
+    return { locked: true, remainingMs };
+  }
+  return { locked: false, failed: Number(row.failed_count) || 0 };
+}
+
+async function recordAdminLoginFailure(username) {
+  const result = await pool.query(
+    `
+      INSERT INTO admin_login_attempts (username, failed_count, locked_until, updated_at)
+      VALUES ($1, 1, NULL, NOW())
+      ON CONFLICT (username)
+      DO UPDATE SET
+        failed_count = admin_login_attempts.failed_count + 1,
+        locked_until = CASE
+          WHEN admin_login_attempts.failed_count + 1 >= 5 THEN NOW() + INTERVAL '10 minutes'
+          ELSE NULL
+        END,
+        updated_at = NOW()
+      RETURNING failed_count, locked_until
+    `,
+    [username]
+  );
+  const row = result.rows[0];
+  const lockedUntil = row.locked_until ? new Date(row.locked_until) : null;
+  return {
+    failed: Number(row.failed_count) || 0,
+    lockedUntil
+  };
+}
+
+async function clearAdminLoginFailures(username) {
+  await pool.query("DELETE FROM admin_login_attempts WHERE username = $1", [username]);
+}
+
 async function getPublicUser() {
   const result = await pool.query(
-    "SELECT id, username, avatar_url FROM users ORDER BY created_at ASC LIMIT 1"
+    "SELECT id, username, avatar_url FROM users WHERE is_active = TRUE ORDER BY created_at ASC LIMIT 1"
   );
   return result.rows[0] || null;
+}
+
+async function getUserByUsername(username) {
+  const clean = String(username || "").trim();
+  if (!clean) {
+    return null;
+  }
+  const result = await pool.query(
+    "SELECT id, username, avatar_url FROM users WHERE username = $1 AND is_active = TRUE",
+    [clean]
+  );
+  return result.rows[0] || null;
+}
+
+async function ensureAdminUser() {
+  if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+    return;
+  }
+  const safeUsername = String(process.env.ADMIN_USERNAME).trim();
+  const safePassword = String(process.env.ADMIN_PASSWORD);
+  if (!safeUsername || !safePassword) {
+    return;
+  }
+  const forceUpdate = String(process.env.ADMIN_FORCE_UPDATE || "").toLowerCase();
+  const resetTotp = String(process.env.ADMIN_TOTP_RESET || "").toLowerCase();
+  const shouldForceUpdate = ["1", "true", "yes", "on"].includes(forceUpdate);
+  const shouldResetTotp = ["1", "true", "yes", "on"].includes(resetTotp);
+  const adminId = await getAdminId();
+  if (!adminId) {
+    const hash = await bcrypt.hash(safePassword, 10);
+    const inserted = await pool.query(
+      "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
+      [safeUsername, hash]
+    );
+    const newAdminId = inserted.rows[0].id;
+    await pool.query(
+      "INSERT INTO user_settings (user_id, settings) VALUES ($1, $2) ON CONFLICT (user_id) DO NOTHING",
+      [
+        newAdminId,
+        {
+          siteName: "我的 iOS 风格导航",
+          backgroundColor: "",
+          iconScale: 100,
+          siteLogo: "",
+          userName: safeUsername,
+          userAvatar: ""
+        }
+      ]
+    );
+    return;
+  }
+  if (shouldForceUpdate) {
+    const exists = await pool.query(
+      "SELECT id FROM users WHERE username = $1 AND id <> $2",
+      [safeUsername, adminId]
+    );
+    if (!exists.rowCount) {
+      const hash = await bcrypt.hash(safePassword, 10);
+      await pool.query("UPDATE users SET username = $1, password_hash = $2 WHERE id = $3", [
+        safeUsername,
+        hash,
+        adminId
+      ]);
+      await updateUserSettings(adminId, { userName: safeUsername });
+    }
+  }
+  if (shouldResetTotp) {
+    await updateUserSettings(adminId, { adminTotpSecret: "" });
+  }
+}
+
+const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+function bufferToBase32(buffer) {
+  let bits = 0;
+  let value = 0;
+  let output = "";
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31];
+      bits -= 5;
+    }
+  }
+  if (bits > 0) {
+    output += BASE32_ALPHABET[(value << (5 - bits)) & 31];
+  }
+  return output;
+}
+
+function base32ToBuffer(input) {
+  const clean = String(input || "")
+    .toUpperCase()
+    .replace(/=+$/, "")
+    .replace(/[^A-Z2-7]/g, "");
+  let bits = 0;
+  let value = 0;
+  const output = [];
+  for (const char of clean) {
+    const idx = BASE32_ALPHABET.indexOf(char);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      output.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return Buffer.from(output);
+}
+
+function generateTotpToken(secret, counter) {
+  const key = base32ToBuffer(secret);
+  const buffer = Buffer.alloc(8);
+  buffer.writeUInt32BE(Math.floor(counter / 0x100000000), 0);
+  buffer.writeUInt32BE(counter & 0xffffffff, 4);
+  const hmac = crypto.createHmac("sha1", key).update(buffer).digest();
+  const offset = hmac[hmac.length - 1] & 0xf;
+  const code =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return String(code % 1000000).padStart(6, "0");
+}
+
+function verifyTotp(token, secret, window = 1) {
+  const clean = String(token || "").replace(/\s+/g, "");
+  if (!/^\d{6}$/.test(clean)) return false;
+  const step = 30;
+  const counter = Math.floor(Date.now() / 1000 / step);
+  for (let offset = -window; offset <= window; offset += 1) {
+    if (generateTotpToken(secret, counter + offset) === clean) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function buildOtpAuth(secret, label = "Admin") {
+  const issuer = "MyNavSite";
+  return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(
+    label
+  )}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
 }
 
 async function ensureCategory(client, userId, name) {
@@ -350,7 +790,19 @@ async function getCategoryId(client, userId, name) {
 app.get("/api/links", async (req, res) => {
   try {
     const authUser = await getAuthUser(req);
-    const user = authUser || (await getPublicUser());
+    let user = authUser;
+    if (!user) {
+      const queryUser = req.query.user;
+      if (queryUser) {
+        user = await getUserByUsername(queryUser);
+        if (!user) {
+          res.json([]);
+          return;
+        }
+      } else {
+        user = await getPublicUser();
+      }
+    }
     if (!user) {
       res.json([]);
       return;
@@ -659,23 +1111,44 @@ app.delete("/api/categories/:id", requireAuth, async (req, res) => {
 app.get("/api/settings", async (req, res) => {
   try {
     const authUser = await getAuthUser(req);
-    const user = authUser || (await getPublicUser());
+    let user = authUser;
+    const includeSecurity = Boolean(authUser);
+    if (!user) {
+      const queryUser = req.query.user;
+      if (queryUser) {
+        user = await getUserByUsername(queryUser);
+        if (!user) {
+          res.status(404).json({ error: "User not found" });
+          return;
+        }
+      } else {
+        user = await getPublicUser();
+      }
+    }
     if (!user) {
       res.json(normalizeSettings({}, "Admin"));
       return;
     }
     const settings = await getSettingsForUser(user.id, user.username);
-    res.json({
+    const payload = {
       ...settings,
       userAvatar: user.avatar_url || settings.userAvatar
-    });
+    };
+    const windowState = await getRegisterWindow();
+    payload.registerOpenUntil = windowState.open && windowState.until
+      ? windowState.until.toISOString()
+      : "";
+    if (!includeSecurity) {
+      delete payload.userTotpEnabled;
+    }
+    res.json(payload);
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
 });
 
 app.put("/api/settings", requireAuth, async (req, res) => {
-  const { siteName, backgroundColor, userName, iconScale } = req.body || {};
+  const { siteName, backgroundColor, userName, iconScale, userTotpEnabled } = req.body || {};
   const updates = {};
   if (siteName !== undefined) updates.siteName = String(siteName);
   if (backgroundColor !== undefined) updates.backgroundColor = String(backgroundColor);
@@ -684,6 +1157,13 @@ app.put("/api/settings", requireAuth, async (req, res) => {
     if (!Number.isNaN(scale)) updates.iconScale = scale;
   }
   if (userName !== undefined) updates.userName = String(userName);
+  if (userTotpEnabled !== undefined) {
+    const enabled = Boolean(userTotpEnabled);
+    updates.userTotpEnabled = enabled;
+    if (!enabled) {
+      updates.userTotpSecret = "";
+    }
+  }
   if (!Object.keys(updates).length) {
     res.status(400).json({ error: "No updates" });
     return;
@@ -733,8 +1213,11 @@ app.get("/api/me", async (req, res) => {
       return;
     }
     const settings = await getSettingsForUser(user.id, user.username);
+    const isAdmin = await isAdminUserId(user.id);
     res.json({
       loggedIn: true,
+      username: user.username,
+      isAdmin,
       userName: settings.userName,
       userAvatar: user.avatar_url || settings.userAvatar
     });
@@ -743,31 +1226,107 @@ app.get("/api/me", async (req, res) => {
   }
 });
 
+app.get("/api/public-config", async (req, res) => {
+  try {
+    const config = await getTurnstileConfig();
+    res.json({
+      turnstileEnabled: Boolean(config.enabled && config.siteKey),
+      turnstileSiteKey: config.siteKey || ""
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 async function handleRegister(req, res) {
-  const { username, password } = req.body || {};
-  if (!username || !password) {
+  const { username, password, email, inviteCode, code, company } = req.body || {};
+  if (!username || !password || !email) {
+    res.status(400).json({ error: "Invalid payload" });
+    return;
+  }
+  if (company) {
     res.status(400).json({ error: "Invalid payload" });
     return;
   }
   try {
+    if (!checkRegisterRateLimit(req, res)) {
+      return;
+    }
+    const windowState = await getRegisterWindow();
+    if (!windowState.open) {
+      res.status(403).json({ error: "registration_closed" });
+      return;
+    }
+    const turnstileToken = req.body?.turnstileToken || req.body?.cfToken || "";
+    const turnstileResult = await verifyTurnstile(turnstileToken, getClientIp(req));
+    if (!turnstileResult.ok) {
+      res.status(403).json({ error: "turnstile_failed", detail: turnstileResult.reason || "" });
+      return;
+    }
     const safeUsername = String(username).trim();
-    const hash = await bcrypt.hash(password, 10);
-    const result = await pool.query(
-      "INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id",
-      [safeUsername, hash]
-    );
-    await pool.query("INSERT INTO user_settings (user_id, settings) VALUES ($1, $2)", [
-      result.rows[0].id,
-      {
-        siteName: "我的 iOS 风格导航",
-        backgroundColor: "",
-        iconScale: 100,
-        siteLogo: "",
-        userName: safeUsername,
-        userAvatar: ""
+    const safeEmail = String(email).trim().toLowerCase();
+    if (safeUsername.length < 2) {
+      res.status(400).json({ error: "Username too short" });
+      return;
+    }
+    if (String(password).length < 6) {
+      res.status(400).json({ error: "Password too short" });
+      return;
+    }
+    if (!safeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
+      res.status(400).json({ error: "Invalid email" });
+      return;
+    }
+    const rawInvite = String(inviteCode || code || "").trim();
+    if (!rawInvite) {
+      res.status(400).json({ error: "invite_required" });
+      return;
+    }
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      const inviteResult = await client.query(
+        "SELECT id FROM invite_codes WHERE code = $1 AND used_at IS NULL AND expires_at > NOW()",
+        [rawInvite]
+      );
+      if (!inviteResult.rowCount) {
+        await client.query("ROLLBACK");
+        res.status(403).json({ error: "invalid_invite" });
+        return;
       }
-    ]);
-    res.status(201).json({ ok: true, id: result.rows[0].id });
+      const hash = await bcrypt.hash(password, 10);
+      const userResult = await client.query(
+        "INSERT INTO users (username, password_hash, email) VALUES ($1, $2, $3) RETURNING id",
+        [safeUsername, hash, safeEmail]
+      );
+      await client.query("INSERT INTO user_settings (user_id, settings) VALUES ($1, $2)", [
+        userResult.rows[0].id,
+        {
+          siteName: "我的 iOS 风格导航",
+          backgroundColor: "",
+          iconScale: 100,
+          siteLogo: "",
+          userName: safeUsername,
+          userAvatar: ""
+        }
+      ]);
+      const updateInvite = await client.query(
+        "UPDATE invite_codes SET used_at = NOW(), used_by = $1 WHERE id = $2 AND used_at IS NULL",
+        [userResult.rows[0].id, inviteResult.rows[0].id]
+      );
+      if (!updateInvite.rowCount) {
+        await client.query("ROLLBACK");
+        res.status(403).json({ error: "invalid_invite" });
+        return;
+      }
+      await client.query("COMMIT");
+      res.status(201).json({ ok: true, id: userResult.rows[0].id });
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
   } catch (err) {
     if (err && err.code === "23505") {
       res.status(409).json({ error: "Username already exists" });
@@ -780,8 +1339,21 @@ async function handleRegister(req, res) {
 app.post("/register", handleRegister);
 app.post("/api/auth/register", handleRegister);
 
+app.get("/register.html", async (req, res) => {
+  try {
+    const windowState = await getRegisterWindow();
+    if (!windowState.open) {
+      res.status(404).send("Not found");
+      return;
+    }
+    res.sendFile(path.join(__dirname, "register.html"));
+  } catch (err) {
+    res.status(500).send("Server error");
+  }
+});
+
 async function handleLogin(req, res) {
-  const { username, password } = req.body || {};
+  const { username, password, totp } = req.body || {};
   if (!username || !password) {
     res.status(400).json({ error: "Invalid payload" });
     return;
@@ -789,7 +1361,7 @@ async function handleLogin(req, res) {
   try {
     const safeUsername = String(username).trim();
     const result = await pool.query(
-      "SELECT id, password_hash FROM users WHERE username = $1",
+      "SELECT id, password_hash, is_active FROM users WHERE username = $1",
       [safeUsername]
     );
     if (!result.rowCount) {
@@ -797,10 +1369,37 @@ async function handleLogin(req, res) {
       return;
     }
     const user = result.rows[0];
+    if (user.is_active === false) {
+      res.status(403).json({ error: "Account disabled" });
+      return;
+    }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
       res.status(401).json({ error: "Invalid credentials" });
       return;
+    }
+    const totpState = await getUserTotpSettings(user.id);
+    if (totpState.enabled) {
+      if (!totpState.secret) {
+        const newSecret = bufferToBase32(crypto.randomBytes(20));
+        const otpauth = buildOtpAuth(newSecret, safeUsername);
+        const setupToken = signUserSetupToken(user.id, newSecret);
+        const secure = getSecureCookieFlag(req);
+        res.setHeader(
+          "Set-Cookie",
+          `user_setup=${setupToken}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=600`
+        );
+        res.json({ setupRequired: true, secret: newSecret, otpauth });
+        return;
+      }
+      if (!totp) {
+        res.json({ totpRequired: true });
+        return;
+      }
+      if (!verifyTotp(totp, totpState.secret)) {
+        res.status(401).json({ error: "invalid_totp" });
+        return;
+      }
     }
     const token = signToken(user.id);
     const secure = getSecureCookieFlag(req);
@@ -816,6 +1415,211 @@ async function handleLogin(req, res) {
 
 app.post("/login", handleLogin);
 app.post("/api/login", handleLogin);
+
+app.post("/api/auth/totp/setup", async (req, res) => {
+  const { code } = req.body || {};
+  const cookies = parseCookies(req);
+  const token = cookies.user_setup;
+  if (!token) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  try {
+    const payload = jwt.verify(token, jwtSecret);
+    if (!payload || payload.stage !== "user_setup") {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const userId = String(payload.sub || "");
+    if (!userId) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const secret = payload.secret;
+    if (!secret || !verifyTotp(code, secret)) {
+      res.status(401).json({ error: "invalid_totp" });
+      return;
+    }
+    await setUserTotpSecret(userId, secret);
+    const userToken = signToken(userId);
+    const secure = getSecureCookieFlag(req);
+    res.setHeader("Set-Cookie", [
+      `token=${userToken}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=604800`,
+      `user_setup=; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=0`
+    ]);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/login", async (req, res) => {
+  const { username, password, totp } = req.body || {};
+  if (!username || !password) {
+    res.status(400).json({ error: "Invalid payload" });
+    return;
+  }
+  try {
+    const safeUsername = String(username).trim();
+    const lockState = await getAdminLockState(safeUsername);
+    if (lockState.locked) {
+      const minutes = Math.ceil((lockState.remainingMs || 0) / 60000);
+      res.status(429).json({ error: "admin_locked", retry_after_minutes: minutes });
+      return;
+    }
+    const result = await pool.query(
+      "SELECT id, password_hash, is_active FROM users WHERE username = $1",
+      [safeUsername]
+    );
+    if (!result.rowCount) {
+      await recordAdminLoginFailure(safeUsername);
+      await logAdminAction(null, "admin_login_failed", { username: safeUsername }, req);
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    const user = result.rows[0];
+    if (user.is_active === false) {
+      await recordAdminLoginFailure(safeUsername);
+      await logAdminAction(user.id, "admin_login_failed", { reason: "disabled" }, req);
+      res.status(403).json({ error: "Account disabled" });
+      return;
+    }
+    const adminId = await getAdminId();
+    if (!adminId || String(adminId) !== String(user.id)) {
+      await recordAdminLoginFailure(safeUsername);
+      await logAdminAction(user.id, "admin_login_failed", { reason: "not_admin" }, req);
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const ok = await bcrypt.compare(password, user.password_hash);
+    if (!ok) {
+      await recordAdminLoginFailure(safeUsername);
+      await logAdminAction(user.id, "admin_login_failed", { reason: "bad_password" }, req);
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    const secret = await getAdminTotpSecret(user.id);
+    if (secret) {
+      if (!totp) {
+        res.json({ totpRequired: true });
+        return;
+      }
+      if (!verifyTotp(totp, secret)) {
+        await recordAdminLoginFailure(safeUsername);
+        await logAdminAction(user.id, "admin_login_failed", { reason: "invalid_totp" }, req);
+        res.status(401).json({ error: "invalid_totp" });
+        return;
+      }
+      const token = signAdminToken(user.id);
+      const secure = getSecureCookieFlag(req);
+      res.setHeader(
+        "Set-Cookie",
+        `admin_token=${token}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=28800`
+      );
+      await clearAdminLoginFailures(safeUsername);
+      await logAdminAction(user.id, "admin_login_success", {}, req);
+      res.json({ ok: true });
+      return;
+    }
+    const newSecret = bufferToBase32(crypto.randomBytes(20));
+    const otpauth = buildOtpAuth(newSecret, safeUsername);
+    const setupToken = signAdminSetupToken(user.id, newSecret);
+    const secure = getSecureCookieFlag(req);
+    res.setHeader(
+      "Set-Cookie",
+      `admin_setup=${setupToken}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=600`
+    );
+    await clearAdminLoginFailures(safeUsername);
+    await logAdminAction(user.id, "admin_login_setup_required", {}, req);
+    res.json({ setupRequired: true, secret: newSecret, otpauth });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/totp/setup", async (req, res) => {
+  const { code } = req.body || {};
+  const cookies = parseCookies(req);
+  const token = cookies.admin_setup;
+  if (!token) {
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  try {
+    const payload = jwt.verify(token, jwtSecret);
+    if (!payload || payload.stage !== "setup") {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const adminId = await getAdminId();
+    if (!adminId || String(adminId) !== String(payload.sub)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    const secret = payload.secret;
+    if (!secret || !verifyTotp(code, secret)) {
+      res.status(401).json({ error: "invalid_totp" });
+      return;
+    }
+    await setAdminTotpSecret(adminId, secret);
+    const adminToken = signAdminToken(adminId);
+    const secure = getSecureCookieFlag(req);
+    res.setHeader("Set-Cookie", [
+      `admin_token=${adminToken}; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=28800`,
+      `admin_setup=; Path=/; HttpOnly; SameSite=Lax; ${secure}Max-Age=0`
+    ]);
+    await logAdminAction(adminId, "admin_totp_enabled", {}, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/logout", (req, res) => {
+  const secure = getSecureCookieFlag(req);
+  getAdminAuthUser(req)
+    .then((admin) => {
+      if (admin) {
+        logAdminAction(admin.id, "admin_logout", {}, req);
+      }
+    })
+    .finally(() => {
+      res.setHeader("Set-Cookie", [
+        `admin_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; ${secure}`,
+        `admin_setup=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; ${secure}`
+      ]);
+      res.json({ ok: true });
+    });
+});
+
+adminApp.get("/api/admin/me", async (req, res) => {
+  try {
+    const admin = await getAdminAuthUser(req);
+    if (!admin) {
+      res.json({ loggedIn: false });
+      return;
+    }
+    res.json({ loggedIn: true, username: admin.username });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/logs", requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.max(10, Math.min(200, Number(req.query?.limit) || 100));
+    const result = await pool.query(
+      `SELECT id, admin_id, action, detail, ip, created_at
+       FROM admin_logs
+       ORDER BY created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
 app.post("/api/logout", (req, res) => {
   const secure = getSecureCookieFlag(req);
@@ -853,6 +1657,289 @@ app.post("/api/auth/update-password", requireAuth, async (req, res) => {
     res.status(500).json({ error: "Database error" });
   }
 });
+
+adminApp.get("/api/admin/invites", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, code, expires_at, used_at FROM invite_codes WHERE used_at IS NULL ORDER BY created_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/invites", requireAdmin, async (req, res) => {
+  try {
+    const count = Math.max(1, Math.min(50, Number(req.body?.count) || 1));
+    const expiresHours = Math.max(1, Math.min(168, Number(req.body?.expiresHours) || 12));
+    const codes = [];
+    for (let i = 0; i < count; i += 1) {
+      const code = crypto.randomBytes(5).toString("hex").toUpperCase();
+      const expiresAt = new Date(Date.now() + expiresHours * 60 * 60 * 1000);
+      const result = await pool.query(
+        "INSERT INTO invite_codes (code, created_by, expires_at) VALUES ($1, $2, $3) RETURNING id, code, expires_at",
+        [code, req.admin.id, expiresAt.toISOString()]
+      );
+      codes.push(result.rows[0]);
+    }
+    await logAdminAction(req.admin.id, "invite_generate", { count, expiresHours }, req);
+    res.json({ ok: true, codes });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.delete("/api/admin/invites/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!id) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    await pool.query("DELETE FROM invite_codes WHERE id = $1", [id]);
+    await logAdminAction(req.admin.id, "invite_revoke", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/register-window", requireAdmin, async (req, res) => {
+  try {
+    const open = Boolean(req.body?.open);
+    const hours = Math.max(1, Math.min(48, Number(req.body?.hours) || 12));
+    const until = await setRegisterWindow(open, hours);
+    await logAdminAction(req.admin.id, "register_window", { open, hours }, req);
+    res.json({ ok: true, open, until });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/users", requireAdmin, async (req, res) => {
+  try {
+    const adminId = await getAdminId();
+    const result = await pool.query(
+      `
+        SELECT
+          u.id,
+          u.username,
+          u.email,
+          u.is_active,
+          u.created_at,
+          COALESCE((s.settings->>'userTotpEnabled')::boolean, false) AS totp_enabled
+        FROM users u
+        LEFT JOIN user_settings s ON s.user_id = u.id
+        ORDER BY u.created_at ASC
+      `
+    );
+    const users = result.rows.map((row) => ({
+      id: row.id,
+      username: row.username,
+      email: row.email,
+      is_active: row.is_active,
+      created_at: row.created_at,
+      totp_enabled: Boolean(row.totp_enabled),
+      is_admin: adminId && String(row.id) === String(adminId)
+    }));
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/users/:id/disable", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const adminId = await getAdminId();
+    if (!id || (adminId && String(adminId) === id)) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    await pool.query("UPDATE users SET is_active = FALSE WHERE id = $1", [id]);
+    await logAdminAction(req.admin.id, "user_disable", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/users/:id/enable", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!id) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    await pool.query("UPDATE users SET is_active = TRUE WHERE id = $1", [id]);
+    await logAdminAction(req.admin.id, "user_enable", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const adminId = await getAdminId();
+    if (!id || (adminId && String(adminId) === id)) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    const newPassword =
+      String(req.body?.password || "") ||
+      crypto.randomBytes(6).toString("hex");
+    if (newPassword.length < 6) {
+      res.status(400).json({ error: "Password too short" });
+      return;
+    }
+    const hash = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, id]);
+    await logAdminAction(req.admin.id, "user_reset_password", { id }, req);
+    res.json({ ok: true, password: req.body?.password ? null : newPassword });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/users/:id/clear-2fa", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!id) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    await clearUserTotp(id);
+    await logAdminAction(req.admin.id, "user_clear_2fa", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+async function handleAdminCredentialsUpdate(req, res) {
+  try {
+    const {
+      currentUsername,
+      currentPassword,
+      newUsername,
+      newPassword,
+      confirmPassword
+    } = req.body || {};
+    const adminId = await getAdminId();
+    if (!adminId || String(adminId) !== String(req.admin.id)) {
+      res.status(403).json({ error: "forbidden" });
+      return;
+    }
+    if (!currentUsername || !currentPassword) {
+      res.status(400).json({ error: "missing_current_credentials" });
+      return;
+    }
+    const currentResult = await pool.query(
+      "SELECT username, password_hash FROM users WHERE id = $1",
+      [adminId]
+    );
+    if (!currentResult.rowCount) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const current = currentResult.rows[0];
+    if (String(current.username) !== String(currentUsername).trim()) {
+      res.status(401).json({ error: "invalid_current_credentials" });
+      return;
+    }
+    const ok = await bcrypt.compare(String(currentPassword), current.password_hash);
+    if (!ok) {
+      res.status(401).json({ error: "invalid_current_credentials" });
+      return;
+    }
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    if (newUsername !== undefined && String(newUsername || "").trim()) {
+      const safeUsername = String(newUsername || "").trim();
+      if (safeUsername.length < 2) {
+        res.status(400).json({ error: "invalid_new_username" });
+        return;
+      }
+      const exists = await pool.query(
+        "SELECT id FROM users WHERE username = $1 AND id <> $2",
+        [safeUsername, adminId]
+      );
+      if (exists.rowCount) {
+        res.status(409).json({ error: "username_exists" });
+        return;
+      }
+      updates.push(`username = $${idx}`);
+      values.push(safeUsername);
+      idx += 1;
+    }
+    if (newPassword !== undefined && String(newPassword || "")) {
+      const safePassword = String(newPassword || "");
+      if (safePassword !== String(confirmPassword || "")) {
+        res.status(400).json({ error: "password_mismatch" });
+        return;
+      }
+      const hasLetter = /[A-Za-z]/.test(safePassword);
+      const hasNumber = /[0-9]/.test(safePassword);
+      if (safePassword.length < 8 || !hasLetter || !hasNumber) {
+        res.status(400).json({ error: "weak_password" });
+        return;
+      }
+      const hash = await bcrypt.hash(safePassword, 10);
+      updates.push(`password_hash = $${idx}`);
+      values.push(hash);
+      idx += 1;
+    }
+    if (!updates.length) {
+      res.status(400).json({ error: "no_updates" });
+      return;
+    }
+    values.push(adminId);
+    await pool.query(`UPDATE users SET ${updates.join(", ")} WHERE id = $${idx}`, values);
+    if (newUsername !== undefined && String(newUsername || "").trim()) {
+      await updateUserSettings(adminId, { userName: String(newUsername || "").trim() });
+    }
+    await logAdminAction(
+      adminId,
+      "admin_credentials_update",
+      {
+        username_changed: Boolean(newUsername && String(newUsername || "").trim()),
+        password_changed: Boolean(newPassword && String(newPassword || ""))
+      },
+      req
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+}
+
+adminApp.post("/api/admin/credentials", requireAdmin, handleAdminCredentialsUpdate);
+app.post("/api/admin/credentials", requireAdmin, handleAdminCredentialsUpdate);
+
+adminApp.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    const adminId = await getAdminId();
+    if (!id || (adminId && String(adminId) === id)) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    await pool.query("DELETE FROM users WHERE id = $1", [id]);
+    await logAdminAction(req.admin.id, "user_delete", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.use("/api", (req, res) => {
+  res.status(404).json({ error: "Not found" });
+});
+
 
 app.post("/api/links", requireAuth, async (req, res) => {
   const { title, url, icon, category, is_private, is_dock, position_index } = req.body || {};
@@ -1116,7 +2203,56 @@ app.use("/api", (req, res) => {
 });
 
 // Serve static files from the project root (after API routes)
-app.use(express.static(path.join(__dirname)));
+app.use("/public", express.static(path.join(__dirname, "public")));
+app.use(express.static(path.join(__dirname, "public")));
+
+app.get("/index.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+app.get("/login.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "login.html"));
+});
+
+app.get("/profile.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "profile.html"));
+});
+
+adminApp.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+adminApp.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+adminApp.get("/admin/", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+adminApp.get("/admin/index.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+adminApp.get("/admin.html", (req, res) => {
+  res.sendFile(path.join(__dirname, "admin.html"));
+});
+
+app.get("/manifest.json", (req, res) => {
+  res.sendFile(path.join(__dirname, "manifest.json"));
+});
+
+app.get("/service-worker.js", (req, res) => {
+  res.sendFile(path.join(__dirname, "service-worker.js"));
+});
+
+app.get("/icon.svg", (req, res) => {
+  res.sendFile(path.join(__dirname, "icon.svg"));
+});
+
+app.get("/u/:username", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "index.html"));
@@ -1126,6 +2262,9 @@ initDb()
   .then(() => {
     app.listen(port, () => {
       console.log(`Server running at http://localhost:${port}`);
+    });
+    adminApp.listen(adminPort, () => {
+      console.log(`Admin panel running at http://localhost:${adminPort}`);
     });
   })
   .catch((err) => {

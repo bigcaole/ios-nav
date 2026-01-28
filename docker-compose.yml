@@ -9,8 +9,6 @@ services:
       POSTGRES_PASSWORD: mynavpass
     volumes:
       - ./pgdata:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
 
   app:
     image: node:18-alpine
@@ -20,10 +18,20 @@ services:
     env_file:
       - .env
     environment:
+      DATABASE_URL: ${DATABASE_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_USERNAME: ${ADMIN_USERNAME}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      REGISTER_CODE: ${REGISTER_CODE}
+      TURNSTILE_SITE_KEY: ${TURNSTILE_SITE_KEY}
+      TURNSTILE_SECRET_KEY: ${TURNSTILE_SECRET_KEY}
+      TURNSTILE_ENABLED: ${TURNSTILE_ENABLED}
+      ADMIN_PORT: ${ADMIN_PORT}
       NODE_ENV: production
       PORT: 3000
     command: sh -c "npm install && npm start"
     ports:
       - "3000:3000"
+      - "3001:3001"
     depends_on:
       - db

@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Login</title>
+    <title>登录</title>
     <style>
       :root {
         --bg-a: #f7f2ee;
@@ -78,34 +78,89 @@
         font-size: 12px;
         display: none;
       }
+      .hidden {
+        display: none !important;
+      }
+      .setup {
+        margin-top: 14px;
+        display: grid;
+        gap: 12px;
+      }
+      .qr {
+        width: 160px;
+        height: 160px;
+        border-radius: 16px;
+        background: #f8fafc;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+      }
+      .hint {
+        font-size: 12px;
+        color: var(--muted);
+      }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Login</h1>
-      <p>Use your username and password.</p>
+    <div class="card" id="loginCard">
+      <h1>登录</h1>
+      <p>请输入用户名与密码。</p>
       <form id="loginForm">
         <div class="field">
-          <label for="usernameInput">Username</label>
+          <label for="usernameInput">用户名</label>
           <input id="usernameInput" type="text" required />
         </div>
         <div class="field">
-          <label for="passwordInput">Password</label>
+          <label for="passwordInput">密码</label>
           <input id="passwordInput" type="password" required />
         </div>
-        <button type="submit">Sign in</button>
-        <div class="error" id="errorMsg">Login failed.</div>
+        <div class="field hidden" id="totpField">
+          <label for="totpInput">验证码</label>
+          <input id="totpInput" type="text" inputmode="numeric" />
+        </div>
+        <button type="submit">登录</button>
+        <div class="error" id="errorMsg">登录失败。</div>
       </form>
     </div>
 
+    <div class="card hidden" id="setupCard">
+      <h1>绑定二次验证</h1>
+      <p>使用 Google Authenticator 扫描或输入密钥。</p>
+      <div class="setup">
+        <div class="qr">
+          <img id="qrImage" alt="TOTP QR" width="160" height="160" />
+        </div>
+        <div class="field">
+          <label for="totpSecret">密钥</label>
+          <input id="totpSecret" type="text" readonly />
+        </div>
+        <div class="field">
+          <label for="totpVerify">验证码</label>
+          <input id="totpVerify" type="text" inputmode="numeric" />
+        </div>
+        <button type="button" id="bindTotpBtn">完成绑定</button>
+        <div class="hint" id="setupMsg"></div>
+      </div>
+    </div>
+
     <script>
+      const loginCard = document.querySelector("#loginCard");
+      const setupCard = document.querySelector("#setupCard");
       const form = document.querySelector("#loginForm");
       const usernameInput = document.querySelector("#usernameInput");
       const passwordInput = document.querySelector("#passwordInput");
+      const totpField = document.querySelector("#totpField");
+      const totpInput = document.querySelector("#totpInput");
       const errorMsg = document.querySelector("#errorMsg");
+      const qrImage = document.querySelector("#qrImage");
+      const totpSecret = document.querySelector("#totpSecret");
+      const totpVerify = document.querySelector("#totpVerify");
+      const bindTotpBtn = document.querySelector("#bindTotpBtn");
+      const setupMsg = document.querySelector("#setupMsg");
 
       form.addEventListener("submit", (event) => {
         event.preventDefault();
+        errorMsg.style.display = "none";
         fetch("/api/login", {
           method: "POST",
           headers: {
@@ -113,19 +168,69 @@
           },
           body: JSON.stringify({
             username: usernameInput.value.trim(),
-            password: passwordInput.value
+            password: passwordInput.value,
+            totp: totpInput ? totpInput.value.trim() : ""
           })
         })
-          .then((res) => {
-            if (!res.ok) {
-              throw new Error("Invalid credentials");
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.ok) {
+              window.location.href = "/";
+              return;
             }
-            window.location.href = "/";
+            if (data && data.totpRequired) {
+              if (totpField) totpField.classList.remove("hidden");
+              errorMsg.textContent = "请输入验证码";
+              errorMsg.style.display = "block";
+              return;
+            }
+            if (data && data.setupRequired) {
+              if (loginCard) loginCard.classList.add("hidden");
+              if (setupCard) setupCard.classList.remove("hidden");
+              if (qrImage) {
+                qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                  data.otpauth || ""
+                )}`;
+              }
+              if (totpSecret) {
+                totpSecret.value = data.secret || "";
+              }
+              return;
+            }
+            errorMsg.textContent = (data && data.error) || "登录失败。";
+            errorMsg.style.display = "block";
           })
           .catch(() => {
+            errorMsg.textContent = "登录失败。";
             errorMsg.style.display = "block";
           });
       });
+
+      if (bindTotpBtn) {
+        bindTotpBtn.addEventListener("click", () => {
+          const code = totpVerify ? totpVerify.value.trim() : "";
+          if (!code) {
+            if (setupMsg) setupMsg.textContent = "请输入验证码";
+            return;
+          }
+          fetch("/api/auth/totp/setup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code })
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.ok) {
+                window.location.href = "/";
+                return;
+              }
+              if (setupMsg) setupMsg.textContent = "验证码错误";
+            })
+            .catch(() => {
+              if (setupMsg) setupMsg.textContent = "操作失败";
+            });
+        });
+      }
     </script>
   </body>
 </html>

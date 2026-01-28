@@ -785,6 +785,12 @@
       body.modal-open {
         overflow: hidden;
       }
+      body.scroll-locked {
+        position: fixed;
+        left: 0;
+        right: 0;
+        width: 100%;
+      }
       #settingsModal .sheet h2,
       #settingsModal .sheet .field label,
       #settingsModal .sheet .settings-row > span {
@@ -1322,11 +1328,22 @@
         --tw-scale-x: 1;
         --tw-scale-y: 1;
       }
+      #menuToggle {
+        z-index: 60;
+      }
+      #controlGroup {
+        z-index: 50;
+      }
       #menuToggle.open [data-icon="menu"] {
         display: none;
       }
       #menuToggle.open [data-icon="close"] {
         display: block;
+      }
+      @media (max-width: 768px) {
+        #viewToggleBtn {
+          display: none !important;
+        }
       }
       #avatarBtn {
         overflow: hidden;
@@ -1658,6 +1675,8 @@
         z-index: 201;
         max-height: 85vh;
         overflow-y: auto;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
       }
       .sheet.glass {
         background: rgba(255, 255, 255, 0.9);
@@ -1864,6 +1883,18 @@
             />
           </svg>
           <span class="hidden md:inline">登录</span>
+        </button>
+        <button
+          class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
+          id="registerBtn"
+        >
+          <svg class="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 7a5 5 0 1 0 5 5 5 5 0 0 0-5-5Zm0-2A7 7 0 1 1 5 12a7 7 0 0 1 7-7Zm9 7a1 1 0 0 1-1 1h-2v2a1 1 0 0 1-2 0v-2h-2a1 1 0 0 1 0-2h2V9a1 1 0 0 1 2 0v2h2a1 1 0 0 1 1 1Z"
+            />
+          </svg>
+          <span class="hidden md:inline">注册</span>
         </button>
         <button
           class="flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 w-12 h-12 p-0 md:w-auto md:h-auto md:px-4 md:py-2"
@@ -2162,6 +2193,41 @@
             <span class="slider"></span>
           </label>
         </div>
+        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">安全设置</span>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">启用二次验证（TOTP）</span>
+            <label class="toggle">
+              <input id="userTotpToggle" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="text-slate-500 dark:text-slate-400 text-xs mt-1">
+            启用后，下次登录需要绑定或输入验证码。
+          </div>
+        </div>
+        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3 hidden" id="inviteGroup">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">注册管理（邀请码 12 小时有效）</span>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">开放注册入口</span>
+            <div class="flex gap-2">
+              <button class="btn bg-blue-600 text-white border border-blue-600/60" id="openRegisterWindowBtn">开放 12 小时</button>
+              <button class="btn bg-slate-100 text-slate-700 border border-gray-200/50" id="closeRegisterWindowBtn">关闭入口</button>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">生成邀请码</span>
+            <div class="flex items-center gap-2">
+              <input id="inviteCountInput" type="number" min="1" max="50" value="3" class="w-16 text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1" />
+              <button class="btn bg-blue-600 text-white border border-blue-600/60" id="generateInviteBtn">生成</button>
+            </div>
+          </div>
+          <div id="inviteList" class="mt-2 space-y-2 text-sm"></div>
+        </div>
         <div class="settings-group" id="backupGroup">
           <div class="settings-row">
             <span class="text-slate-800 dark:text-slate-100">导出备份</span>
@@ -2224,6 +2290,7 @@
       const manageCategoryEntryBtn = document.querySelector("#manageCategoryEntryBtn");
       const cancelBtn = document.querySelector("#cancelBtn");
       const loginBtn = document.querySelector("#loginBtn");
+      const registerBtn = document.querySelector("#registerBtn");
       const settingsBtn = document.querySelector("#settingsBtn");
       const settingsCloseBtn = document.querySelector("#settingsCloseBtn");
       const toast = document.querySelector("#toast");
@@ -2275,6 +2342,13 @@
       const fontSizeInput = document.querySelector("#fontSizeInput");
       const boldToggle = document.querySelector("#boldToggle");
       const iconSizeInput = document.querySelector("#iconSizeInput");
+      const userTotpToggle = document.querySelector("#userTotpToggle");
+      const inviteGroup = document.querySelector("#inviteGroup");
+      const openRegisterWindowBtn = document.querySelector("#openRegisterWindowBtn");
+      const closeRegisterWindowBtn = document.querySelector("#closeRegisterWindowBtn");
+      const inviteCountInput = document.querySelector("#inviteCountInput");
+      const generateInviteBtn = document.querySelector("#generateInviteBtn");
+      const inviteList = document.querySelector("#inviteList");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
       const importBtn = document.querySelector("#importBtn");
@@ -2290,6 +2364,22 @@
       let editing = false;
       let deleting = false;
       let currentMode = "preview";
+      let isAdmin = false;
+      const publicUsername = (() => {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          let name = params.get("user") || params.get("u") || "";
+          if (!name) {
+            const match = window.location.pathname.match(/^\/u\/([^/]+)$/);
+            if (match && match[1]) {
+              name = decodeURIComponent(match[1]);
+            }
+          }
+          return name ? String(name).trim() : "";
+        } catch (err) {
+          return "";
+        }
+      })();
       const savedViewMode = localStorage.getItem("viewMode");
       let viewMode =
         window.innerWidth < 768 ? "card" : savedViewMode || "list";
@@ -2306,6 +2396,26 @@
       let appearanceTimer = null;
 
       const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal].filter(Boolean);
+      let scrollLockY = 0;
+
+      function lockBodyScroll() {
+        const isMobile =
+          window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
+        if (!isMobile) return;
+        if (document.body.classList.contains("scroll-locked")) return;
+        scrollLockY = window.scrollY || 0;
+        document.body.classList.add("scroll-locked");
+        document.body.style.top = `-${scrollLockY}px`;
+      }
+
+      function unlockBodyScroll() {
+        if (!document.body.classList.contains("scroll-locked")) return;
+        document.body.classList.remove("scroll-locked");
+        const top = document.body.style.top;
+        document.body.style.top = "";
+        const offset = parseInt(top || "0", 10) * -1;
+        window.scrollTo(0, offset || scrollLockY || 0);
+      }
 
       function openModal(target, options = {}) {
         if (!target) return;
@@ -2316,6 +2426,7 @@
         });
         target.classList.add("active");
         document.body.classList.add("modal-open");
+        lockBodyScroll();
         returnToSettings = options.returnToSettings ? target : null;
         if (target === settingsModal && avatarMenu) {
           setAvatarMenuOpen(false);
@@ -2333,6 +2444,7 @@
         }
           if (!document.querySelector(".modal.active")) {
             document.body.classList.remove("modal-open");
+            unlockBodyScroll();
           }
         }
 
@@ -3378,7 +3490,11 @@
         }
 
       function fetchLinks() {
-        const url = loggedIn ? "/api/links?includePrivate=1" : "/api/links";
+        const url = loggedIn
+          ? "/api/links?includePrivate=1"
+          : publicUsername
+          ? `/api/links?user=${encodeURIComponent(publicUsername)}`
+          : "/api/links";
         fetch(url)
           .then((res) => res.json())
           .then((data) => {
@@ -3711,6 +3827,9 @@
           if (loginBtn) {
             loginBtn.classList.toggle("hidden", loggedIn);
           }
+          if (registerBtn) {
+            registerBtn.classList.toggle("hidden", loggedIn);
+          }
           if (avatarWrap) {
             avatarWrap.classList.toggle("hidden", !loggedIn);
           }
@@ -4026,6 +4145,9 @@
       }
 
       function applyViewMode(mode) {
+        if (window.innerWidth < 768 && mode !== "card") {
+          mode = "card";
+        }
         viewMode = mode;
         localStorage.setItem("viewMode", mode);
         document.body.classList.toggle("view-card", mode === "card");
@@ -4049,6 +4171,76 @@
           window.matchMedia && window.matchMedia("(max-width: 640px)").matches;
         const shouldLock = isMobile && currentMode === "preview";
         document.body.classList.toggle("mobile-preview-lock", shouldLock);
+      }
+
+      function formatInviteExpiry(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleString();
+      }
+
+      function renderInviteList(items) {
+        if (!inviteList) return;
+        inviteList.innerHTML = "";
+        if (!items || !items.length) {
+          const empty = document.createElement("div");
+          empty.className = "text-slate-500";
+          empty.textContent = "暂无可用邀请码";
+          inviteList.appendChild(empty);
+          return;
+        }
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className =
+            "flex items-center justify-between gap-2 bg-white/60 dark:bg-black/40 border border-white/20 rounded-lg px-3 py-2";
+          const left = document.createElement("div");
+          left.innerHTML = `<div class="font-semibold text-slate-800 dark:text-slate-100">${item.code}</div><div class="text-xs text-slate-500">到期：${formatInviteExpiry(item.expires_at)}</div>`;
+          const actions = document.createElement("div");
+          actions.className = "flex items-center gap-2";
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "btn bg-slate-100 text-slate-700 border border-gray-200/50";
+          copyBtn.textContent = "复制";
+          copyBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(item.code).then(() => {
+              showToast("已复制邀请码");
+            });
+          });
+          const delBtn = document.createElement("button");
+          delBtn.className = "btn bg-slate-100 text-slate-700 border border-gray-200/50";
+          delBtn.textContent = "作废";
+          delBtn.addEventListener("click", () => {
+            fetch(`/api/admin/invites/${item.id}`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json; charset=utf-8" },
+              credentials: "same-origin"
+            })
+              .then((res) => {
+                if (!res.ok) throw new Error("fail");
+                showToast("已作废");
+                loadInvites();
+              })
+              .catch(() => showToast("操作失败"));
+          });
+          actions.append(copyBtn, delBtn);
+          row.append(left, actions);
+          inviteList.appendChild(row);
+        });
+      }
+
+      function loadInvites() {
+        if (!inviteList) return;
+        fetch("/api/admin/invites", { credentials: "same-origin" })
+          .then((res) => {
+            if (!res.ok) throw new Error("fail");
+            return res.json();
+          })
+          .then((data) => {
+            renderInviteList(Array.isArray(data) ? data : data.items);
+          })
+          .catch(() => {
+            renderInviteList([]);
+          });
       }
 
       function saveAppearanceSettings(payload) {
@@ -4297,6 +4489,7 @@
           modalEl.classList.remove("active");
         });
         document.body.classList.remove("modal-open");
+        unlockBodyScroll();
         applyMode(next);
         updateMobileLongPressLock();
         if (Array.isArray(allLinks)) {
@@ -4612,8 +4805,59 @@
           event.stopPropagation();
           controlGroup.classList.toggle("open");
           menuToggle.classList.toggle("open");
+          const expanded = controlGroup.classList.contains("open");
+          menuToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
         });
       }
+      if (controlGroup) {
+        controlGroup.addEventListener("click", (event) => {
+          const target = event.target;
+          if (!target) return;
+          const isButton = target.closest("button");
+          if (isButton && menuToggle && controlGroup.classList.contains("open")) {
+            controlGroup.classList.remove("open");
+            menuToggle.classList.remove("open");
+            menuToggle.setAttribute("aria-expanded", "false");
+          }
+        });
+      }
+      document.addEventListener("click", (event) => {
+        if (!menuToggle || !controlGroup) return;
+        if (!controlGroup.classList.contains("open")) return;
+        const target = event.target;
+        if (target && (target.closest("#menuToggle") || target.closest("#controlGroup"))) {
+          return;
+        }
+        controlGroup.classList.remove("open");
+        menuToggle.classList.remove("open");
+        menuToggle.setAttribute("aria-expanded", "false");
+      });
+      document.addEventListener(
+        "touchstart",
+        (event) => {
+          if (!menuToggle || !controlGroup) return;
+          if (!controlGroup.classList.contains("open")) return;
+          const target = event.target;
+          if (target && (target.closest("#menuToggle") || target.closest("#controlGroup"))) {
+            return;
+          }
+          controlGroup.classList.remove("open");
+          menuToggle.classList.remove("open");
+          menuToggle.setAttribute("aria-expanded", "false");
+        },
+        { passive: true }
+      );
+      document.addEventListener(
+        "touchmove",
+        (event) => {
+          if (!document.body.classList.contains("modal-open")) return;
+          const sheet = event.target.closest(".modal .sheet");
+          if (!sheet) {
+            event.preventDefault();
+          }
+        },
+        { passive: false }
+      );
 
       if (loginBtn) {
         try {
@@ -4621,6 +4865,11 @@
             window.location.href = "/login.html";
           });
         } catch (err) {}
+      }
+      if (registerBtn) {
+        registerBtn.addEventListener("click", () => {
+          window.location.href = "/register.html";
+        });
       }
 
       if (addBtn) {
@@ -4888,6 +5137,9 @@
           if (iconSizeInput) {
             payload.iconScale = iconSizeInput.value;
           }
+          if (userTotpToggle) {
+            payload.userTotpEnabled = userTotpToggle.checked;
+          }
           saveAppearanceSettings(payload);
         });
       }
@@ -4920,6 +5172,59 @@
           }
           applyBackground("");
           saveAppearanceSettings({ backgroundColor: "" });
+        });
+      }
+
+      if (openRegisterWindowBtn) {
+        openRegisterWindowBtn.addEventListener("click", () => {
+          fetch("/api/admin/register-window", {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            credentials: "same-origin",
+            body: JSON.stringify({ open: true, hours: 12 })
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("fail");
+              showToast("已开放注册 12 小时");
+            })
+            .catch(() => showToast("操作失败"));
+        });
+      }
+
+      if (closeRegisterWindowBtn) {
+        closeRegisterWindowBtn.addEventListener("click", () => {
+          fetch("/api/admin/register-window", {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            credentials: "same-origin",
+            body: JSON.stringify({ open: false })
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("fail");
+              showToast("已关闭注册入口");
+            })
+            .catch(() => showToast("操作失败"));
+        });
+      }
+
+      if (generateInviteBtn) {
+        generateInviteBtn.addEventListener("click", () => {
+          const count = inviteCountInput ? inviteCountInput.value : 1;
+          fetch("/api/admin/invites", {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=utf-8" },
+            credentials: "same-origin",
+            body: JSON.stringify({ count })
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("fail");
+              return res.json();
+            })
+            .then(() => {
+              showToast("邀请码已生成");
+              loadInvites();
+            })
+            .catch(() => showToast("操作失败"));
         });
       }
 
@@ -5002,6 +5307,9 @@
 
       if (viewToggleBtn) {
         viewToggleBtn.addEventListener("click", () => {
+          if (window.innerWidth < 768) {
+            return;
+          }
           const next = viewMode === "card" ? "list" : "card";
           applyViewMode(next);
           renderLinks(allLinks);
@@ -5103,47 +5411,82 @@
         });
       }
 
+      function loadSettings(viewUser) {
+        const url = viewUser
+          ? `/api/settings?user=${encodeURIComponent(viewUser)}`
+          : "/api/settings";
+        return fetch(url)
+          .then((res) => {
+            if (!res.ok) {
+              throw new Error("settings");
+            }
+            return res.json();
+          })
+          .then((data) => {
+            if (data && data.siteName) {
+              siteTitle.textContent = data.siteName;
+              siteNameInput.value = data.siteName;
+              document.title = data.siteName;
+            }
+            if (data && data.siteLogo !== undefined) {
+              applySiteLogo(data.siteLogo || "");
+            }
+            if (data && data.backgroundColor !== undefined) {
+              if (bgColorInput && data.backgroundColor) {
+                bgColorInput.value = data.backgroundColor;
+              }
+              applyBackground(data.backgroundColor || "");
+            }
+            if (data && data.iconScale !== undefined) {
+              const value = Math.max(0, Math.min(100, Number(data.iconScale)));
+              if (iconSizeInput) {
+                iconSizeInput.value = Number.isNaN(value) ? 100 : String(value);
+              }
+              applyIconScale(Number.isNaN(value) ? 100 : value);
+            }
+            if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
+              userTotpToggle.checked = Boolean(data.userTotpEnabled);
+            }
+            return data;
+          })
+          .catch(() => {});
+      }
+
       fetch("/api/me")
         .then((res) => res.json())
         .then((data) => {
           const logged = Boolean(data && data.loggedIn);
+          isAdmin = Boolean(data && data.isAdmin);
           setLoginState(logged);
           if (logged) {
             applyUserProfile(data.userName || "Admin", data.userAvatar || "");
           } else {
             applyUserProfile("Admin", "");
           }
+          if (inviteGroup) {
+            inviteGroup.classList.toggle("hidden", !isAdmin);
+            if (isAdmin) {
+              loadInvites();
+            }
+          }
+          const viewUser = !logged ? publicUsername : "";
+          loadSettings(viewUser).then((settings) => {
+            if (registerBtn) {
+              const canShow = !logged && settings && settings.registerOpenUntil;
+              registerBtn.classList.toggle("hidden", !canShow);
+            }
+          });
         })
         .catch(() => {
           setLoginState(false);
+          const viewUser = publicUsername || "";
+          loadSettings(viewUser).then((settings) => {
+            if (registerBtn) {
+              const canShow = settings && settings.registerOpenUntil;
+              registerBtn.classList.toggle("hidden", !canShow);
+            }
+          });
         });
-
-      fetch("/api/settings")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && data.siteName) {
-            siteTitle.textContent = data.siteName;
-            siteNameInput.value = data.siteName;
-            document.title = data.siteName;
-          }
-          if (data && data.siteLogo !== undefined) {
-            applySiteLogo(data.siteLogo || "");
-          }
-          if (data && data.backgroundColor !== undefined) {
-            if (bgColorInput && data.backgroundColor) {
-              bgColorInput.value = data.backgroundColor;
-            }
-            applyBackground(data.backgroundColor || "");
-          }
-          if (data && data.iconScale !== undefined) {
-            const value = Math.max(0, Math.min(100, Number(data.iconScale)));
-            if (iconSizeInput) {
-              iconSizeInput.value = Number.isNaN(value) ? 100 : String(value);
-            }
-            applyIconScale(Number.isNaN(value) ? 100 : value);
-          }
-        })
-        .catch(() => {});
 
       fetchLinks();
       applyFontSettings();
