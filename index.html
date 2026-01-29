@@ -415,6 +415,13 @@
         -webkit-user-drag: none !important;
         cursor: grab !important;
       }
+      .mode-sort .dock-item {
+        transform: translateY(0) scale(1) !important;
+      }
+      .mode-sort #dock-container,
+      .mode-sort #dockGrid {
+        pointer-events: auto !important;
+      }
       .mode-sort .sortable-ghost {
         background: rgba(255, 255, 255, 0.45) !important;
         border: 2px dashed rgba(255, 255, 255, 0.6) !important;
@@ -862,13 +869,22 @@
         justify-content: center !important;
         min-width: 40px;
         height: calc(var(--base-size) * 1.2);
-        background-color: rgba(0, 0, 0, 0.5) !important;
+        background-color: rgba(0, 0, 0, 0.35) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 9999px;
         padding: 2px 8px;
         margin-top: 4px;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.15);
+        transform: translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
       }
       html.dark .icon-label-capsule {
-        background-color: rgba(255, 255, 255, 0.2) !important;
+        background-color: rgba(255, 255, 255, 0.18) !important;
+        border-color: rgba(255, 255, 255, 0.22);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
       }
       .icon-label-text {
         color: #ffffff !important;
@@ -1000,7 +1016,8 @@
         transform: translateX(-50%) translateY(6px);
         padding: 4px 10px;
         border-radius: 999px;
-        background: rgba(0, 0, 0, 0.55);
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.2);
         color: #ffffff;
         font-size: 11px;
         line-height: 1;
@@ -1012,9 +1029,15 @@
         transition: opacity 0.2s ease, transform 0.2s ease;
         backdrop-filter: blur(6px);
         -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 6px 14px rgba(15, 23, 42, 0.18);
+        transform: translateX(-50%) translateY(6px) translateZ(0);
+        -webkit-backface-visibility: hidden;
+        backface-visibility: hidden;
       }
       html.dark .dock-label-capsule {
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(255, 255, 255, 0.18);
+        border-color: rgba(255, 255, 255, 0.22);
+        box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
       }
       .dock-item:hover .dock-label-capsule {
         opacity: 1;
@@ -1340,6 +1363,18 @@
       #menuToggle.open [data-icon="close"] {
         display: block;
       }
+      @media (max-width: 640px) {
+        #controlGroup {
+          top: calc(100% + 12px);
+          right: 0;
+          left: auto;
+          transform: none;
+        }
+        #loginBtn span,
+        #registerBtn span {
+          display: inline;
+        }
+      }
       @media (max-width: 768px) {
         #viewToggleBtn {
           display: none !important;
@@ -1369,9 +1404,9 @@
         min-width: 0;
       }
       .logo-mark {
-        width: 44px;
-        height: 44px;
-        border-radius: 14px;
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
         background: linear-gradient(135deg, #3b82f6, #60a5fa);
         color: #ffffff;
         display: grid;
@@ -1383,12 +1418,40 @@
       }
       .logo-mark.has-logo {
         background: transparent;
+        position: relative;
+        isolation: isolate;
+      }
+      .logo-mark.has-logo::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: rgba(255, 255, 255, 0.28);
+        border: 1px solid rgba(255, 255, 255, 0.45);
+        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        z-index: 0;
+      }
+      html.dark .logo-mark.has-logo::before {
+        background: rgba(15, 23, 42, 0.35);
+        border-color: rgba(255, 255, 255, 0.18);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
       }
       .logo-mark img {
         width: 100%;
         height: 100%;
         object-fit: cover;
         display: block;
+        filter: none;
+        box-shadow: none;
+        background: transparent;
+        mix-blend-mode: normal;
+        position: relative;
+        z-index: 1;
+      }
+      .logo-mark.has-logo img {
+        object-fit: contain;
       }
       .site-title {
         font-size: calc(var(--base-size) * 1.35);
@@ -1839,8 +1902,8 @@
     <header class="site-header header-logo">
         <div class="header-left">
           <div class="logo-mark" aria-hidden="true">
-            <img id="siteLogoImg" class="hidden" alt="logo" />
-            <span id="siteLogoText">N</span>
+            <img id="siteLogoImg" class="" alt="logo" src="/logo-0emo.svg" data-default-logo="/logo-0emo.svg" />
+            <span id="siteLogoText" class="hidden">N</span>
           </div>
           <div class="title-group">
             <div id="siteTitle" class="site-title">我的 iOS 风格导航</div>
@@ -2204,29 +2267,9 @@
               <span class="slider"></span>
             </label>
           </div>
-          <div class="text-slate-500 dark:text-slate-400 text-xs mt-1">
-            启用后，下次登录需要绑定或输入验证码。
-          </div>
+        <div class="text-slate-700 dark:text-slate-200 text-xs mt-1 opacity-100">
+          启用后，下次登录需要绑定或输入验证码。
         </div>
-        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3 hidden" id="inviteGroup">
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">注册管理（邀请码 12 小时有效）</span>
-          </div>
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">开放注册入口</span>
-            <div class="flex gap-2">
-              <button class="btn bg-blue-600 text-white border border-blue-600/60" id="openRegisterWindowBtn">开放 12 小时</button>
-              <button class="btn bg-slate-100 text-slate-700 border border-gray-200/50" id="closeRegisterWindowBtn">关闭入口</button>
-            </div>
-          </div>
-          <div class="settings-row">
-            <span class="text-slate-800 dark:text-slate-100">生成邀请码</span>
-            <div class="flex items-center gap-2">
-              <input id="inviteCountInput" type="number" min="1" max="50" value="3" class="w-16 text-slate-900 bg-slate-50 border border-slate-300 rounded-lg px-2 py-1" />
-              <button class="btn bg-blue-600 text-white border border-blue-600/60" id="generateInviteBtn">生成</button>
-            </div>
-          </div>
-          <div id="inviteList" class="mt-2 space-y-2 text-sm"></div>
         </div>
         <div class="settings-group" id="backupGroup">
           <div class="settings-row">
@@ -2343,12 +2386,6 @@
       const boldToggle = document.querySelector("#boldToggle");
       const iconSizeInput = document.querySelector("#iconSizeInput");
       const userTotpToggle = document.querySelector("#userTotpToggle");
-      const inviteGroup = document.querySelector("#inviteGroup");
-      const openRegisterWindowBtn = document.querySelector("#openRegisterWindowBtn");
-      const closeRegisterWindowBtn = document.querySelector("#closeRegisterWindowBtn");
-      const inviteCountInput = document.querySelector("#inviteCountInput");
-      const generateInviteBtn = document.querySelector("#generateInviteBtn");
-      const inviteList = document.querySelector("#inviteList");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
       const importBtn = document.querySelector("#importBtn");
@@ -2365,6 +2402,7 @@
       let deleting = false;
       let currentMode = "preview";
       let isAdmin = false;
+      let registerOpenUntil = null;
       const publicUsername = (() => {
         try {
           const params = new URLSearchParams(window.location.search);
@@ -3039,7 +3077,11 @@
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
             innerGrid.style.maxWidth = `${availableWidth}px`;
             const pageSize = perRow;
-            heading.classList.add("cursor-text", "editable");
+            if (currentMode === "edit") {
+              heading.classList.add("cursor-text", "editable");
+            } else {
+              heading.classList.remove("editable");
+            }
             heading.addEventListener("click", (event) => {
               event.stopPropagation();
               if (currentMode !== "edit" || heading.querySelector("input")) {
@@ -3664,6 +3706,8 @@
               const categoryName = container.dataset.category || "";
               normalizeCategoryItem(card);
               updateLinkDockState(id, false, categoryName, null);
+              updateContainerState(container);
+              syncAllOrders();
             },
             onEnd: (event) => {
               console.log("排序数据已保存");
@@ -3699,28 +3743,27 @@
           const rect = dockGrid.getBoundingClientRect();
           console.log("Dock grid rect:", rect.width, rect.height);
           const dockSortable = new Sortable(dockGrid, {
-            animation: 320,
+            animation: 260,
             draggable: ".dock-item",
-            handle: ".icon",
             group: { name: "shared", pull: true, put: true },
             sort: true,
             filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
             preventOnFilter: false,
             forceFallback: true,
             fallbackOnBody: true,
-            fallbackTolerance: 0,
+            fallbackTolerance: 4,
             fallbackClass: "sortable-fallback",
             delay: 0,
             delayOnTouchOnly: true,
             touchStartThreshold: 2,
             dragoverBubble: false,
-            invertSwap: true,
-            invertedSwapThreshold: 0.3,
+            invertSwap: false,
+            direction: "horizontal",
             scroll: true,
             scrollSensitivity: 80,
             scrollSpeed: 12,
             swap: false,
-            swapThreshold: 0.7,
+            swapThreshold: 0.6,
             easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
             ghostClass: "sortable-ghost",
             dragClass: "sortable-drag",
@@ -3795,19 +3838,14 @@
                 (event.from !== event.to || event.oldIndex !== event.newIndex);
               if (moved) {
                 pendingChanges = true;
-                updateContainerState(dockGrid);
-                dockGrid.classList.remove("dock-drop");
-                const dockContainer = dockGrid.closest("#dock-container");
-                if (dockContainer) dockContainer.classList.remove("dock-full");
-                dockFullWarned = false;
-                syncAllOrders();
-                updateEmptyCategories();
-              } else {
-                dockGrid.classList.remove("dock-drop");
-                const dockContainer = dockGrid.closest("#dock-container");
-                if (dockContainer) dockContainer.classList.remove("dock-full");
-                dockFullWarned = false;
               }
+              updateContainerState(dockGrid);
+              dockGrid.classList.remove("dock-drop");
+              const dockContainer = dockGrid.closest("#dock-container");
+              if (dockContainer) dockContainer.classList.remove("dock-full");
+              dockFullWarned = false;
+              syncAllOrders();
+              updateEmptyCategories();
             }
           });
           sortables.push(dockSortable);
@@ -3858,6 +3896,13 @@
         } catch (err) {}
       }
 
+      function getRegisterOpen() {
+        if (!registerOpenUntil) return false;
+        const ts = new Date(registerOpenUntil).getTime();
+        if (!Number.isFinite(ts)) return false;
+        return ts > Date.now();
+      }
+
       function applyUserProfile(name, avatarUrl) {
         const safeName = name || "Admin";
         if (userNameLabel) {
@@ -3881,6 +3926,8 @@
 
       function applySiteLogo(logoPath) {
         if (!siteLogoImg || !siteLogoText) return;
+        const defaultLogo =
+          siteLogoImg.dataset.defaultLogo || siteLogoImg.getAttribute("src") || "";
         if (logoPath) {
           siteLogoImg.src = logoPath;
           siteLogoImg.classList.remove("hidden");
@@ -3888,12 +3935,21 @@
           if (logoMark) {
             logoMark.classList.add("has-logo");
           }
-        } else {
-          siteLogoImg.classList.add("hidden");
-          siteLogoText.classList.remove("hidden");
+          return;
+        }
+        if (defaultLogo) {
+          siteLogoImg.src = defaultLogo;
+          siteLogoImg.classList.remove("hidden");
+          siteLogoText.classList.add("hidden");
           if (logoMark) {
-            logoMark.classList.remove("has-logo");
+            logoMark.classList.add("has-logo");
           }
+          return;
+        }
+        siteLogoImg.classList.add("hidden");
+        siteLogoText.classList.remove("hidden");
+        if (logoMark) {
+          logoMark.classList.remove("has-logo");
         }
       }
 
@@ -4178,69 +4234,6 @@
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return "";
         return date.toLocaleString();
-      }
-
-      function renderInviteList(items) {
-        if (!inviteList) return;
-        inviteList.innerHTML = "";
-        if (!items || !items.length) {
-          const empty = document.createElement("div");
-          empty.className = "text-slate-500";
-          empty.textContent = "暂无可用邀请码";
-          inviteList.appendChild(empty);
-          return;
-        }
-        items.forEach((item) => {
-          const row = document.createElement("div");
-          row.className =
-            "flex items-center justify-between gap-2 bg-white/60 dark:bg-black/40 border border-white/20 rounded-lg px-3 py-2";
-          const left = document.createElement("div");
-          left.innerHTML = `<div class="font-semibold text-slate-800 dark:text-slate-100">${item.code}</div><div class="text-xs text-slate-500">到期：${formatInviteExpiry(item.expires_at)}</div>`;
-          const actions = document.createElement("div");
-          actions.className = "flex items-center gap-2";
-          const copyBtn = document.createElement("button");
-          copyBtn.className = "btn bg-slate-100 text-slate-700 border border-gray-200/50";
-          copyBtn.textContent = "复制";
-          copyBtn.addEventListener("click", () => {
-            navigator.clipboard.writeText(item.code).then(() => {
-              showToast("已复制邀请码");
-            });
-          });
-          const delBtn = document.createElement("button");
-          delBtn.className = "btn bg-slate-100 text-slate-700 border border-gray-200/50";
-          delBtn.textContent = "作废";
-          delBtn.addEventListener("click", () => {
-            fetch(`/api/admin/invites/${item.id}`, {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json; charset=utf-8" },
-              credentials: "same-origin"
-            })
-              .then((res) => {
-                if (!res.ok) throw new Error("fail");
-                showToast("已作废");
-                loadInvites();
-              })
-              .catch(() => showToast("操作失败"));
-          });
-          actions.append(copyBtn, delBtn);
-          row.append(left, actions);
-          inviteList.appendChild(row);
-        });
-      }
-
-      function loadInvites() {
-        if (!inviteList) return;
-        fetch("/api/admin/invites", { credentials: "same-origin" })
-          .then((res) => {
-            if (!res.ok) throw new Error("fail");
-            return res.json();
-          })
-          .then((data) => {
-            renderInviteList(Array.isArray(data) ? data : data.items);
-          })
-          .catch(() => {
-            renderInviteList([]);
-          });
       }
 
       function saveAppearanceSettings(payload) {
@@ -4868,6 +4861,10 @@
       }
       if (registerBtn) {
         registerBtn.addEventListener("click", () => {
+          if (!getRegisterOpen()) {
+            showToast("注册入口未开放");
+            return;
+          }
           window.location.href = "/register.html";
         });
       }
@@ -5175,59 +5172,6 @@
         });
       }
 
-      if (openRegisterWindowBtn) {
-        openRegisterWindowBtn.addEventListener("click", () => {
-          fetch("/api/admin/register-window", {
-            method: "POST",
-            headers: { "Content-Type": "application/json; charset=utf-8" },
-            credentials: "same-origin",
-            body: JSON.stringify({ open: true, hours: 12 })
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error("fail");
-              showToast("已开放注册 12 小时");
-            })
-            .catch(() => showToast("操作失败"));
-        });
-      }
-
-      if (closeRegisterWindowBtn) {
-        closeRegisterWindowBtn.addEventListener("click", () => {
-          fetch("/api/admin/register-window", {
-            method: "POST",
-            headers: { "Content-Type": "application/json; charset=utf-8" },
-            credentials: "same-origin",
-            body: JSON.stringify({ open: false })
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error("fail");
-              showToast("已关闭注册入口");
-            })
-            .catch(() => showToast("操作失败"));
-        });
-      }
-
-      if (generateInviteBtn) {
-        generateInviteBtn.addEventListener("click", () => {
-          const count = inviteCountInput ? inviteCountInput.value : 1;
-          fetch("/api/admin/invites", {
-            method: "POST",
-            headers: { "Content-Type": "application/json; charset=utf-8" },
-            credentials: "same-origin",
-            body: JSON.stringify({ count })
-          })
-            .then((res) => {
-              if (!res.ok) throw new Error("fail");
-              return res.json();
-            })
-            .then(() => {
-              showToast("邀请码已生成");
-              loadInvites();
-            })
-            .catch(() => showToast("操作失败"));
-        });
-      }
-
       if (logoInput) {
         logoInput.addEventListener("change", () => {
           if (!logoInput.files || !logoInput.files[0]) return;
@@ -5447,6 +5391,9 @@
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);
             }
+            if (data && data.registerOpenUntil !== undefined) {
+              registerOpenUntil = data.registerOpenUntil || null;
+            }
             return data;
           })
           .catch(() => {});
@@ -5463,29 +5410,13 @@
           } else {
             applyUserProfile("Admin", "");
           }
-          if (inviteGroup) {
-            inviteGroup.classList.toggle("hidden", !isAdmin);
-            if (isAdmin) {
-              loadInvites();
-            }
-          }
           const viewUser = !logged ? publicUsername : "";
-          loadSettings(viewUser).then((settings) => {
-            if (registerBtn) {
-              const canShow = !logged && settings && settings.registerOpenUntil;
-              registerBtn.classList.toggle("hidden", !canShow);
-            }
-          });
+          loadSettings(viewUser);
         })
         .catch(() => {
           setLoginState(false);
           const viewUser = publicUsername || "";
-          loadSettings(viewUser).then((settings) => {
-            if (registerBtn) {
-              const canShow = settings && settings.registerOpenUntil;
-              registerBtn.classList.toggle("hidden", !canShow);
-            }
-          });
+          loadSettings(viewUser);
         });
 
       fetchLinks();
