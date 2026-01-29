@@ -1795,6 +1795,14 @@
         font-size: calc(var(--base-size) * 0.95);
         outline: none;
         background: rgba(255, 255, 255, 0.85);
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+        min-width: 0;
+      }
+      .field input[type="file"] {
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .toggle-row {
         display: flex;
