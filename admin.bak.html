@@ -1,0 +1,1080 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>莽庐隆莽聬聠氓聭聵氓聬聨氓聫</title>
+    <style>
+      :root {
+        --bg-a: #f2f2f7;
+        --bg-b: #e7edf7;
+        --text: #17181a;
+        --muted: #6a6f7a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(900px 320px at 15% 0%, rgba(255, 255, 255, 0.8), transparent 70%),
+          radial-gradient(900px 400px at 80% 10%, rgba(255, 255, 255, 0.7), transparent 60%),
+          linear-gradient(160deg, var(--bg-a), var(--bg-b));
+        min-height: 100vh;
+        padding: 32px 20px 60px;
+      }
+      .shell {
+        max-width: 920px;
+        margin: 0 auto;
+      }
+      .card {
+        background: rgba(255, 255, 255, 0.92);
+        border-radius: 26px;
+        padding: 22px;
+        box-shadow: 0 18px 40px rgba(16, 24, 40, 0.22);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        margin-bottom: 18px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: 22px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .field {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 12px;
+      }
+      label {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input {
+        border: 1px solid rgba(0, 0, 0, 0.1);
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 14px;
+        outline: none;
+        background: rgba(255, 255, 255, 0.9);
+      }
+      button {
+        border: none;
+        border-radius: 14px;
+        padding: 10px 14px;
+        font-size: 14px;
+        cursor: pointer;
+        background: #0a84ff;
+        color: #ffffff;
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.15);
+      }
+      button.secondary {
+        background: #e2e8f0;
+        color: #334155;
+        box-shadow: none;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+      .row.space {
+        justify-content: space-between;
+      }
+      .hidden {
+        display: none !important;
+      }
+      .toast {
+        position: fixed;
+        top: 18px;
+        left: 50%;
+        transform: translateX(-50%) translateY(-8px);
+        background: rgba(15, 23, 42, 0.85);
+        color: #fff;
+        padding: 8px 14px;
+        border-radius: 999px;
+        font-size: 13px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 9999;
+      }
+      .toast.show {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+      }
+      .list {
+        display: grid;
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .list-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 14px;
+        border-radius: 16px;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        background: rgba(15, 23, 42, 0.1);
+        color: #475569;
+      }
+      .qr {
+        width: 160px;
+        height: 160px;
+        border-radius: 16px;
+        background: #f8fafc;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(15, 23, 42, 0.1);
+      }
+      .actions {
+        display: flex;
+        gap: 8px;
+      }
+      .actions button {
+        padding: 6px 10px;
+        font-size: 12px;
+        border-radius: 12px;
+        box-shadow: none;
+      }
+      .title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="toast" id="toast">盲驴聺氓颅聵忙聢聬氓聤聼</div>
+    <div class="shell">
+      <div class="card" id="loginCard">
+        <h1>莽庐隆莽聬聠氓聭聵莽聶禄氓陆</h1>
+        <p class="muted">猫炉路猫戮聯氓聟楼莽庐隆莽聬聠氓聭聵猫麓娄氓聫路盲赂聨氓炉聠莽聽聛茂录聦茅娄聳忙卢隆莽聶禄氓陆聲茅聹聙猫娄聛莽禄聭氓庐?Google Authenticator茫聙</p>
+        <form id="loginForm">
+          <div class="field">
+            <label for="adminUser">莽庐隆莽聬聠氓聭聵猫麓娄氓聫</label>
+            <input id="adminUser" type="text" required />
+          </div>
+          <div class="field">
+            <label for="adminPass">氓炉聠莽聽聛</label>
+            <input id="adminPass" type="password" required />
+          </div>
+          <div class="field hidden" id="totpField">
+            <label for="adminTotp">TOTP 茅陋聦猫炉聛莽聽</label>
+            <input id="adminTotp" type="text" inputmode="numeric" />
+          </div>
+          <button type="submit" id="loginBtn">莽聶禄氓陆聲</button>
+          <div class="muted" id="loginMsg"></div>
+        </form>
+      </div>
+
+      <div class="card hidden" id="setupCard">
+        <div class="title-row">
+          <div>
+            <h1>莽禄聭氓庐職 TOTP</h1>
+            <p class="muted">盲陆驴莽聰篓 Google Authenticator 忙聣芦忙聫聫忙聢聳忙聣聥氓聤篓猫戮聯氓聟楼氓炉聠茅聮楼茫聙</p>
+          </div>
+          <span class="pill">盲禄聟茅聹聙盲赂聙忙卢</span>
+        </div>
+        <div class="row">
+          <div class="qr">
+            <img id="qrImage" alt="QR" />
+          </div>
+          <div style="flex: 1; min-width: 220px;">
+            <div class="field">
+              <label>氓炉聠茅聮楼茂录聢忙聣聥氓聤篓猫戮聯氓聟楼茂录聣</label>
+              <input id="totpSecret" type="text" readonly />
+            </div>
+            <div class="field">
+              <label>猫戮聯氓聟楼茅陋聦猫炉聛莽聽</label>
+              <input id="totpCode" type="text" inputmode="numeric" />
+            </div>
+            <button id="bindTotpBtn">氓庐聦忙聢聬莽禄聭氓庐職</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card hidden" id="panelCard">
+        <div class="title-row">
+          <div>
+            <h1>莽庐隆莽聬聠氓聭聵忙聨搂氓聢露氓聫掳</h1>
+            <div class="muted" id="adminName"></div>
+          </div>
+          <button class="secondary" id="logoutBtn">茅聙聙氓聡</button>
+        </div>
+        <div class="card" style="margin-top: 12px;">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">忙鲁篓氓聠聦氓聟楼氓聫拢</h1>
+              <div class="muted">盲禄聟莽庐隆莽聬聠氓聭聵氓聫炉盲赂麓忙聴露氓录聙忙聰?12 氓掳聫忙聴露茫聙</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 12px;">
+            <input id="registerHours" type="number" min="1" max="48" value="12" style="width: 90px;" />
+            <span class="muted">氓掳聫忙聴露</span>
+            <button id="openRegBtn">氓录聙忙聰戮忙鲁篓氓聠</button>
+            <button class="secondary" id="closeRegBtn">氓聟鲁茅聴颅氓聟楼氓聫拢</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">茅聜聙猫炉路莽聽聛莽庐隆莽聬聠</h1>
+              <div class="muted">莽聰聼忙聢聬莽職聞茅聜聙猫炉路莽聽聛 12 氓掳聫忙聴露忙聹聣忙聲聢茫聙</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <input id="inviteCount" type="number" min="1" max="50" value="3" style="width: 90px;" />
+            <input id="inviteHours" type="number" min="1" max="168" value="12" style="width: 90px;" />
+            <span class="muted">氓掳聫忙聴露</span>
+            <button id="generateInvitesBtn">莽聰聼忙聢聬茅聜聙猫炉路莽聽聛</button>
+          </div>
+          <div class="list" id="inviteList"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">莽聰篓忙聢路莽庐隆莽聬聠</h1>
+              <div class="muted">氓聬炉莽聰篓 / 莽娄聛莽聰篓 / 茅聡聧莽陆庐氓炉聠莽聽聛 / 氓聢聽茅聶陇茫聙</div>
+            </div>
+          </div>
+          <div class="list" id="userList"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">&#x8054;&#x7CFB;&#x6211;&#x4EEC;&#x7BA1;&#x7406;</h1>
+              <div class="muted">&#x4E3A;&#x6307;&#x5B9A;&#x7528;&#x6237;&#x6216;&#x5168;&#x90E8;&#x7528;&#x6237;&#x914D;&#x7F6E;&#x8054;&#x7CFB;&#x65B9;&#x5F0F;&#x3002;</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <select id="contactUserSelect" style="min-width: 160px;">
+              <option value="">&#x9009;&#x62E9;&#x7528;&#x6237;</option>
+            </select>
+            <label class="toggle">
+              <input id="contactEnabled" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+            <span class="muted">&#x542F;&#x7528;&#x8054;&#x7CFB;&#x6211;&#x4EEC;</span>
+          </div>
+          <div class="list" id="contactList" style="margin-top: 10px;"></div>
+          <div class="row" style="margin-top: 6px;">
+            <button id="addContactRowBtn" style="background: #eef2ff; color: #1d4ed8;">&#x6DFB;&#x52A0;&#x8054;&#x7CFB;&#x65B9;&#x5F0F;</button>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <label class="muted">
+              <input id="contactApplyAll" type="checkbox" />
+              &#x6279;&#x91CF;&#x5E94;&#x7528;&#x5230;&#x6240;&#x6709;&#x7528;&#x6237;
+            </label>
+            <button id="saveContactBtn">&#x4FDD;&#x5B58;</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">&#x9ED1;&#x540D;&#x5355;&#x7BA1;&#x7406;</h1>
+              <div class="muted">&#x652F;&#x6301;&#x8D26;&#x53F7;/IP/&#x8BBE;&#x5907;&#x6307;&#x7EB9;&#x62E6;&#x622A;&#xFF0C;&#x652F;&#x6301;&#x6709;&#x6548;&#x671F;&#x3002;</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <select id="blacklistType" style="min-width: 140px;">
+              <option value="user">&#x8D26;&#x53F7;</option>
+              <option value="ip">IP</option>
+              <option value="device">&#x8BBE;&#x5907;&#x6307;&#x7EB9;</option>
+            </select>
+            <input id="blacklistValue" type="text" placeholder="&#x8BF7;&#x8F93;&#x5165;&#x503C;" style="flex: 1;" />
+            <input id="blacklistHours" type="number" min="1" placeholder="&#x6709;&#x6548;&#x671F;&#x5C0F;&#x65F6;" style="width: 110px;" />
+            <button id="addBlacklistBtn">&#x6DFB;&#x52A0;</button>
+          </div>
+          <div class="field">
+            <label for="blacklistReason">&#x5907;&#x6CE8;</label>
+            <input id="blacklistReason" type="text" placeholder="&#x9009;&#x586B;" />
+          </div>
+          <div class="list" id="blacklistList"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">莽庐隆莽聬聠氓聭聵猫麓娄忙聢</h1>
+              <div class="muted">茅聹聙茅陋聦猫炉聛氓聨聼猫麓娄氓聫路氓炉聠莽聽聛氓聬聨忙聣聧氓聫炉盲驴庐忙聰鹿</div>
+            </div>
+          </div>
+          <div class="field">
+            <label for="adminUserCurrent">氓聨聼莽庐隆莽聬聠氓聭聵莽聰篓忙聢路氓聬</label>
+            <input id="adminUserCurrent" type="text" placeholder="氓陆聯氓聣聧莽庐隆莽聬聠氓聭聵莽聰篓忙聢路氓聬聧" />
+          </div>
+          <div class="field">
+            <label for="adminPassCurrent">氓聨聼莽庐隆莽聬聠氓聭聵氓炉聠莽聽聛</label>
+            <input id="adminPassCurrent" type="password" placeholder="氓陆聯氓聣聧莽庐隆莽聬聠氓聭聵氓炉聠莽聽? />
+          </div>
+          <div class="field">
+            <label for="adminUserUpdate">忙聳掳莽庐隆莽聬聠氓聭聵莽聰篓忙聢路氓聬</label>
+            <input id="adminUserUpdate" type="text" placeholder="氓聫炉茅聙聣茂录聦莽聲聶莽漏潞盲赂聧盲驴庐忙聰? />
+          </div>
+          <div class="field">
+            <label for="adminPassUpdate">忙聳掳莽庐隆莽聬聠氓聭聵氓炉聠莽聽聛</label>
+            <input id="adminPassUpdate" type="password" placeholder="氓聫炉茅聙聣茂录聦莽聲聶莽漏潞盲赂聧盲驴庐忙聰? />
+          </div>
+          <div class="field">
+            <label for="adminPassConfirm">莽隆庐猫庐陇忙聳掳氓炉聠莽聽</label>
+            <input id="adminPassConfirm" type="password" placeholder="氓聠聧忙卢隆猫戮聯氓聟楼忙聳掳氓炉聠莽聽? />
+          </div>
+          <div class="row">
+            <button id="saveAdminCredBtn">盲驴聺氓颅聵</button>
+          </div>
+        </div>
+        <div class="card" id="adminLogsCard">
+          <div class="title-row" style="align-items: flex-start;">
+            <div>
+              <h1 style="font-size: 18px;">忙聯聧盲陆聹忙聴楼氓驴聴</h1>
+              <div class="muted">忙炉聫茅隆碌 10 忙聺隆猫庐掳氓陆聲茂录聦氓聫炉莽驴禄茅隆碌忙聼楼莽聹聥茫聙</div>
+            </div>
+            <div class="row" style="gap: 6px;">
+              <button class="secondary" id="logPrevBtn">盲赂聤盲赂聙茅隆</button>
+              <span class="muted" id="logPageText">1/1</span>
+              <button class="secondary" id="logNextBtn">盲赂聥盲赂聙茅隆</button>
+              <button class="secondary" id="refreshLogsBtn">氓聢路忙聳掳</button>
+            </div>
+          </div>
+          <div class="list" id="adminLogList"></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const loginCard = document.querySelector("#loginCard");
+      const setupCard = document.querySelector("#setupCard");
+      const panelCard = document.querySelector("#panelCard");
+      const loginForm = document.querySelector("#loginForm");
+      const adminUser = document.querySelector("#adminUser");
+      const adminPass = document.querySelector("#adminPass");
+      const adminTotp = document.querySelector("#adminTotp");
+      const totpField = document.querySelector("#totpField");
+      const loginMsg = document.querySelector("#loginMsg");
+      const loginBtn = document.querySelector("#loginBtn");
+      const qrImage = document.querySelector("#qrImage");
+      const totpSecret = document.querySelector("#totpSecret");
+      const totpCode = document.querySelector("#totpCode");
+      const bindTotpBtn = document.querySelector("#bindTotpBtn");
+      const openRegBtn = document.querySelector("#openRegBtn");
+      const closeRegBtn = document.querySelector("#closeRegBtn");
+      const registerHours = document.querySelector("#registerHours");
+      const inviteCount = document.querySelector("#inviteCount");
+      const inviteHours = document.querySelector("#inviteHours");
+      const generateInvitesBtn = document.querySelector("#generateInvitesBtn");
+      const inviteList = document.querySelector("#inviteList");
+      const userList = document.querySelector("#userList");
+      const adminLogList = document.querySelector("#adminLogList");
+      const refreshLogsBtn = document.querySelector("#refreshLogsBtn");
+      const logPrevBtn = document.querySelector("#logPrevBtn");
+      const logNextBtn = document.querySelector("#logNextBtn");
+      const logPageText = document.querySelector("#logPageText");
+      const contactUserSelect = document.querySelector("#contactUserSelect");
+      const contactEnabled = document.querySelector("#contactEnabled");
+      const contactList = document.querySelector("#contactList");
+      const addContactRowBtn = document.querySelector("#addContactRowBtn");
+      const contactApplyAll = document.querySelector("#contactApplyAll");
+      const saveContactBtn = document.querySelector("#saveContactBtn");
+      const blacklistType = document.querySelector("#blacklistType");
+      const blacklistValue = document.querySelector("#blacklistValue");
+      const blacklistHours = document.querySelector("#blacklistHours");
+      const blacklistReason = document.querySelector("#blacklistReason");
+      const addBlacklistBtn = document.querySelector("#addBlacklistBtn");
+      const blacklistList = document.querySelector("#blacklistList");
+      const adminUserCurrent = document.querySelector("#adminUserCurrent");
+      const adminPassCurrent = document.querySelector("#adminPassCurrent");
+      const adminUserUpdate = document.querySelector("#adminUserUpdate");
+      const adminPassUpdate = document.querySelector("#adminPassUpdate");
+      const adminPassConfirm = document.querySelector("#adminPassConfirm");
+      const saveAdminCredBtn = document.querySelector("#saveAdminCredBtn");
+      const logoutBtn = document.querySelector("#logoutBtn");
+      const adminName = document.querySelector("#adminName");
+      const toast = document.querySelector("#toast");
+      let logPage = 1;
+      let logTotalPages = 1;
+      let cachedUsers = [];
+      if (contactApplyAll) {
+        contactApplyAll.checked = true;
+        contactApplyAll.disabled = true;
+      }
+      if (contactUserSelect) {
+        contactUserSelect.disabled = true;
+        contactUserSelect.style.opacity = "0.6";
+      }
+
+      function showToast(message) {
+        if (!toast) return;
+        toast.textContent = message;
+        toast.classList.add("show");
+        clearTimeout(showToast.timer);
+        showToast.timer = setTimeout(() => {
+          toast.classList.remove("show");
+        }, 1500);
+      }
+
+      function mapAdminError(code) {
+        const mapping = {
+          unauthorized: "忙聹陋莽聶禄氓陆聲忙聢聳忙聺聝茅聶聬盲赂聧猫露鲁",
+          forbidden: "忙聺聝茅聶聬盲赂聧猫露鲁",
+          missing_current_credentials: "猫炉路猫戮聯氓聟楼氓聨聼莽聰篓忙聢路氓聬聧氓聮聦氓炉聠莽聽聛",
+          invalid_current_credentials: "氓聨聼莽聰篓忙聢路氓聬聧忙聢聳氓炉聠莽聽聛茅聰聶猫炉?,
+          invalid_new_username: "忙聳掳莽聰篓忙聢路氓聬聧盲赂聧氓聬聢忙鲁?,
+          username_exists: "忙聳掳莽聰篓忙聢路氓聬聧氓路虏氓颅聵氓聹?,
+          password_mismatch: "盲赂陇忙卢隆猫戮聯氓聟楼莽職聞忙聳掳氓炉聠莽聽聛盲赂聧盲赂聙猫聡?,
+          weak_password: "氓炉聠莽聽聛氓录潞氓潞娄盲赂聧猫露鲁茂录聢猫聡鲁氓掳?盲陆聧盲赂聰氓聦聟氓聬芦氓颅聴忙炉聧+忙聲掳氓颅聴茂录?,
+          no_updates: "猫炉路猫戮聯氓聟楼忙聳掳莽聰篓忙聢路氓聬聧忙聢聳忙聳掳氓炉聠莽聽?
+        };
+        return mapping[code] || code || "忙聯聧盲陆聹氓陇卤猫麓楼";
+      }
+
+      function isStrongPassword(value) {
+        if (!value) return false;
+        if (value.length < 8) return false;
+        return /[A-Za-z]/.test(value) && /[0-9]/.test(value);
+      }
+
+      function showLogin() {
+        loginCard.classList.remove("hidden");
+        setupCard.classList.add("hidden");
+        panelCard.classList.add("hidden");
+      }
+
+      function showSetup() {
+        loginCard.classList.add("hidden");
+        setupCard.classList.remove("hidden");
+        panelCard.classList.add("hidden");
+      }
+
+      function showPanel(username) {
+        loginCard.classList.add("hidden");
+        setupCard.classList.add("hidden");
+        panelCard.classList.remove("hidden");
+        adminName.textContent = `氓陆聯氓聣聧莽庐隆莽聬聠氓聭聵茂录職${username}`;
+        if (adminUserCurrent) {
+          adminUserCurrent.value = username || "";
+        }
+        if (adminUserUpdate) {
+          adminUserUpdate.value = "";
+        }
+      }
+
+      function renderInvites(items) {
+        inviteList.innerHTML = "";
+        if (!items || !items.length) {
+          inviteList.innerHTML = "<div class='muted'>忙職聜忙聴聽茅聜聙猫炉路莽聽聛</div>";
+          return;
+        }
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const left = document.createElement("div");
+          left.innerHTML = `<div><strong>${item.code}</strong></div><div class="muted">氓聢掳忙聹聼茂录?{new Date(
+            item.expires_at
+          ).toLocaleString()}</div>`;
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "secondary";
+          copyBtn.textContent = "氓陇聧氓聢露";
+          copyBtn.addEventListener("click", () => {
+            navigator.clipboard.writeText(item.code).then(() => showToast("氓路虏氓陇聧氓聢?));
+          });
+          const delBtn = document.createElement("button");
+          delBtn.className = "secondary";
+          delBtn.textContent = "盲陆聹氓潞聼";
+          delBtn.addEventListener("click", () => {
+            fetch(`/api/admin/invites/${item.id}`, { method: "DELETE" })
+              .then(() => loadInvites())
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          actions.append(copyBtn, delBtn);
+          row.append(left, actions);
+          inviteList.appendChild(row);
+        });
+      }
+
+      function renderUsers(items) {
+        userList.innerHTML = "";
+        if (!items || !items.length) {
+          userList.innerHTML = "<div class='muted'>忙職聜忙聴聽莽聰篓忙聢路</div>";
+          return;
+        }
+        items.forEach((user) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const left = document.createElement("div");
+          left.innerHTML = `<div><strong>${user.username}</strong> ${
+            user.is_admin ? "<span class='pill'>莽庐隆莽聬聠氓聭</span>" : ""
+          }</div><div class="muted">${user.email || ""}</div>`;
+          left.insertAdjacentHTML(
+            "beforeend",
+            `<div class="muted">2FA: ${user.totp_enabled ? "On" : "Off"}</div>`
+          );
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const toggleBtn = document.createElement("button");
+          toggleBtn.className = "secondary";
+          toggleBtn.textContent = user.is_active ? "莽娄聛莽聰篓" : "氓聬炉莽聰篓";
+          toggleBtn.addEventListener("click", () => {
+            const path = user.is_active ? "disable" : "enable";
+            fetch(`/api/admin/users/${user.id}/${path}`, { method: "POST" })
+              .then(() => loadUsers())
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          const resetBtn = document.createElement("button");
+          resetBtn.className = "secondary";
+          resetBtn.textContent = "茅聡聧莽陆庐氓炉聠莽聽聛";
+          resetBtn.addEventListener("click", () => {
+            const password = prompt("猫戮聯氓聟楼忙聳掳氓炉聠莽聽聛茂录聢莽聲聶莽漏潞猫聡陋氓聤篓莽聰聼忙聢聬茂录?, "");
+            fetch(`/api/admin/users/${user.id}/reset-password`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ password })
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                if (data.password) {
+                  showToast(`忙聳掳氓炉聠莽聽聛茂录職${data.password}`);
+                } else {
+                  showToast("氓路虏茅聡聧莽陆?);
+                }
+              })
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          const clear2faBtn = document.createElement("button");
+          clear2faBtn.className = "secondary";
+          clear2faBtn.textContent = "忙赂聟茅聶陇2FA";
+          clear2faBtn.addEventListener("click", () => {
+            fetch(`/api/admin/users/${user.id}/clear-2fa`, { method: "POST" })
+              .then(() => loadUsers())
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          const delBtn = document.createElement("button");
+          delBtn.className = "secondary";
+          delBtn.textContent = "氓聢聽茅聶陇";
+          delBtn.addEventListener("click", () => {
+            if (!confirm("莽隆庐猫庐陇氓聢聽茅聶陇猫炉楼莽聰篓忙聢路茂录聼")) return;
+            fetch(`/api/admin/users/${user.id}`, { method: "DELETE" })
+              .then(() => loadUsers())
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          if (!user.is_admin) {
+            actions.append(toggleBtn, resetBtn, clear2faBtn, delBtn);
+          }
+          row.append(left, actions);
+          userList.appendChild(row);
+        });
+      }
+
+      function formatTime(value) {
+        try {
+          return new Date(value).toLocaleString();
+        } catch (err) {
+          return "";
+        }
+      }
+
+      function mapLogAction(action) {
+        const mapping = {
+          admin_login_success: "莽庐隆莽聬聠氓聭聵莽聶禄氓陆聲忙聢聬氓聤?,
+          admin_login_failed: "莽庐隆莽聬聠氓聭聵莽聶禄氓陆聲氓陇卤猫麓?,
+          admin_login_setup_required: "莽庐隆莽聬聠氓聭聵茅聹聙莽禄聭氓庐職TOTP",
+          admin_totp_enabled: "莽庐隆莽聬聠氓聭聵莽禄聭氓庐職TOTP",
+          admin_logout: "莽庐隆莽聬聠氓聭聵茅聙聙氓聡潞莽聶禄氓陆?,
+          register_window: "忙鲁篓氓聠聦氓聟楼氓聫拢氓聢聡忙聧垄",
+          invite_generate: "莽聰聼忙聢聬茅聜聙猫炉路莽聽聛",
+          invite_revoke: "盲陆聹氓潞聼茅聜聙猫炉路莽聽聛",
+          user_disable: "莽娄聛莽聰篓莽聰篓忙聢路",
+          user_enable: "氓聬炉莽聰篓莽聰篓忙聢路",
+          user_reset_password: "茅聡聧莽陆庐莽聰篓忙聢路氓炉聠莽聽聛",
+          user_delete: "氓聢聽茅聶陇莽聰篓忙聢路",
+          user_clear_2fa: "忙赂聟茅聶陇莽聰篓忙聢路2FA",
+          admin_credentials_update: "盲驴庐忙聰鹿莽庐隆莽聬聠氓聭聵猫麓娄氓聫?,
+          blacklist_add: "忙聳掳氓垄聻茅禄聭氓聬聧氓聧?,
+          blacklist_remove: "莽搂禄茅聶陇茅禄聭氓聬聧氓聧?,
+          contact_update_user: "忙聸麓忙聳掳猫聛聰莽鲁禄盲驴隆忙聛炉",
+          contact_update_all: "忙聣鹿茅聡聫忙聸麓忙聳掳猫聛聰莽鲁禄盲驴隆忙聛炉"
+        };
+        return mapping[action] || action || "忙聹陋莽聼楼忙聯聧盲陆聹";
+      }
+
+      function renderLogs(items) {
+        if (!adminLogList) return;
+        adminLogList.innerHTML = "";
+        if (!items || !items.length) {
+          adminLogList.innerHTML = "<div class='muted'>忙職聜忙聴聽忙聴楼氓驴聴</div>";
+          return;
+        }
+        items.forEach((log) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const detail = log.detail ? JSON.stringify(log.detail) : "";
+          row.innerHTML = `<div><strong>${mapLogAction(log.action)}</strong><div class="muted">${formatTime(
+            log.created_at
+          )}</div></div><div class="muted">${detail}</div>`;
+          adminLogList.appendChild(row);
+        });
+      }
+
+      function loadInvites() {
+        fetch("/api/admin/invites")
+          .then((res) => res.json())
+          .then((data) => renderInvites(data))
+          .catch(() => renderInvites([]));
+      }
+
+      function loadUsers() {
+        fetch("/api/admin/users")
+          .then((res) => res.json())
+          .then((data) => {
+            cachedUsers = Array.isArray(data) ? data : [];
+            renderUsers(cachedUsers);
+            if (contactUserSelect) {
+              contactUserSelect.innerHTML = "<option value=\"\">茅聙聣忙聥漏莽聰篓忙聢路</option>";
+              cachedUsers.forEach((user) => {
+                const opt = document.createElement("option");
+                opt.value = user.id;
+                opt.textContent = user.username;
+                contactUserSelect.appendChild(opt);
+              });
+              if (cachedUsers.length && !contactUserSelect.value) {
+                contactUserSelect.value = cachedUsers[0].id;
+                loadContactForUser(contactUserSelect.value);
+              }
+            }
+          })
+          .catch(() => renderUsers([]));
+      }
+
+      function loadLogs() {
+        fetch(`/api/admin/logs?page=${logPage}&pageSize=10`)
+          .then((res) => res.json())
+          .then((data) => {
+            logTotalPages = data && data.totalPages ? data.totalPages : 1;
+            logPage = data && data.page ? data.page : logPage;
+            if (logPageText) {
+              logPageText.textContent = `${logPage}/${logTotalPages}`;
+            }
+            renderLogs(data && data.items ? data.items : []);
+          })
+          .catch(() => renderLogs([]));
+      }
+
+      function renderBlacklist(items) {
+        if (!blacklistList) return;
+        blacklistList.innerHTML = "";
+        if (!items || !items.length) {
+          blacklistList.innerHTML = "<div class='muted'>忙職聜忙聴聽茅禄聭氓聬聧氓聧</div>";
+          return;
+        }
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const left = document.createElement("div");
+          const expires = item.expires_at ? formatTime(item.expires_at) : "忙掳赂盲鹿聟";
+          left.innerHTML = `<div><strong>${item.type}</strong> ${item.value}</div><div class="muted">${item.reason || ""} 脗路 ${expires}</div>`;
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const delBtn = document.createElement("button");
+          delBtn.className = "secondary";
+          delBtn.textContent = "莽搂禄茅聶陇";
+          delBtn.addEventListener("click", () => {
+            fetch(`/api/admin/blacklist/${item.id}`, { method: "DELETE" })
+              .then(() => loadBlacklist())
+              .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+          });
+          actions.appendChild(delBtn);
+          row.append(left, actions);
+          blacklistList.appendChild(row);
+        });
+      }
+
+      function loadBlacklist() {
+        fetch("/api/admin/blacklist")
+          .then((res) => res.json())
+          .then((data) => renderBlacklist(Array.isArray(data) ? data : []))
+          .catch(() => renderBlacklist([]));
+      }
+
+      const contactPlatformOptions = [
+        { value: "telegram", label: "Telegram" },
+        { value: "email", label: "&#x90AE;&#x7BB1;" },
+        { value: "phone", label: "&#x7535;&#x8BDD;" },
+        { value: "line", label: "Line" },
+        { value: "qq", label: "QQ" },
+        { value: "wechat", label: "&#x5FAE;&#x4FE1;" },
+        { value: "whatsapp", label: "WhatsApp" },
+        { value: "discord", label: "Discord" },
+        { value: "twitter", label: "Twitter/X" },
+        { value: "facebook", label: "Facebook" },
+        { value: "instagram", label: "Instagram" },
+        { value: "other", label: "&#x5176;&#x4ED6;" }
+      ];
+
+      function buildContactRow(item) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.marginTop = "8px";
+        const select = document.createElement("select");
+        select.style.minWidth = "140px";
+        contactPlatformOptions.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.innerHTML = opt.label;
+          select.appendChild(option);
+        });
+        select.value = item && item.platform ? item.platform : "telegram";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "猫炉路猫戮聯氓聟楼猫聛聰莽鲁禄忙聳鹿氓录?;
+        input.value = item && item.value ? item.value : "";
+        input.style.flex = "1";
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "莽搂禄茅聶陇";
+        removeBtn.style.background = "#fef2f2";
+        removeBtn.style.color = "#dc2626";
+        removeBtn.addEventListener("click", () => {
+          row.remove();
+        });
+        row.append(select, input, removeBtn);
+        return row;
+      }
+
+      function renderContactList(items) {
+        if (!contactList) return;
+        contactList.innerHTML = "";
+        if (!Array.isArray(items) || !items.length) {
+          contactList.appendChild(buildContactRow({ platform: "telegram", value: "" }));
+          return;
+        }
+        items.forEach((item) => {
+          contactList.appendChild(buildContactRow(item));
+        });
+      }
+
+      function loadContactForUser(userId) {
+        if (!contactEnabled || !contactList) return;
+        if (!userId) {
+          contactEnabled.checked = false;
+          renderContactList([]);
+          return;
+        }
+        fetch(`/api/admin/contact/${userId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            contactEnabled.checked = Boolean(data && data.enabled);
+            renderContactList(data && data.items ? data.items : []);
+          })
+          .catch(() => {
+            contactEnabled.checked = false;
+            renderContactList([]);
+          });
+      }
+
+      function enterPanel(username) {
+        showPanel(username);
+        logPage = 1;
+        loadInvites();
+        loadUsers();
+        loadLogs();
+        loadBlacklist();
+      }
+
+      if (saveAdminCredBtn) {
+        saveAdminCredBtn.addEventListener("click", () => {
+          const currentUsername = adminUserCurrent ? adminUserCurrent.value.trim() : "";
+          const currentPassword = adminPassCurrent ? adminPassCurrent.value : "";
+          const newUsername = adminUserUpdate ? adminUserUpdate.value.trim() : "";
+          const newPassword = adminPassUpdate ? adminPassUpdate.value : "";
+          const confirmPassword = adminPassConfirm ? adminPassConfirm.value : "";
+          if (!currentUsername || !currentPassword) {
+            showToast("猫炉路猫戮聯氓聟楼氓聨聼莽聰篓忙聢路氓聬聧氓聮聦氓炉聠莽聽聛");
+            return;
+          }
+          if (!newUsername && !newPassword) {
+            showToast("猫炉路猫戮聯氓聟楼忙聳掳莽聰篓忙聢路氓聬聧忙聢聳忙聳掳氓炉聠莽聽?);
+            return;
+          }
+          if (newPassword && newPassword !== confirmPassword) {
+            showToast("盲赂陇忙卢隆猫戮聯氓聟楼莽職聞忙聳掳氓炉聠莽聽聛盲赂聧盲赂聙猫聡?);
+            return;
+          }
+          if (newPassword && !isStrongPassword(newPassword)) {
+            showToast("氓炉聠莽聽聛氓录潞氓潞娄盲赂聧猫露鲁茂录聢猫聡鲁氓掳?盲陆聧盲赂聰氓聦聟氓聬芦氓颅聴忙炉聧+忙聲掳氓颅聴茂录?);
+            return;
+          }
+          const payload = {
+            currentUsername,
+            currentPassword,
+            newUsername,
+            newPassword,
+            confirmPassword
+          };
+          fetch("/api/admin/credentials", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+            body: JSON.stringify(payload)
+          })
+            .then(async (res) => {
+              const text = await res.text();
+              let data = {};
+              try {
+                data = text ? JSON.parse(text) : {};
+              } catch (err) {
+                data = { error: text.slice(0, 80) };
+              }
+              if (!res.ok) {
+                showToast(mapAdminError(data.error));
+                return;
+              }
+              showToast("氓路虏盲驴聺氓颅?);
+              if (adminPassUpdate) adminPassUpdate.value = "";
+              if (adminPassConfirm) adminPassConfirm.value = "";
+            })
+            .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+        });
+      }
+
+      if (refreshLogsBtn) {
+        refreshLogsBtn.addEventListener("click", () => loadLogs());
+      }
+      if (logPrevBtn) {
+        logPrevBtn.addEventListener("click", () => {
+          if (logPage > 1) {
+            logPage -= 1;
+            loadLogs();
+          }
+        });
+      }
+      if (logNextBtn) {
+        logNextBtn.addEventListener("click", () => {
+          if (logPage < logTotalPages) {
+            logPage += 1;
+            loadLogs();
+          }
+        });
+      }
+      if (contactUserSelect) {
+        contactUserSelect.addEventListener("change", () => {
+          loadContactForUser(contactUserSelect.value);
+        });
+      }
+      if (addContactRowBtn) {
+        addContactRowBtn.addEventListener("click", () => {
+          if (!contactList) return;
+          contactList.appendChild(buildContactRow({ platform: "telegram", value: "" }));
+        });
+      }
+      if (saveContactBtn) {
+        saveContactBtn.addEventListener("click", () => {
+          if (!contactList) return;
+          const rows = Array.from(contactList.querySelectorAll(".row"));
+          const items = rows
+            .map((row) => {
+              const select = row.querySelector("select");
+              const input = row.querySelector("input[type=\"text\"]");
+              return {
+                platform: select ? select.value : "",
+                value: input ? input.value.trim() : ""
+              };
+            })
+            .filter((item) => item.platform || item.value);
+          if (!items.length && contactEnabled && contactEnabled.checked) {
+            showToast('脟毛脰脕脡脵脤铆录脫脪禄赂枚脕陋脧碌路陆脢陆');
+            return;
+          }
+          const payload = {
+            userId: contactUserSelect ? contactUserSelect.value : "",
+            applyAll: true,
+            enabled: Boolean(contactEnabled && contactEnabled.checked),
+            items
+          };
+          fetch("/api/admin/contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+            .then((res) => {
+              if (!res.ok) {
+                throw new Error("failed");
+              }
+              showToast("盲驴聺氓颅聵忙聢聬氓聤聼");
+            })
+            .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+        });
+      }
+      if (addBlacklistBtn) {
+        addBlacklistBtn.addEventListener("click", () => {
+          const payload = {
+            type: blacklistType ? blacklistType.value : "",
+            value: blacklistValue ? blacklistValue.value.trim() : "",
+            reason: blacklistReason ? blacklistReason.value.trim() : "",
+            hours: blacklistHours && blacklistHours.value !== "" ? Number(blacklistHours.value) : null
+          };
+          if (!payload.type || !payload.value) {
+            showToast("猫炉路猫戮聯氓聟楼莽卤禄氓聻聥氓聮聦氓聙?);
+            return;
+          }
+          fetch("/api/admin/blacklist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("failed");
+              if (blacklistValue) blacklistValue.value = "";
+              if (blacklistReason) blacklistReason.value = "";
+              loadBlacklist();
+              showToast("氓路虏忙路禄氓聤?);
+            })
+            .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+        });
+      }
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        loginMsg.textContent = "";
+        loginBtn.disabled = true;
+        fetch("/api/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: adminUser.value.trim(),
+            password: adminPass.value,
+            totp: adminTotp.value.trim()
+          })
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            loginBtn.disabled = false;
+            if (data.ok) {
+              enterPanel(adminUser.value.trim());
+              return;
+            }
+            if (data.totpRequired) {
+              totpField.classList.remove("hidden");
+              loginMsg.textContent = "猫炉路猫戮聯氓聟?TOTP 茅陋聦猫炉聛莽聽?;
+              return;
+            }
+            if (data.setupRequired) {
+              qrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(
+                data.otpauth
+              )}`;
+              totpSecret.value = data.secret;
+              showSetup();
+              return;
+            }
+            if (data && data.error === "admin_locked") {
+              loginMsg.textContent = `莽聶禄氓陆聲氓路虏茅聰聛氓庐職茂录聦猫炉?${data.retry_after_minutes || 10} 氓聢聠茅聮聼氓聬聨氓聠聧猫炉聲`;
+              return;
+            }
+            loginMsg.textContent = data.error || "莽聶禄氓陆聲氓陇卤猫麓楼";
+          })
+          .catch(() => {
+            loginBtn.disabled = false;
+            loginMsg.textContent = "莽聶禄氓陆聲氓陇卤猫麓楼";
+          });
+      });
+
+      bindTotpBtn.addEventListener("click", () => {
+        const code = totpCode.value.trim();
+        if (!code) return;
+        fetch("/api/admin/totp/setup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code })
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data.ok) {
+              enterPanel(adminUser.value.trim() || "莽庐隆莽聬聠氓聭?);
+            } else {
+              showToast("茅陋聦猫炉聛莽聽聛茅聰聶猫炉?);
+            }
+          })
+          .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+      });
+
+      openRegBtn.addEventListener("click", () => {
+        const hours = Math.max(1, Math.min(48, Number(registerHours?.value || 12)));
+        fetch("/api/admin/register-window", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ open: true, hours })
+        })
+          .then(() => showToast(`氓路虏氓录聙忙聰?${hours} 氓掳聫忙聴露`))
+          .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+      });
+
+      closeRegBtn.addEventListener("click", () => {
+        fetch("/api/admin/register-window", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ open: false })
+        })
+          .then(() => showToast("氓路虏氓聟鲁茅聴颅氓聟楼氓聫?))
+          .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+      });
+
+      generateInvitesBtn.addEventListener("click", () => {
+        const count = Number(inviteCount.value || 1);
+        const expiresHours = Math.max(1, Math.min(168, Number(inviteHours?.value || 12)));
+        fetch("/api/admin/invites", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ count, expiresHours })
+        })
+          .then((res) => res.json())
+          .then(() => {
+            showToast("茅聜聙猫炉路莽聽聛氓路虏莽聰聼忙聢?);
+            loadInvites();
+          })
+          .catch(() => showToast("忙聯聧盲陆聹氓陇卤猫麓楼"));
+      });
+
+      logoutBtn.addEventListener("click", () => {
+        fetch("/api/admin/logout", { method: "POST" }).finally(() => {
+          showLogin();
+        });
+      });
+
+      fetch("/api/admin/me")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data && data.loggedIn) {
+            enterPanel(data.username || "莽庐隆莽聬聠氓聭?);
+          } else {
+            showLogin();
+          }
+        })
+        .catch(() => showLogin());
+    </script>
+  </body>
+</html>
+
+
+

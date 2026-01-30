@@ -6,6 +6,7 @@ const fetch = require("node-fetch");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
+const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 
 const app = express();
@@ -39,8 +40,18 @@ const assetStorage = multer.diskStorage({
 const assetUpload = multer({ storage: assetStorage });
 
 const registerAttempts = new Map();
+const loginFailures = new Map();
+const registerFailures = new Map();
 const REGISTER_WINDOW_MS = 10 * 60 * 1000;
 const REGISTER_MAX_ATTEMPTS = 8;
+const LOGIN_FAIL_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_FAIL_THRESHOLD = 6;
+const REGISTER_FAIL_WINDOW_MS = 10 * 60 * 1000;
+const REGISTER_FAIL_THRESHOLD = 8;
+const AUTO_BLOCK_HOURS = 6;
+const DEFAULT_LOGIN_BLOCK_MINUTES = AUTO_BLOCK_HOURS * 60;
+let lastLoginLogCleanupKey = "";
+let lastBackupDayKey = "";
 
 fs.mkdirSync(uploadDir, { recursive: true });
 fs.mkdirSync(iconDir, { recursive: true });
@@ -124,6 +135,16 @@ async function initDb() {
     )
   `);
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_login_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+      action TEXT NOT NULL,
+      ip TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS user_settings (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       settings JSONB DEFAULT '{}'::jsonb
@@ -173,6 +194,19 @@ async function initDb() {
   `);
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS is_dock BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS position_index INTEGER`);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS blacklist (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      type TEXT NOT NULL,
+      value TEXT NOT NULL,
+      reason TEXT,
+      expires_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query(
+    "CREATE UNIQUE INDEX IF NOT EXISTS blacklist_type_value ON blacklist (type, value)"
+  );
 
   await ensureAdminUser();
 
@@ -260,6 +294,211 @@ function getClientIp(req) {
   return ip.replace("::ffff:", "");
 }
 
+function getDeviceFingerprint(req) {
+  const ua = req.headers["user-agent"] || "";
+  return String(ua).slice(0, 400);
+}
+
+function ipToLong(ip) {
+  const parts = String(ip).split(".").map((p) => parseInt(p, 10));
+  if (parts.length !== 4 || parts.some((p) => Number.isNaN(p) || p < 0 || p > 255)) {
+    return null;
+  }
+  return (
+    (parts[0] << 24) + (parts[1] << 16) + (parts[2] << 8) + (parts[3] << 0)
+  ) >>> 0;
+}
+
+function cidrMatch(ip, cidr) {
+  const [base, bitsRaw] = String(cidr).split("/");
+  const bits = parseInt(bitsRaw, 10);
+  if (!base || Number.isNaN(bits) || bits < 0 || bits > 32) {
+    return false;
+  }
+  const ipLong = ipToLong(ip);
+  const baseLong = ipToLong(base);
+  if (ipLong === null || baseLong === null) {
+    return false;
+  }
+  const mask = bits === 0 ? 0 : (~0 << (32 - bits)) >>> 0;
+  return (ipLong & mask) === (baseLong & mask);
+}
+
+async function addBlacklistEntry(type, value, reason, hours) {
+  if (!type || !value) return;
+  const expiresAt = hours ? new Date(Date.now() + hours * 60 * 60 * 1000) : null;
+  await pool.query(
+    `INSERT INTO blacklist (type, value, reason, expires_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (type, value)
+     DO UPDATE SET reason = EXCLUDED.reason, expires_at = EXCLUDED.expires_at, created_at = NOW()`,
+    [type, value, reason || "", expiresAt]
+  );
+}
+
+async function isIpBlacklisted(ip) {
+  if (!ip) return null;
+  const result = await pool.query(
+    "SELECT id, value, reason, expires_at FROM blacklist WHERE type = 'ip' AND (expires_at IS NULL OR expires_at > NOW())"
+  );
+  const rows = result.rows || [];
+  for (const row of rows) {
+    if (row.value === ip) {
+      return row;
+    }
+    if (row.value && row.value.includes("/") && cidrMatch(ip, row.value)) {
+      return row;
+    }
+  }
+  return null;
+}
+
+async function isUserBlacklisted(userId, username) {
+  const values = [];
+  if (userId) values.push(String(userId));
+  if (username) values.push(String(username));
+  if (!values.length) return null;
+  const result = await pool.query(
+    "SELECT id, value, reason, expires_at FROM blacklist WHERE type = 'user' AND value = ANY($1::text[]) AND (expires_at IS NULL OR expires_at > NOW())",
+    [values]
+  );
+  return result.rows[0] || null;
+}
+
+async function isDeviceBlacklisted(deviceId) {
+  if (!deviceId) return null;
+  const result = await pool.query(
+    "SELECT id, value, reason, expires_at FROM blacklist WHERE type = 'device' AND value = $1 AND (expires_at IS NULL OR expires_at > NOW())",
+    [String(deviceId)]
+  );
+  return result.rows[0] || null;
+}
+
+async function checkBlacklist(req, user) {
+  const ip = getClientIp(req);
+  const deviceId = getDeviceFingerprint(req);
+  const userHit = user ? await isUserBlacklisted(user.id, user.username) : null;
+  if (userHit) return userHit;
+  const ipHit = await isIpBlacklisted(ip);
+  if (ipHit) return ipHit;
+  const deviceHit = await isDeviceBlacklisted(deviceId);
+  if (deviceHit) return deviceHit;
+  return null;
+}
+
+function recordFailure(map, ip, windowMs, threshold) {
+  if (!ip) return { blocked: false };
+  const now = Date.now();
+  const entry = map.get(ip) || { count: 0, resetAt: now + windowMs };
+  if (now > entry.resetAt) {
+    entry.count = 0;
+    entry.resetAt = now + windowMs;
+  }
+  entry.count += 1;
+  map.set(ip, entry);
+  return { blocked: entry.count >= threshold, count: entry.count };
+}
+
+async function handleLoginFailure(req, reason) {
+  const ip = getClientIp(req);
+  const policy = await getSecurityPolicy();
+  const threshold = Number(policy.loginFailThreshold) || LOGIN_FAIL_THRESHOLD;
+  const result = recordFailure(loginFailures, ip, LOGIN_FAIL_WINDOW_MS, threshold);
+  const minutes = Number(policy.autoBlockMinutes);
+  if (result.blocked && Number.isFinite(minutes) && minutes > 0) {
+    await addBlacklistEntry("ip", ip, reason || "login_failures", minutes / 60);
+  }
+  return result.blocked;
+}
+
+async function handleRegisterFailure(req, reason) {
+  const ip = getClientIp(req);
+  const result = recordFailure(
+    registerFailures,
+    ip,
+    REGISTER_FAIL_WINDOW_MS,
+    REGISTER_FAIL_THRESHOLD
+  );
+  if (result.blocked) {
+    await addBlacklistEntry("ip", ip, reason || "register_failures", AUTO_BLOCK_HOURS);
+  }
+  return result.blocked;
+}
+
+async function getAdminSettingsRaw() {
+  const adminId = await getAdminId();
+  if (!adminId) return { adminId: null, settings: {} };
+  const result = await pool.query("SELECT settings FROM user_settings WHERE user_id = $1", [
+    adminId
+  ]);
+  const settings = result.rows[0] && result.rows[0].settings ? result.rows[0].settings : {};
+  return { adminId, settings };
+}
+
+async function setAdminSettingsRaw(nextSettings) {
+  const adminId = await getAdminId();
+  if (!adminId) return null;
+  await pool.query(
+    "INSERT INTO user_settings (user_id, settings) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET settings = EXCLUDED.settings",
+    [adminId, nextSettings]
+  );
+  return adminId;
+}
+
+async function getSecurityPolicy() {
+  const defaults = {
+    loginFailThreshold: LOGIN_FAIL_THRESHOLD,
+    autoBlockMinutes: DEFAULT_LOGIN_BLOCK_MINUTES,
+    loginLogAutoCleanup: true,
+    loginLogCleanupDay: 0
+  };
+  const { settings } = await getAdminSettingsRaw();
+  const policy = settings && settings.securityPolicy ? settings.securityPolicy : {};
+  return {
+    ...defaults,
+    ...policy
+  };
+}
+
+async function updateSecurityPolicy(update) {
+  const { settings } = await getAdminSettingsRaw();
+  const next = { ...(settings || {}) };
+  const current = next.securityPolicy && typeof next.securityPolicy === "object" ? next.securityPolicy : {};
+  next.securityPolicy = { ...current, ...update };
+  await setAdminSettingsRaw(next);
+  return next.securityPolicy;
+}
+
+async function recordUserLogin(userId, action, req) {
+  if (!userId) return;
+  const ip = getClientIp(req);
+  const ua = req.headers["user-agent"] || "";
+  await pool.query(
+    "INSERT INTO user_login_logs (user_id, action, ip, user_agent) VALUES ($1, $2, $3, $4)",
+    [userId, action, ip, ua]
+  );
+}
+
+async function cleanupLoginLogsIfNeeded() {
+  const policy = await getSecurityPolicy();
+  if (!policy.loginLogAutoCleanup) return;
+  const now = new Date();
+  const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+  let targetDay = Number(policy.loginLogCleanupDay);
+  if (!Number.isFinite(targetDay) || targetDay <= 0 || targetDay > 31) {
+    targetDay = lastDayOfMonth;
+  }
+  if (now.getDate() !== targetDay) return;
+  const key = `${now.getFullYear()}-${now.getMonth()}-${targetDay}`;
+  if (lastLoginLogCleanupKey === key) return;
+  await pool.query("DELETE FROM user_login_logs");
+  lastLoginLogCleanupKey = key;
+}
+
+setInterval(() => {
+  cleanupLoginLogsIfNeeded().catch(() => {});
+}, 60 * 60 * 1000);
+
 function checkRegisterRateLimit(req, res) {
   const ip = getClientIp(req);
   const now = Date.now();
@@ -277,6 +516,144 @@ function checkRegisterRateLimit(req, res) {
   }
   return true;
 }
+
+function getBackupEmailConfig() {
+  const enabledFlag = String(process.env.BACKUP_EMAIL_ENABLED || "").toLowerCase();
+  const enabled = ["1", "true", "yes", "on"].includes(enabledFlag);
+  const host = process.env.SMTP_HOST || "";
+  const port = Number(process.env.SMTP_PORT || 0);
+  const user = process.env.SMTP_USER || "";
+  const pass = process.env.SMTP_PASS || "";
+  const from = process.env.BACKUP_EMAIL_FROM || user;
+  const to = process.env.BACKUP_EMAIL_TO || "";
+  const hour = Number(process.env.BACKUP_EMAIL_HOUR || 3);
+  const minute = Number(process.env.BACKUP_EMAIL_MINUTE || 0);
+  return {
+    enabled,
+    host,
+    port,
+    user,
+    pass,
+    from,
+    to,
+    hour: Number.isFinite(hour) ? Math.min(23, Math.max(0, hour)) : 3,
+    minute: Number.isFinite(minute) ? Math.min(59, Math.max(0, minute)) : 0
+  };
+}
+
+function createMailTransport(config) {
+  if (!config.host || !config.port || !config.user || !config.pass) return null;
+  const secure = Number(config.port) === 465;
+  return nodemailer.createTransport({
+    host: config.host,
+    port: Number(config.port),
+    secure,
+    auth: {
+      user: config.user,
+      pass: config.pass
+    }
+  });
+}
+
+async function buildFullBackupPayload() {
+  const users = await pool.query(
+    "SELECT id, username, password_hash, email, is_active, avatar_url, created_at FROM users ORDER BY created_at ASC"
+  );
+  const settings = await pool.query("SELECT user_id, settings FROM user_settings");
+  const categories = await pool.query(
+    "SELECT id, user_id, name, is_private, sort_index FROM categories ORDER BY sort_index ASC, name ASC"
+  );
+  const links = await pool.query(
+    "SELECT id, user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index, created_at FROM links ORDER BY sort_index ASC, created_at ASC"
+  );
+  const invites = await pool.query(
+    "SELECT id, code, created_by, created_at, expires_at, used_at, used_by FROM invite_codes ORDER BY created_at ASC"
+  );
+  const blacklist = await pool.query(
+    "SELECT id, type, value, reason, expires_at, created_at FROM blacklist ORDER BY created_at ASC"
+  );
+  const adminLogs = await pool.query(
+    "SELECT id, admin_id, action, detail, ip, created_at FROM admin_logs ORDER BY created_at ASC"
+  );
+  const adminAttempts = await pool.query(
+    "SELECT username, failed_count, locked_until, updated_at FROM admin_login_attempts"
+  );
+  const loginLogs = await pool.query(
+    "SELECT id, user_id, action, ip, user_agent, created_at FROM user_login_logs ORDER BY created_at ASC"
+  );
+  return {
+    version: 1,
+    exported_at: new Date().toISOString(),
+    users: users.rows,
+    user_settings: settings.rows,
+    categories: categories.rows,
+    links: links.rows,
+    invite_codes: invites.rows,
+    blacklist: blacklist.rows,
+    admin_logs: adminLogs.rows,
+    admin_login_attempts: adminAttempts.rows,
+    user_login_logs: loginLogs.rows
+  };
+}
+
+async function sendDailyBackupEmail() {
+  const config = getBackupEmailConfig();
+  if (!config.enabled) return;
+  if (!config.to) return;
+  const now = new Date();
+  if (now.getHours() !== config.hour || now.getMinutes() !== config.minute) return;
+  const dayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+  if (lastBackupDayKey === dayKey) return;
+  const transporter = createMailTransport(config);
+  if (!transporter) return;
+  const payload = await buildFullBackupPayload();
+  const filename = `mynavsite-backup-${now.toISOString().slice(0, 10)}.json`;
+  await transporter.sendMail({
+    from: config.from || config.user,
+    to: config.to,
+    subject: `MyNavSite 每日备份 ${now.toLocaleDateString("zh-CN")}`,
+    text: "系统自动导出备份，直接用于全量恢复。",
+    attachments: [
+      {
+        filename,
+        content: JSON.stringify(payload, null, 2),
+        contentType: "application/json"
+      }
+    ]
+  });
+  lastBackupDayKey = dayKey;
+}
+
+setInterval(() => {
+  sendDailyBackupEmail().catch(() => {});
+}, 60 * 1000);
+app.use("/api", async (req, res, next) => {
+  try {
+    const authUser = await getAuthUser(req);
+    req.authUser = authUser || null;
+    const blocked = await checkBlacklist(req, authUser || null);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.use("/api", async (req, res, next) => {
+  try {
+    const blocked = await checkBlacklist(req);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
 
 async function checkRegistrationAccess() {
   const result = await pool.query("SELECT COUNT(*)::int AS total FROM users");
@@ -409,19 +786,23 @@ async function getAdminAuthUser(req) {
   }
 }
 
-function requireAdmin(req, res, next) {
-  getAdminAuthUser(req)
-    .then((user) => {
-      if (!user) {
-        res.status(401).json({ error: "unauthorized" });
-        return;
-      }
-      req.admin = user;
-      next();
-    })
-    .catch(() => {
-      res.status(500).json({ error: "Database error" });
-    });
+async function requireAdmin(req, res, next) {
+  try {
+    const user = await getAdminAuthUser(req);
+    if (!user) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const blocked = await checkBlacklist(req, user);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
+    req.admin = user;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
 }
 
 async function getAuthUser(req) {
@@ -446,24 +827,46 @@ async function getAuthUser(req) {
   }
 }
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   console.log("User accessing API:", req.session && req.session.userId ? req.session.userId : "none");
-  getAuthUser(req)
-    .then((user) => {
-      if (!user) {
-        res.status(401).json({ error: "unauthorized" });
-        return;
-      }
-      req.user = user;
-      next();
-    })
-    .catch(() => {
-      res.status(500).json({ error: "Database error" });
-    });
+  try {
+    const user = await getAuthUser(req);
+    if (!user) {
+      res.status(401).json({ error: "unauthorized" });
+      return;
+    }
+    const blocked = await checkBlacklist(req, user);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
 }
 
 function normalizeSettings(settings, fallbackName) {
   const safe = settings && typeof settings === "object" ? settings : {};
+  const contactSource = safe.contact && typeof safe.contact === "object" ? safe.contact : {};
+  let contactItems = [];
+  if (Array.isArray(contactSource.items)) {
+    contactItems = contactSource.items
+      .map((item) => ({
+        platform: item && item.platform ? String(item.platform) : "",
+        value: item && item.value ? String(item.value) : ""
+      }))
+      .filter((item) => item.platform || item.value);
+  } else if (contactSource.platform || contactSource.value) {
+    contactItems = [
+      {
+        platform: contactSource.platform ? String(contactSource.platform) : "",
+        value: contactSource.value ? String(contactSource.value) : ""
+      }
+    ];
+  }
+  const contactEnabled = Boolean(contactSource.enabled) || contactItems.length > 0;
   return {
     siteName: safe.siteName || "我的 iOS 风格导航",
     siteLogo: safe.siteLogo || "",
@@ -471,7 +874,11 @@ function normalizeSettings(settings, fallbackName) {
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
-    userTotpEnabled: Boolean(safe.userTotpEnabled)
+    userTotpEnabled: Boolean(safe.userTotpEnabled),
+    contact: {
+      enabled: contactEnabled,
+      items: contactItems
+    }
   };
 }
 
@@ -789,7 +1196,8 @@ async function getCategoryId(client, userId, name) {
 
 app.get("/api/links", async (req, res) => {
   try {
-    const authUser = await getAuthUser(req);
+    const authUser = req.authUser || (await getAuthUser(req));
+    res.setHeader("X-Logged-In", authUser ? "1" : "0");
     let user = authUser;
     if (!user) {
       const queryUser = req.query.user;
@@ -1207,9 +1615,14 @@ app.post("/api/settings/avatar", requireAuth, assetUpload.single("avatar"), asyn
 
 app.get("/api/me", async (req, res) => {
   try {
-    const user = await getAuthUser(req);
+    const user = req.authUser || (await getAuthUser(req));
     if (!user) {
       res.json({ loggedIn: false });
+      return;
+    }
+    const blocked = await checkBlacklist(req, user);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
       return;
     }
     const settings = await getSettingsForUser(user.id, user.username);
@@ -1249,6 +1662,11 @@ async function handleRegister(req, res) {
     return;
   }
   try {
+    const blocked = await checkBlacklist(req);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
     if (!checkRegisterRateLimit(req, res)) {
       return;
     }
@@ -1260,25 +1678,45 @@ async function handleRegister(req, res) {
     const turnstileToken = req.body?.turnstileToken || req.body?.cfToken || "";
     const turnstileResult = await verifyTurnstile(turnstileToken, getClientIp(req));
     if (!turnstileResult.ok) {
+      if (await handleRegisterFailure(req, "turnstile_failed")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(403).json({ error: "turnstile_failed", detail: turnstileResult.reason || "" });
       return;
     }
     const safeUsername = String(username).trim();
     const safeEmail = String(email).trim().toLowerCase();
     if (safeUsername.length < 2) {
+      if (await handleRegisterFailure(req, "invalid_username")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(400).json({ error: "Username too short" });
       return;
     }
     if (String(password).length < 6) {
+      if (await handleRegisterFailure(req, "weak_password")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(400).json({ error: "Password too short" });
       return;
     }
     if (!safeEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(safeEmail)) {
+      if (await handleRegisterFailure(req, "invalid_email")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(400).json({ error: "Invalid email" });
       return;
     }
     const rawInvite = String(inviteCode || code || "").trim();
     if (!rawInvite) {
+      if (await handleRegisterFailure(req, "invite_required")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(400).json({ error: "invite_required" });
       return;
     }
@@ -1291,6 +1729,10 @@ async function handleRegister(req, res) {
       );
       if (!inviteResult.rowCount) {
         await client.query("ROLLBACK");
+        if (await handleRegisterFailure(req, "invalid_invite")) {
+          res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+          return;
+        }
         res.status(403).json({ error: "invalid_invite" });
         return;
       }
@@ -1316,10 +1758,15 @@ async function handleRegister(req, res) {
       );
       if (!updateInvite.rowCount) {
         await client.query("ROLLBACK");
+        if (await handleRegisterFailure(req, "invalid_invite")) {
+          res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+          return;
+        }
         res.status(403).json({ error: "invalid_invite" });
         return;
       }
       await client.query("COMMIT");
+      await recordUserLogin(userResult.rows[0].id, "register", req);
       res.status(201).json({ ok: true, id: userResult.rows[0].id });
     } catch (err) {
       await client.query("ROLLBACK");
@@ -1359,22 +1806,44 @@ async function handleLogin(req, res) {
     return;
   }
   try {
+    const blocked = await checkBlacklist(req);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
     const safeUsername = String(username).trim();
     const result = await pool.query(
       "SELECT id, password_hash, is_active FROM users WHERE username = $1",
       [safeUsername]
     );
     if (!result.rowCount) {
+      if (await handleLoginFailure(req, "invalid_credentials")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
     const user = result.rows[0];
+    const userBlocked = await checkBlacklist(req, user);
+    if (userBlocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
     if (user.is_active === false) {
+      if (await handleLoginFailure(req, "account_disabled")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(403).json({ error: "Account disabled" });
       return;
     }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
+      if (await handleLoginFailure(req, "invalid_credentials")) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
@@ -1397,10 +1866,15 @@ async function handleLogin(req, res) {
         return;
       }
       if (!verifyTotp(totp, totpState.secret)) {
+        if (await handleLoginFailure(req, "invalid_totp")) {
+          res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+          return;
+        }
         res.status(401).json({ error: "invalid_totp" });
         return;
       }
     }
+    await recordUserLogin(user.id, "login", req);
     const token = signToken(user.id);
     const secure = getSecureCookieFlag(req);
     res.setHeader(
@@ -1460,6 +1934,11 @@ adminApp.post("/api/admin/login", async (req, res) => {
     return;
   }
   try {
+    const blocked = await checkBlacklist(req);
+    if (blocked) {
+      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+      return;
+    }
     const safeUsername = String(username).trim();
     const lockState = await getAdminLockState(safeUsername);
     if (lockState.locked) {
@@ -1472,6 +1951,7 @@ adminApp.post("/api/admin/login", async (req, res) => {
       [safeUsername]
     );
     if (!result.rowCount) {
+      await handleLoginFailure(req, "admin_login_failed");
       await recordAdminLoginFailure(safeUsername);
       await logAdminAction(null, "admin_login_failed", { username: safeUsername }, req);
       res.status(401).json({ error: "Invalid credentials" });
@@ -1479,6 +1959,7 @@ adminApp.post("/api/admin/login", async (req, res) => {
     }
     const user = result.rows[0];
     if (user.is_active === false) {
+      await handleLoginFailure(req, "admin_login_disabled");
       await recordAdminLoginFailure(safeUsername);
       await logAdminAction(user.id, "admin_login_failed", { reason: "disabled" }, req);
       res.status(403).json({ error: "Account disabled" });
@@ -1486,6 +1967,7 @@ adminApp.post("/api/admin/login", async (req, res) => {
     }
     const adminId = await getAdminId();
     if (!adminId || String(adminId) !== String(user.id)) {
+      await handleLoginFailure(req, "admin_login_not_admin");
       await recordAdminLoginFailure(safeUsername);
       await logAdminAction(user.id, "admin_login_failed", { reason: "not_admin" }, req);
       res.status(403).json({ error: "forbidden" });
@@ -1493,6 +1975,7 @@ adminApp.post("/api/admin/login", async (req, res) => {
     }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
+      await handleLoginFailure(req, "admin_login_bad_password");
       await recordAdminLoginFailure(safeUsername);
       await logAdminAction(user.id, "admin_login_failed", { reason: "bad_password" }, req);
       res.status(401).json({ error: "Invalid credentials" });
@@ -1607,15 +2090,20 @@ adminApp.get("/api/admin/me", async (req, res) => {
 
 adminApp.get("/api/admin/logs", requireAdmin, async (req, res) => {
   try {
-    const limit = Math.max(10, Math.min(200, Number(req.query?.limit) || 100));
+    const page = Math.max(1, Number(req.query?.page) || 1);
+    const pageSize = Math.max(10, Math.min(100, Number(req.query?.pageSize) || 10));
+    const offset = (page - 1) * pageSize;
+    const countResult = await pool.query("SELECT COUNT(*)::int AS total FROM admin_logs");
+    const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
     const result = await pool.query(
       `SELECT id, admin_id, action, detail, ip, created_at
        FROM admin_logs
        ORDER BY created_at DESC
-       LIMIT $1`,
-      [limit]
+       LIMIT $1 OFFSET $2`,
+      [pageSize, offset]
     );
-    res.json(result.rows);
+    res.json({ items: result.rows, page, totalPages });
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
@@ -1814,6 +2302,405 @@ adminApp.post("/api/admin/users/:id/clear-2fa", requireAdmin, async (req, res) =
     await clearUserTotp(id);
     await logAdminAction(req.admin.id, "user_clear_2fa", { id }, req);
     res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/contact/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!id) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    const settingsResult = await pool.query(
+      "SELECT settings FROM user_settings WHERE user_id = $1",
+      [id]
+    );
+    const settings =
+      settingsResult.rows[0] && settingsResult.rows[0].settings
+        ? settingsResult.rows[0].settings
+        : {};
+    const contact = settings.contact || {};
+    let items = [];
+    if (Array.isArray(contact.items)) {
+      items = contact.items
+        .map((item) => ({
+          platform: item && item.platform ? String(item.platform) : "",
+          value: item && item.value ? String(item.value) : ""
+        }))
+        .filter((item) => item.platform || item.value);
+    } else if (contact.platform || contact.value) {
+      items = [
+        {
+          platform: contact.platform ? String(contact.platform) : "",
+          value: contact.value ? String(contact.value) : ""
+        }
+      ];
+    }
+    res.json({
+      enabled: Boolean(contact.enabled),
+      items
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/contact", requireAdmin, async (req, res) => {
+  try {
+    const { userId, applyAll, enabled, items, platform, value } = req.body || {};
+    const legacyItems =
+      platform || value
+        ? [
+            {
+              platform: platform ? String(platform) : "",
+              value: value ? String(value) : ""
+            }
+          ]
+        : [];
+    const safeItems = Array.isArray(items)
+      ? items
+          .map((item) => ({
+            platform: item && item.platform ? String(item.platform) : "",
+            value: item && item.value ? String(item.value) : ""
+          }))
+          .filter((item) => item.platform || item.value)
+      : legacyItems;
+    const contact = {
+      enabled: Boolean(enabled),
+      items: safeItems
+    };
+    if (applyAll) {
+      const usersResult = await pool.query("SELECT id FROM users");
+      for (const row of usersResult.rows) {
+        await updateUserSettings(row.id, { contact });
+      }
+      await logAdminAction(req.admin.id, "contact_update_all", contact, req);
+      res.json({ ok: true });
+      return;
+    }
+    if (!userId) {
+      res.status(400).json({ error: "Invalid user" });
+      return;
+    }
+    await updateUserSettings(String(userId), { contact });
+    await logAdminAction(req.admin.id, "contact_update_user", { userId, contact }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/blacklist", requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, type, value, reason, expires_at, created_at FROM blacklist WHERE expires_at IS NULL OR expires_at > NOW() ORDER BY created_at DESC"
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/blacklist", requireAdmin, async (req, res) => {
+  try {
+    const { type, value, reason, hours } = req.body || {};
+    const safeType = String(type || "").trim();
+    const safeValue = String(value || "").trim();
+    if (!safeType || !safeValue) {
+      res.status(400).json({ error: "Invalid payload" });
+      return;
+    }
+    const expiresHours = hours !== undefined && hours !== null && String(hours) !== ""
+      ? Math.max(1, Number(hours))
+      : null;
+    await addBlacklistEntry(safeType, safeValue, reason || "", expiresHours);
+    await logAdminAction(req.admin.id, "blacklist_add", { type: safeType, value: safeValue }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.delete("/api/admin/blacklist/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id || "");
+    if (!id) {
+      res.status(400).json({ error: "Invalid blacklist" });
+      return;
+    }
+    await pool.query("DELETE FROM blacklist WHERE id = $1", [id]);
+    await logAdminAction(req.admin.id, "blacklist_remove", { id }, req);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/security-policy", requireAdmin, async (req, res) => {
+  try {
+    const policy = await getSecurityPolicy();
+    res.json(policy);
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post("/api/admin/security-policy", requireAdmin, async (req, res) => {
+  try {
+    const { loginFailThreshold, autoBlockMinutes, loginLogAutoCleanup, loginLogCleanupDay } =
+      req.body || {};
+    const update = {};
+    if (loginFailThreshold !== undefined) {
+      const value = Math.max(1, Number(loginFailThreshold));
+      if (!Number.isNaN(value)) update.loginFailThreshold = value;
+    }
+    if (autoBlockMinutes !== undefined) {
+      const value = Math.max(0, Number(autoBlockMinutes));
+      if (!Number.isNaN(value)) update.autoBlockMinutes = value;
+    }
+    if (loginLogAutoCleanup !== undefined) {
+      update.loginLogAutoCleanup = Boolean(loginLogAutoCleanup);
+    }
+    if (loginLogCleanupDay !== undefined) {
+      const value = Number(loginLogCleanupDay);
+      if (!Number.isNaN(value)) update.loginLogCleanupDay = value;
+    }
+    const policy = await updateSecurityPolicy(update);
+    await logAdminAction(req.admin.id, "security_policy_update", update, req);
+    res.json({ ok: true, policy });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.get("/api/admin/backup/export-all", requireAdmin, async (req, res) => {
+  try {
+    const payload = await buildFullBackupPayload();
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=\"mynavsite-full-backup-${Date.now()}.json\"`
+    );
+    res.send(JSON.stringify(payload, null, 2));
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
+adminApp.post(
+  "/api/admin/backup/import-all",
+  requireAdmin,
+  upload.single("backup"),
+  async (req, res) => {
+    if (!req.file) {
+      res.status(400).json({ error: "No file" });
+      return;
+    }
+    try {
+      const raw = await fs.promises.readFile(req.file.path, "utf8");
+      const data = JSON.parse(raw);
+      const users = Array.isArray(data?.users) ? data.users : [];
+      const settings = Array.isArray(data?.user_settings) ? data.user_settings : [];
+      const categories = Array.isArray(data?.categories) ? data.categories : [];
+      const links = Array.isArray(data?.links) ? data.links : [];
+      const invites = Array.isArray(data?.invite_codes) ? data.invite_codes : [];
+      const blacklist = Array.isArray(data?.blacklist) ? data.blacklist : [];
+      const adminLogs = Array.isArray(data?.admin_logs) ? data.admin_logs : [];
+      const adminAttempts = Array.isArray(data?.admin_login_attempts)
+        ? data.admin_login_attempts
+        : [];
+      const loginLogs = Array.isArray(data?.user_login_logs) ? data.user_login_logs : [];
+
+      const client = await pool.connect();
+      try {
+        await client.query("BEGIN");
+        await client.query("DELETE FROM links");
+        await client.query("DELETE FROM categories");
+        await client.query("DELETE FROM user_settings");
+        await client.query("DELETE FROM invite_codes");
+        await client.query("DELETE FROM blacklist");
+        await client.query("DELETE FROM admin_logs");
+        await client.query("DELETE FROM admin_login_attempts");
+        await client.query("DELETE FROM user_login_logs");
+        await client.query("DELETE FROM users");
+
+        for (const user of users) {
+          await client.query(
+            "INSERT INTO users (id, username, password_hash, email, is_active, avatar_url, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            [
+              user.id,
+              user.username,
+              user.password_hash,
+              user.email || null,
+              user.is_active !== false,
+              user.avatar_url || null,
+              user.created_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        for (const item of settings) {
+          await client.query(
+            "INSERT INTO user_settings (user_id, settings) VALUES ($1, $2)",
+            [item.user_id, item.settings || {}]
+          );
+        }
+
+        for (const item of categories) {
+          await client.query(
+            "INSERT INTO categories (id, user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4, $5)",
+            [
+              item.id,
+              item.user_id,
+              item.name,
+              Boolean(item.is_private),
+              Number(item.sort_index) || 0
+            ]
+          );
+        }
+
+        for (const item of links) {
+          await client.query(
+            "INSERT INTO links (id, user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            [
+              item.id,
+              item.user_id,
+              item.title,
+              item.url,
+              item.icon || null,
+              item.category_id || null,
+              Boolean(item.is_private),
+              Boolean(item.is_dock),
+              Number(item.sort_index) || 0,
+              item.position_index !== undefined && item.position_index !== null
+                ? Number(item.position_index)
+                : null,
+              item.created_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        for (const item of invites) {
+          await client.query(
+            "INSERT INTO invite_codes (id, code, created_by, created_at, expires_at, used_at, used_by) VALUES ($1, $2, $3, $4, $5, $6, $7)",
+            [
+              item.id,
+              item.code,
+              item.created_by || null,
+              item.created_at || new Date().toISOString(),
+              item.expires_at,
+              item.used_at || null,
+              item.used_by || null
+            ]
+          );
+        }
+
+        for (const item of blacklist) {
+          await client.query(
+            "INSERT INTO blacklist (id, type, value, reason, expires_at, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+            [
+              item.id,
+              item.type,
+              item.value,
+              item.reason || "",
+              item.expires_at || null,
+              item.created_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        for (const item of adminLogs) {
+          await client.query(
+            "INSERT INTO admin_logs (id, admin_id, action, detail, ip, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+            [
+              item.id,
+              item.admin_id || null,
+              item.action,
+              item.detail || {},
+              item.ip || null,
+              item.created_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        for (const item of adminAttempts) {
+          await client.query(
+            "INSERT INTO admin_login_attempts (username, failed_count, locked_until, updated_at) VALUES ($1, $2, $3, $4)",
+            [
+              item.username,
+              Number(item.failed_count) || 0,
+              item.locked_until || null,
+              item.updated_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        for (const item of loginLogs) {
+          await client.query(
+            "INSERT INTO user_login_logs (id, user_id, action, ip, user_agent, created_at) VALUES ($1, $2, $3, $4, $5, $6)",
+            [
+              item.id,
+              item.user_id || null,
+              item.action,
+              item.ip || null,
+              item.user_agent || null,
+              item.created_at || new Date().toISOString()
+            ]
+          );
+        }
+
+        await client.query("COMMIT");
+        res.json({ ok: true });
+      } catch (err) {
+        await client.query("ROLLBACK");
+        res.status(500).json({ error: "Database error" });
+      } finally {
+        client.release();
+      }
+    } catch (err) {
+      res.status(400).json({ error: "Invalid JSON" });
+    } finally {
+      fs.unlink(req.file.path, () => {});
+    }
+  }
+);
+
+adminApp.get("/api/admin/user-logins", requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(50, Math.max(5, Number(req.query.pageSize) || 10));
+    const userId = String(req.query.userId || "").trim();
+    const params = [];
+    let where = "";
+    if (userId) {
+      params.push(userId);
+      where = "WHERE l.user_id = $1";
+    }
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM user_login_logs l ${where}`,
+      params
+    );
+    const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
+    const offset = (page - 1) * pageSize;
+    params.push(pageSize, offset);
+    const dataResult = await pool.query(
+      `SELECT l.id, l.user_id, u.username, l.action, l.ip, l.user_agent, l.created_at
+       FROM user_login_logs l
+       LEFT JOIN users u ON u.id = l.user_id
+       ${where}
+       ORDER BY l.created_at DESC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+    res.json({
+      page,
+      pageSize,
+      total,
+      items: dataResult.rows
+    });
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
@@ -2271,3 +3158,4 @@ initDb()
     console.error("Failed to initialize database", err);
     process.exit(1);
   });
+

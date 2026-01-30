@@ -263,6 +263,120 @@
         <div class="card">
           <div class="title-row">
             <div>
+              <h1 style="font-size: 18px;">联系我们管理</h1>
+              <div class="muted">统一配置所有用户的联系方式（仅显示图标）。</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <select id="contactUserSelect" style="min-width: 160px;">
+              <option value="">全部用户</option>
+            </select>
+            <label class="toggle">
+              <input id="contactEnabled" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+            <span class="muted">启用联系我们</span>
+          </div>
+          <div class="list" id="contactList" style="margin-top: 8px;"></div>
+          <div class="row" style="margin-top: 6px;">
+            <button id="addContactRowBtn" style="background: #eef2ff; color: #1d4ed8;">添加联系方式</button>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <label class="muted">
+              <input id="contactApplyAll" type="checkbox" checked />
+              批量应用到所有用户
+            </label>
+            <button id="saveContactBtn">保存</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">黑名单管理</h1>
+              <div class="muted">支持账号 / IP / 设备指纹拦截，支持有效期。</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <select id="blacklistType" style="min-width: 140px;">
+              <option value="user">账号</option>
+              <option value="ip">IP</option>
+              <option value="device">设备指纹</option>
+            </select>
+            <input id="blacklistValue" type="text" placeholder="请输入值" style="flex: 1;" />
+            <input id="blacklistHours" type="number" min="1" placeholder="有效期小时" style="width: 110px;" />
+            <button id="addBlacklistBtn">添加</button>
+          </div>
+          <div class="field">
+            <label for="blacklistReason">备注</label>
+            <input id="blacklistReason" type="text" placeholder="选填" />
+          </div>
+          <div class="list" id="blacklistList"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">安全策略</h1>
+              <div class="muted">登录失败自动封禁与登录记录清理规则。</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <label class="muted" style="width: 120px;">登录失败次数</label>
+            <input id="loginFailThreshold" type="number" min="1" style="width: 100px;" />
+            <span class="muted">次后封禁</span>
+            <input id="autoBlockMinutes" type="number" min="0" style="width: 120px;" />
+            <span class="muted">分钟（0 表示不封禁）</span>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <label class="toggle">
+              <input id="loginLogAutoCleanup" type="checkbox" />
+              <span class="slider"></span>
+            </label>
+            <span class="muted">自动清理登录记录</span>
+            <input id="loginLogCleanupDay" type="number" min="0" max="31" style="width: 120px; margin-left: 10px;" />
+            <span class="muted">日（0 表示每月最后一天）</span>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <button id="saveSecurityPolicyBtn">保存</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
+              <h1 style="font-size: 18px;">&#x6570;&#x636E;&#x5907;&#x4EFD;</h1>
+              <div class="muted">&#x652F;&#x6301;&#x5168;&#x91CF;&#x5BFC;&#x51FA; / &#x5BFC;&#x5165;&#xFF0C;&#x76F4;&#x63A5;&#x8986;&#x76D6;&#x73B0;&#x6709;&#x6570;&#x636E;&#x3002;</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <button id="backupExportBtn">&#x5BFC;&#x51FA;&#x5168;&#x91CF;&#x5907;&#x4EFD;</button>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <input id="backupFile" type="file" accept="application/json" />
+            <button class="secondary" id="backupImportBtn">&#x5BFC;&#x5165;&#x5E76;&#x8986;&#x76D6;</button>
+          </div>
+          <div class="muted" style="margin-top: 6px;">&#x5BFC;&#x5165;&#x4F1A;&#x6E05;&#x7A7A;&#x73B0;&#x6709;&#x6570;&#x636E;&#x5E76;&#x5168;&#x91CF;&#x6062;&#x590D;&#xFF0C;&#x8BF7;&#x8C28;&#x614E;&#x64CD;&#x4F5C;&#x3002;</div>
+        </div>
+        <div class="card">
+          <div class="title-row" style="align-items: flex-start;">
+            <div>
+              <h1 style="font-size: 18px;">用户登录记录</h1>
+              <div class="muted">记录注册与每次登录的 IP 与时间。</div>
+            </div>
+            <div class="row" style="gap: 6px;">
+              <button class="secondary" id="loginLogPrevBtn">上一页</button>
+              <span class="muted" id="loginLogPageText">1/1</span>
+              <button class="secondary" id="loginLogNextBtn">下一页</button>
+            </div>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <select id="loginLogUserSelect" style="min-width: 180px;">
+              <option value="">全部用户</option>
+            </select>
+          </div>
+          <div class="list" id="userLoginList"></div>
+        </div>
+        <div class="card">
+          <div class="title-row">
+            <div>
               <h1 style="font-size: 18px;">操作日志</h1>
               <div class="muted">最近 100 条管理员操作记录。</div>
             </div>
@@ -327,6 +441,31 @@
       const generateInvitesBtn = document.querySelector("#generateInvitesBtn");
       const inviteList = document.querySelector("#inviteList");
       const userList = document.querySelector("#userList");
+      const contactUserSelect = document.querySelector("#contactUserSelect");
+      const contactEnabled = document.querySelector("#contactEnabled");
+      const contactList = document.querySelector("#contactList");
+      const addContactRowBtn = document.querySelector("#addContactRowBtn");
+      const contactApplyAll = document.querySelector("#contactApplyAll");
+      const saveContactBtn = document.querySelector("#saveContactBtn");
+      const blacklistType = document.querySelector("#blacklistType");
+      const blacklistValue = document.querySelector("#blacklistValue");
+      const blacklistHours = document.querySelector("#blacklistHours");
+      const blacklistReason = document.querySelector("#blacklistReason");
+      const addBlacklistBtn = document.querySelector("#addBlacklistBtn");
+      const blacklistList = document.querySelector("#blacklistList");
+      const loginFailThresholdInput = document.querySelector("#loginFailThreshold");
+      const autoBlockMinutesInput = document.querySelector("#autoBlockMinutes");
+      const loginLogAutoCleanupToggle = document.querySelector("#loginLogAutoCleanup");
+      const loginLogCleanupDayInput = document.querySelector("#loginLogCleanupDay");
+      const saveSecurityPolicyBtn = document.querySelector("#saveSecurityPolicyBtn");
+      const backupExportBtn = document.querySelector("#backupExportBtn");
+      const backupFile = document.querySelector("#backupFile");
+      const backupImportBtn = document.querySelector("#backupImportBtn");
+      const loginLogUserSelect = document.querySelector("#loginLogUserSelect");
+      const userLoginList = document.querySelector("#userLoginList");
+      const loginLogPrevBtn = document.querySelector("#loginLogPrevBtn");
+      const loginLogNextBtn = document.querySelector("#loginLogNextBtn");
+      const loginLogPageText = document.querySelector("#loginLogPageText");
       const adminLogList = document.querySelector("#adminLogList");
       const refreshLogsBtn = document.querySelector("#refreshLogsBtn");
       const adminUserCurrent = document.querySelector("#adminUserCurrent");
@@ -338,6 +477,17 @@
       const logoutBtn = document.querySelector("#logoutBtn");
       const adminName = document.querySelector("#adminName");
       const toast = document.querySelector("#toast");
+      let loginLogPage = 1;
+      let loginLogTotalPages = 1;
+
+      if (contactApplyAll) {
+        contactApplyAll.checked = true;
+        contactApplyAll.disabled = true;
+      }
+      if (contactUserSelect) {
+        contactUserSelect.disabled = true;
+        contactUserSelect.style.opacity = "0.6";
+      }
 
       function showToast(message) {
         if (!toast) return;
@@ -505,7 +655,15 @@
 
       function formatTime(value) {
         try {
-          return new Date(value).toLocaleString();
+          return new Date(value).toLocaleString("zh-CN", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false
+          });
         } catch (err) {
           return "";
         }
@@ -526,7 +684,10 @@
           user_reset_password: "重置用户密码",
           user_delete: "删除用户",
           user_clear_2fa: "清除用户2FA",
-          admin_credentials_update: "修改管理员账号"
+          admin_credentials_update: "修改管理员账号",
+          blacklist_add: "添加黑名单",
+          blacklist_remove: "移除黑名单",
+          security_policy_update: "更新安全策略"
         };
         return mapping[action] || action || "未知操作";
       }
@@ -559,8 +720,250 @@
       function loadUsers() {
         fetch("/api/admin/users")
           .then((res) => res.json())
-          .then((data) => renderUsers(data))
+          .then((data) => {
+            renderUsers(data);
+            if (contactUserSelect) {
+              contactUserSelect.innerHTML = "<option value=\"\">全部用户</option>";
+              if (Array.isArray(data) && data.length) {
+                data.forEach((user) => {
+                  const opt = document.createElement("option");
+                  opt.value = user.id;
+                  opt.textContent = user.username || user.email || user.id;
+                  contactUserSelect.appendChild(opt);
+                });
+                contactUserSelect.value = data[0].id;
+                loadContactForUser(data[0].id);
+              }
+            }
+            if (loginLogUserSelect) {
+              loginLogUserSelect.innerHTML = "<option value=\"\">全部用户</option>";
+              if (Array.isArray(data) && data.length) {
+                data.forEach((user) => {
+                  const opt = document.createElement("option");
+                  opt.value = user.id;
+                  opt.textContent = user.username || user.email || user.id;
+                  loginLogUserSelect.appendChild(opt);
+                });
+              }
+            }
+          })
           .catch(() => renderUsers([]));
+      }
+
+      function renderBlacklist(items) {
+        if (!blacklistList) return;
+        blacklistList.innerHTML = "";
+        if (!items || !items.length) {
+          blacklistList.innerHTML = "<div class='muted'>暂无黑名单</div>";
+          return;
+        }
+        items.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const left = document.createElement("div");
+          const expires = item.expires_at ? formatTime(item.expires_at) : "永久";
+          left.innerHTML = `<div><strong>${item.type}</strong> ${item.value}</div><div class="muted">${item.reason || ""} 截止 ${expires}</div>`;
+          const actions = document.createElement("div");
+          actions.className = "actions";
+          const delBtn = document.createElement("button");
+          delBtn.className = "secondary";
+          delBtn.textContent = "移除";
+          delBtn.addEventListener("click", () => {
+            fetch(`/api/admin/blacklist/${item.id}`, { method: "DELETE" })
+              .then(() => loadBlacklist())
+              .catch(() => showToast("操作失败"));
+          });
+          actions.appendChild(delBtn);
+          row.append(left, actions);
+          blacklistList.appendChild(row);
+        });
+      }
+
+      function loadBlacklist() {
+        fetch("/api/admin/blacklist")
+          .then((res) => res.json())
+          .then((data) => renderBlacklist(Array.isArray(data) ? data : []))
+          .catch(() => renderBlacklist([]));
+      }
+
+
+      function downloadBackup() {
+        fetch("/api/admin/backup/export-all", { credentials: "include" })
+          .then((res) => {
+            if (!res.ok) throw new Error("export_failed");
+            return res.blob();
+          })
+          .then((blob) => {
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `mynavsite-full-backup-${Date.now()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            showToast("已导出");
+          })
+          .catch(() => showToast("操作失败"));
+      }
+
+      function importBackup() {
+        if (!backupFile || !backupFile.files || !backupFile.files[0]) {
+          showToast("请选择备份文件");
+          return;
+        }
+        if (!confirm("导入会覆盖现有数据，确认继续？")) return;
+        const form = new FormData();
+        form.append("backup", backupFile.files[0]);
+        fetch("/api/admin/backup/import-all", {
+          method: "POST",
+          credentials: "include",
+          body: form
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data && data.ok) {
+              showToast("已导入");
+              setTimeout(() => location.reload(), 1200);
+              return;
+            }
+            showToast((data && data.error) || "操作失败");
+          })
+          .catch(() => showToast("操作失败"));
+      }
+
+      function loadSecurityPolicy() {
+        fetch("/api/admin/security-policy")
+          .then((res) => res.json())
+          .then((data) => {
+            if (!data) return;
+            if (loginFailThresholdInput) {
+              loginFailThresholdInput.value = Number(data.loginFailThreshold || 1);
+            }
+            if (autoBlockMinutesInput) {
+              autoBlockMinutesInput.value = Number(data.autoBlockMinutes || 0);
+            }
+            if (loginLogAutoCleanupToggle) {
+              loginLogAutoCleanupToggle.checked = Boolean(data.loginLogAutoCleanup);
+            }
+            if (loginLogCleanupDayInput) {
+              loginLogCleanupDayInput.value = Number(
+                data.loginLogCleanupDay !== undefined ? data.loginLogCleanupDay : 0
+              );
+            }
+          })
+          .catch(() => {});
+      }
+
+      function renderLoginLogs(items) {
+        if (!userLoginList) return;
+        userLoginList.innerHTML = "";
+        if (!items || !items.length) {
+          userLoginList.innerHTML = "<div class='muted'>暂无记录</div>";
+          return;
+        }
+        items.forEach((log) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const actionLabel = log.action === "register" ? "注册" : "登录";
+          const left = document.createElement("div");
+          left.innerHTML = `<div><strong>${log.username || log.user_id}</strong> · ${actionLabel}</div><div class="muted">${log.ip || ""} · ${formatTime(log.created_at)}</div>`;
+          row.appendChild(left);
+          userLoginList.appendChild(row);
+        });
+      }
+
+      function loadLoginLogs() {
+        const userId = loginLogUserSelect ? loginLogUserSelect.value : "";
+        const params = new URLSearchParams();
+        if (userId) params.set("userId", userId);
+        params.set("page", String(loginLogPage));
+        params.set("pageSize", "10");
+        fetch(`/api/admin/user-logins?${params.toString()}`)
+          .then((res) => res.json())
+          .then((data) => {
+            loginLogTotalPages = data && data.total
+              ? Math.max(1, Math.ceil(Number(data.total) / Number(data.pageSize || 10)))
+              : 1;
+            if (loginLogPageText) {
+              loginLogPageText.textContent = `${loginLogPage}/${loginLogTotalPages}`;
+            }
+            renderLoginLogs(data && data.items ? data.items : []);
+          })
+          .catch(() => renderLoginLogs([]));
+      }
+
+      const contactPlatformOptions = [
+        { value: "telegram", label: "Telegram" },
+        { value: "email", label: "邮箱" },
+        { value: "phone", label: "电话" },
+        { value: "line", label: "Line" },
+        { value: "qq", label: "QQ" },
+        { value: "wechat", label: "微信" },
+        { value: "whatsapp", label: "WhatsApp" },
+        { value: "discord", label: "Discord" },
+        { value: "twitter", label: "Twitter/X" },
+        { value: "facebook", label: "Facebook" },
+        { value: "instagram", label: "Instagram" },
+        { value: "other", label: "其他" }
+      ];
+
+      function buildContactRow(item) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.style.marginTop = "8px";
+        const select = document.createElement("select");
+        select.style.minWidth = "140px";
+        contactPlatformOptions.forEach((opt) => {
+          const option = document.createElement("option");
+          option.value = opt.value;
+          option.textContent = opt.label;
+          select.appendChild(option);
+        });
+        select.value = item && item.platform ? item.platform : "telegram";
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = "请输入联系方式";
+        input.value = item && item.value ? item.value : "";
+        input.style.flex = "1";
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "移除";
+        removeBtn.style.background = "#fef2f2";
+        removeBtn.style.color = "#dc2626";
+        removeBtn.addEventListener("click", () => row.remove());
+        row.append(select, input, removeBtn);
+        return row;
+      }
+
+      function renderContactList(items) {
+        if (!contactList) return;
+        contactList.innerHTML = "";
+        if (!Array.isArray(items) || !items.length) {
+          contactList.appendChild(buildContactRow({ platform: "telegram", value: "" }));
+          return;
+        }
+        items.forEach((item) => {
+          contactList.appendChild(buildContactRow(item));
+        });
+      }
+
+      function loadContactForUser(userId) {
+        if (!contactEnabled || !contactList) return;
+        if (!userId) {
+          contactEnabled.checked = false;
+          renderContactList([]);
+          return;
+        }
+        fetch(`/api/admin/contact/${userId}`)
+          .then((res) => res.json())
+          .then((data) => {
+            contactEnabled.checked = Boolean(data && data.enabled);
+            renderContactList(data && data.items ? data.items : []);
+          })
+          .catch(() => {
+            contactEnabled.checked = false;
+            renderContactList([]);
+          });
       }
 
       function loadLogs() {
@@ -574,6 +977,9 @@
         showPanel(username);
         loadInvites();
         loadUsers();
+        loadBlacklist();
+        loadSecurityPolicy();
+        loadLoginLogs();
         loadLogs();
       }
 
@@ -635,6 +1041,151 @@
 
       if (refreshLogsBtn) {
         refreshLogsBtn.addEventListener("click", () => loadLogs());
+      }
+
+      if (contactUserSelect) {
+        contactUserSelect.addEventListener("change", () => {
+          loadContactForUser(contactUserSelect.value);
+        });
+      }
+      if (addContactRowBtn) {
+        addContactRowBtn.addEventListener("click", () => {
+          if (!contactList) return;
+          contactList.appendChild(buildContactRow({ platform: "telegram", value: "" }));
+        });
+      }
+      if (saveContactBtn) {
+        saveContactBtn.addEventListener("click", () => {
+          if (!contactList) return;
+          const rows = Array.from(contactList.querySelectorAll(".row"));
+          const items = rows
+            .map((row) => {
+              const select = row.querySelector("select");
+              const input = row.querySelector("input[type=\"text\"]");
+              return {
+                platform: select ? select.value : "",
+                value: input ? input.value.trim() : ""
+              };
+            })
+            .filter((item) => item.platform || item.value);
+          if (!items.length && contactEnabled && contactEnabled.checked) {
+            showToast("请至少添加一个联系方式");
+            return;
+          }
+          const payload = {
+            userId: contactUserSelect ? contactUserSelect.value : "",
+            applyAll: true,
+            enabled: Boolean(contactEnabled && contactEnabled.checked),
+            items
+          };
+          fetch("/api/admin/contact", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+            .then((res) => {
+              if (!res.ok) throw new Error("failed");
+              showToast("保存成功");
+            })
+            .catch(() => showToast("操作失败"));
+        });
+      }
+
+      if (saveSecurityPolicyBtn) {
+        saveSecurityPolicyBtn.addEventListener("click", () => {
+          const payload = {
+            loginFailThreshold: loginFailThresholdInput
+              ? Number(loginFailThresholdInput.value)
+              : undefined,
+            autoBlockMinutes: autoBlockMinutesInput
+              ? Number(autoBlockMinutesInput.value)
+              : undefined,
+            loginLogAutoCleanup: Boolean(
+              loginLogAutoCleanupToggle && loginLogAutoCleanupToggle.checked
+            ),
+            loginLogCleanupDay: loginLogCleanupDayInput
+              ? Number(loginLogCleanupDayInput.value)
+              : undefined
+          };
+          fetch("/api/admin/security-policy", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+            .then((res) => res.json())
+            .then((data) => {
+
+              if (data && data.error) {
+                showToast(data.error);
+                return;
+              }
+              showToast("保存成功");
+              loadSecurityPolicy();
+            })
+            .catch(() => showToast("操作失败"));
+        });
+      }
+
+      if (backupExportBtn) {
+        backupExportBtn.addEventListener("click", () => downloadBackup());
+      }
+      if (backupImportBtn) {
+        backupImportBtn.addEventListener("click", () => importBackup());
+      }
+
+      if (loginLogUserSelect) {
+        loginLogUserSelect.addEventListener("change", () => {
+          loginLogPage = 1;
+          loadLoginLogs();
+        });
+      }
+      if (loginLogPrevBtn) {
+        loginLogPrevBtn.addEventListener("click", () => {
+          if (loginLogPage <= 1) return;
+          loginLogPage -= 1;
+          loadLoginLogs();
+        });
+      }
+      if (loginLogNextBtn) {
+        loginLogNextBtn.addEventListener("click", () => {
+          if (loginLogPage >= loginLogTotalPages) return;
+          loginLogPage += 1;
+          loadLoginLogs();
+        });
+      }
+
+      if (addBlacklistBtn) {
+        addBlacklistBtn.addEventListener("click", () => {
+          const type = blacklistType ? blacklistType.value : "";
+          const value = blacklistValue ? blacklistValue.value.trim() : "";
+          if (!type || !value) {
+            showToast("请输入黑名单值");
+            return;
+          }
+          const payload = {
+            type,
+            value,
+            reason: blacklistReason ? blacklistReason.value.trim() : "",
+            hours: blacklistHours && blacklistHours.value !== "" ? Number(blacklistHours.value) : null
+          };
+          fetch("/api/admin/blacklist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          })
+            .then((res) => res.json())
+            .then((data) => {
+              if (data && data.error) {
+                showToast(data.error);
+                return;
+              }
+              if (blacklistValue) blacklistValue.value = "";
+              if (blacklistReason) blacklistReason.value = "";
+              showToast("已添加黑名单");
+              loadBlacklist();
+            })
+            .catch(() => showToast("操作失败"));
+        });
       }
 
       loginForm.addEventListener("submit", (event) => {
