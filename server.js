@@ -249,25 +249,36 @@ async function initDb() {
   }
 }
 
-function getFaviconUrl(linkUrl) {
+function getFaviconUrl(linkUrl, size = 256) {
   try {
     const parsed = new URL(linkUrl);
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(parsed.hostname)}&sz=128`;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(parsed.hostname)}&sz=${size}`;
   } catch (err) {
     return null;
   }
 }
 
 async function downloadIcon(linkUrl, id) {
-  const faviconUrl = getFaviconUrl(linkUrl);
-  if (!faviconUrl) {
+  const sizes = [256, 128];
+  let buffer = null;
+  for (const size of sizes) {
+    const faviconUrl = getFaviconUrl(linkUrl, size);
+    if (!faviconUrl) {
+      continue;
+    }
+    const response = await fetch(faviconUrl);
+    if (!response.ok) {
+      continue;
+    }
+    const nextBuffer = await response.buffer();
+    if (nextBuffer && nextBuffer.length) {
+      buffer = nextBuffer;
+      break;
+    }
+  }
+  if (!buffer) {
     return null;
   }
-  const response = await fetch(faviconUrl);
-  if (!response.ok) {
-    return null;
-  }
-  const buffer = await response.buffer();
   const safeId = String(id).replace(/[^a-zA-Z0-9-]/g, "");
   const fileName = `${safeId}.png`;
   const filePath = path.join(iconDir, fileName);
@@ -374,13 +385,21 @@ async function isDeviceBlacklisted(deviceId) {
   return result.rows[0] || null;
 }
 
-async function checkBlacklist(req, user) {
+async function checkBlacklist(req, user, options = {}) {
+  if (user) {
+    try {
+      const isAdmin = await isAdminUserId(user.id);
+      if (isAdmin) return null;
+    } catch (err) {}
+  }
   const ip = getClientIp(req);
   const deviceId = getDeviceFingerprint(req);
   const userHit = user ? await isUserBlacklisted(user.id, user.username) : null;
   if (userHit) return userHit;
-  const ipHit = await isIpBlacklisted(ip);
-  if (ipHit) return ipHit;
+  if (!options.skipIp) {
+    const ipHit = await isIpBlacklisted(ip);
+    if (ipHit) return ipHit;
+  }
   const deviceHit = await isDeviceBlacklisted(deviceId);
   if (deviceHit) return deviceHit;
   return null;
@@ -642,17 +661,9 @@ app.use("/api", async (req, res, next) => {
   }
 });
 
-adminApp.use("/api", async (req, res, next) => {
-  try {
-    const blocked = await checkBlacklist(req);
-    if (blocked) {
-      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
-      return;
-    }
-    next();
-  } catch (err) {
-    res.status(500).json({ error: "Database error" });
-  }
+adminApp.use("/api", (req, res, next) => {
+  // 管理员接口不执行黑名单拦截，确保管理员永远可登录。
+  next();
 });
 
 async function checkRegistrationAccess() {
@@ -1080,10 +1091,19 @@ async function ensureAdminUser() {
       await updateUserSettings(adminId, { userName: safeUsername });
     }
   }
-  if (shouldResetTotp) {
-    await updateUserSettings(adminId, { adminTotpSecret: "" });
+    if (shouldResetTotp) {
+      await updateUserSettings(adminId, { adminTotpSecret: "" });
+    }
+    if (shouldForceUpdate || shouldResetTotp) {
+      try {
+        await pool.query("DELETE FROM admin_login_attempts WHERE username = $1", [safeUsername]);
+        await pool.query(
+          "DELETE FROM blacklist WHERE type = 'user' AND (value = $1 OR value = $2)",
+          [String(adminId), safeUsername]
+        );
+      } catch (err) {}
+    }
   }
-}
 
 const BASE32_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 
@@ -1193,6 +1213,48 @@ async function getCategoryId(client, userId, name) {
   const info = await getCategoryInfo(client, userId, name);
   return info.id;
 }
+
+app.get("/api/public/:username", async (req, res) => {
+  try {
+    const username = String(req.params.username || "").trim();
+    if (!username) {
+      res.status(400).json({ error: "missing_username" });
+      return;
+    }
+    const userResult = await pool.query(
+      "SELECT id, username FROM users WHERE username = $1 AND is_active = TRUE",
+      [username]
+    );
+    if (!userResult.rowCount) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const userId = userResult.rows[0].id;
+    const categoriesResult = await pool.query(
+      "SELECT id, name, is_private, sort_index FROM categories WHERE user_id = $1 AND is_private = FALSE ORDER BY sort_index ASC, name ASC",
+      [userId]
+    );
+    const linksResult = await pool.query(
+      `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
+              categories.name AS category,
+              COALESCE(categories.is_private, FALSE) AS category_private
+       FROM links
+       LEFT JOIN categories ON links.category_id = categories.id
+       WHERE links.user_id = $1 AND links.is_private = FALSE AND COALESCE(categories.is_private, FALSE) = FALSE
+       ORDER BY COALESCE(categories.sort_index, 9999) ASC,
+                CASE WHEN links.is_dock THEN COALESCE(links.position_index, 9999) ELSE links.sort_index END ASC,
+                links.created_at ASC`,
+      [userId]
+    );
+    res.json({
+      owner: userResult.rows[0].username,
+      categories: categoriesResult.rows,
+      icons: linksResult.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: "Database error", detail: err.message });
+  }
+});
 
 app.get("/api/links", async (req, res) => {
   try {
@@ -1564,7 +1626,14 @@ app.put("/api/settings", requireAuth, async (req, res) => {
     const scale = Math.max(0, Math.min(100, Number(iconScale)));
     if (!Number.isNaN(scale)) updates.iconScale = scale;
   }
-  if (userName !== undefined) updates.userName = String(userName);
+  if (userName !== undefined) {
+    const safeUsername = String(userName).trim();
+    if (!safeUsername || safeUsername.length < 2) {
+      res.status(400).json({ error: "invalid_username" });
+      return;
+    }
+    updates.userName = safeUsername;
+  }
   if (userTotpEnabled !== undefined) {
     const enabled = Boolean(userTotpEnabled);
     updates.userTotpEnabled = enabled;
@@ -1577,8 +1646,28 @@ app.put("/api/settings", requireAuth, async (req, res) => {
     return;
   }
   try {
+    if (updates.userName) {
+      const currentResult = await pool.query("SELECT username FROM users WHERE id = $1", [
+        req.user.id
+      ]);
+      const currentName = currentResult.rows[0] ? currentResult.rows[0].username : "";
+      if (String(currentName) !== updates.userName) {
+        const exists = await pool.query(
+          "SELECT id FROM users WHERE username = $1 AND id <> $2",
+          [updates.userName, req.user.id]
+        );
+        if (exists.rowCount) {
+          res.status(409).json({ error: "username_exists" });
+          return;
+        }
+        await pool.query("UPDATE users SET username = $1 WHERE id = $2", [
+          updates.userName,
+          req.user.id
+        ]);
+      }
+    }
     await updateUserSettings(req.user.id, updates);
-    res.json({ ok: true });
+    res.json({ ok: true, userName: updates.userName });
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
@@ -1806,11 +1895,6 @@ async function handleLogin(req, res) {
     return;
   }
   try {
-    const blocked = await checkBlacklist(req);
-    if (blocked) {
-      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
-      return;
-    }
     const safeUsername = String(username).trim();
     const result = await pool.query(
       "SELECT id, password_hash, is_active FROM users WHERE username = $1",
@@ -1821,22 +1905,35 @@ async function handleLogin(req, res) {
         res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
         return;
       }
+      const blocked = await checkBlacklist(req);
+      if (blocked) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
     const user = result.rows[0];
-    const userBlocked = await checkBlacklist(req, user);
-    if (userBlocked) {
-      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
-      return;
+    const isAdmin = await isAdminUserId(user.id);
+    if (!isAdmin) {
+      const userBlocked = await checkBlacklist(req, user);
+      if (userBlocked) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
     }
     if (user.is_active === false) {
+      if (isAdmin) {
+        await pool.query("UPDATE users SET is_active = TRUE WHERE id = $1", [user.id]);
+        user.is_active = true;
+      } else {
       if (await handleLoginFailure(req, "account_disabled")) {
         res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
         return;
       }
       res.status(403).json({ error: "Account disabled" });
       return;
+      }
     }
     const ok = await bcrypt.compare(password, user.password_hash);
     if (!ok) {
@@ -1927,72 +2024,91 @@ app.post("/api/auth/totp/setup", async (req, res) => {
   }
 });
 
-adminApp.post("/api/admin/login", async (req, res) => {
-  const { username, password, totp } = req.body || {};
-  if (!username || !password) {
-    res.status(400).json({ error: "Invalid payload" });
-    return;
-  }
-  try {
-    const blocked = await checkBlacklist(req);
-    if (blocked) {
-      res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+  adminApp.post("/api/admin/login", async (req, res) => {
+    const { username, password, totp } = req.body || {};
+    if (!username || !password) {
+      res.status(400).json({ error: "Invalid payload" });
       return;
     }
-    const safeUsername = String(username).trim();
-    const lockState = await getAdminLockState(safeUsername);
-    if (lockState.locked) {
-      const minutes = Math.ceil((lockState.remainingMs || 0) / 60000);
-      res.status(429).json({ error: "admin_locked", retry_after_minutes: minutes });
-      return;
-    }
-    const result = await pool.query(
-      "SELECT id, password_hash, is_active FROM users WHERE username = $1",
-      [safeUsername]
-    );
-    if (!result.rowCount) {
-      await handleLoginFailure(req, "admin_login_failed");
-      await recordAdminLoginFailure(safeUsername);
-      await logAdminAction(null, "admin_login_failed", { username: safeUsername }, req);
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-    const user = result.rows[0];
-    if (user.is_active === false) {
-      await handleLoginFailure(req, "admin_login_disabled");
-      await recordAdminLoginFailure(safeUsername);
-      await logAdminAction(user.id, "admin_login_failed", { reason: "disabled" }, req);
-      res.status(403).json({ error: "Account disabled" });
-      return;
-    }
-    const adminId = await getAdminId();
-    if (!adminId || String(adminId) !== String(user.id)) {
-      await handleLoginFailure(req, "admin_login_not_admin");
-      await recordAdminLoginFailure(safeUsername);
-      await logAdminAction(user.id, "admin_login_failed", { reason: "not_admin" }, req);
-      res.status(403).json({ error: "forbidden" });
-      return;
-    }
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) {
-      await handleLoginFailure(req, "admin_login_bad_password");
-      await recordAdminLoginFailure(safeUsername);
-      await logAdminAction(user.id, "admin_login_failed", { reason: "bad_password" }, req);
-      res.status(401).json({ error: "Invalid credentials" });
-      return;
-    }
-    const secret = await getAdminTotpSecret(user.id);
-    if (secret) {
-      if (!totp) {
-        res.json({ totpRequired: true });
-        return;
-      }
-      if (!verifyTotp(totp, secret)) {
+    try {
+      const safeUsername = String(username).trim();
+      const result = await pool.query(
+        "SELECT id, password_hash, is_active FROM users WHERE username = $1",
+        [safeUsername]
+      );
+      if (!result.rowCount) {
+        await handleLoginFailure(req, "admin_login_failed");
         await recordAdminLoginFailure(safeUsername);
-        await logAdminAction(user.id, "admin_login_failed", { reason: "invalid_totp" }, req);
-        res.status(401).json({ error: "invalid_totp" });
+        await logAdminAction(null, "admin_login_failed", { username: safeUsername }, req);
+        const blocked = await checkBlacklist(req);
+        if (blocked) {
+          res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+          return;
+        }
+        res.status(401).json({ error: "Invalid credentials" });
         return;
       }
+      const user = result.rows[0];
+      const adminId = await getAdminId();
+      const isAdminAccount = adminId && String(adminId) === String(user.id);
+      if (!isAdminAccount) {
+        const lockState = await getAdminLockState(safeUsername);
+        if (lockState.locked) {
+          const minutes = Math.ceil((lockState.remainingMs || 0) / 60000);
+          res.status(429).json({ error: "admin_locked", retry_after_minutes: minutes });
+          return;
+        }
+      }
+      if (user.is_active === false) {
+        if (isAdminAccount) {
+          await pool.query("UPDATE users SET is_active = TRUE WHERE id = $1", [user.id]);
+          user.is_active = true;
+        } else {
+          await handleLoginFailure(req, "admin_login_disabled");
+          await recordAdminLoginFailure(safeUsername);
+          await logAdminAction(user.id, "admin_login_failed", { reason: "disabled" }, req);
+          res.status(403).json({ error: "Account disabled" });
+          return;
+        }
+      }
+      if (!isAdminAccount) {
+        await handleLoginFailure(req, "admin_login_not_admin");
+        await recordAdminLoginFailure(safeUsername);
+        await logAdminAction(user.id, "admin_login_failed", { reason: "not_admin" }, req);
+        res.status(403).json({ error: "forbidden" });
+        return;
+      }
+      const blocked = await checkBlacklist(req, { id: user.id, username: safeUsername }, { skipIp: true });
+      if (blocked) {
+        res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
+        return;
+      }
+      const ok = await bcrypt.compare(password, user.password_hash);
+      if (!ok) {
+        if (!isAdminAccount) {
+          await handleLoginFailure(req, "admin_login_bad_password");
+          await recordAdminLoginFailure(safeUsername);
+          await logAdminAction(user.id, "admin_login_failed", { reason: "bad_password" }, req);
+        } else {
+          await logAdminAction(user.id, "admin_login_failed", { reason: "bad_password" }, req);
+        }
+        res.status(401).json({ error: "Invalid credentials" });
+        return;
+      }
+    const secret = await getAdminTotpSecret(user.id);
+      if (secret) {
+        if (!totp) {
+          res.json({ totpRequired: true });
+          return;
+        }
+        if (!verifyTotp(totp, secret)) {
+          if (!isAdminAccount) {
+            await recordAdminLoginFailure(safeUsername);
+          }
+          await logAdminAction(user.id, "admin_login_failed", { reason: "invalid_totp" }, req);
+          res.status(401).json({ error: "invalid_totp" });
+          return;
+        }
       const token = signAdminToken(user.id);
       const secure = getSecureCookieFlag(req);
       res.setHeader(
@@ -2284,9 +2400,14 @@ adminApp.post("/api/admin/users/:id/reset-password", requireAdmin, async (req, r
       return;
     }
     const hash = await bcrypt.hash(newPassword, 10);
-    await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, id]);
-    await logAdminAction(req.admin.id, "user_reset_password", { id }, req);
-    res.json({ ok: true, password: req.body?.password ? null : newPassword });
+      await pool.query("UPDATE users SET password_hash = $1 WHERE id = $2", [hash, id]);
+      await logAdminAction(
+        req.admin.id,
+        "user_reset_password",
+        { id, password: req.body?.password ? "custom" : newPassword },
+        req
+      );
+      res.json({ ok: true, password: req.body?.password ? null : newPassword });
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }

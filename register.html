@@ -95,6 +95,19 @@
         opacity: 0.6;
         cursor: not-allowed;
       }
+      .btn-row {
+        display: flex;
+        gap: 10px;
+        margin-top: 6px;
+      }
+      .btn-row button {
+        flex: 1;
+      }
+      button.secondary {
+        background: #e2e8f0;
+        color: #1f2937;
+        box-shadow: none;
+      }
       .error {
         margin-top: 10px;
         color: #d64545;
@@ -146,7 +159,10 @@
           <label for="companyInput">Company</label>
           <input id="companyInput" type="text" tabindex="-1" autocomplete="off" />
         </div>
-        <button type="submit">&#x6CE8;&#x518C;</button>
+        <div class="btn-row">
+          <button type="submit">&#x6CE8;&#x518C;</button>
+          <button type="button" id="loginLinkBtn" class="secondary">&#x767B;&#x5F55;</button>
+        </div>
         <div class="error" id="errorMsg"></div>
       </form>
     </div>
@@ -165,10 +181,16 @@
       const turnstileWidget = document.querySelector("#turnstileWidget");
       const toast = document.querySelector("#toast");
       const submitBtn = form.querySelector('button[type="submit"]');
+      const loginLinkBtn = document.querySelector("#loginLinkBtn");
       const params = new URLSearchParams(window.location.search);
       const prefillCode = params.get("code");
       if (prefillCode && inviteInput) {
         inviteInput.value = prefillCode;
+      }
+      if (loginLinkBtn) {
+        loginLinkBtn.addEventListener("click", () => {
+          window.location.href = "/login.html";
+        });
       }
       let turnstileToken = "";
       let turnstileRequired = false;

@@ -37,18 +37,30 @@
         </div>
 
         <div class="mt-6 space-y-6">
-<div class="pt-4 border-t border-white/20">
-            <label class="text-sm text-slate-800 dark:text-slate-100">修改密码</label>
-            <div class="mt-2 grid gap-2">
-              <input id="oldPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="当前密码" />
-              <input id="newPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="新密码" />
-              <input id="confirmPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="确认新密码" />
-              <button id="updatePasswordBtn" class="rounded-full border border-gray-200/50 bg-white/60 dark:bg-black/40 px-4 py-2 text-sm">保存修改</button>
+          <div class="pt-4 border-t border-white/20">
+            <label class="text-sm text-slate-800 dark:text-slate-100">&#x8D26;&#x53F7;&#x8D44;&#x6599;</label>
+            <div class="mt-3 grid gap-3">
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-300 mb-1">&#x7528;&#x6237;&#x540D;</div>
+                <input id="userNameInput" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="text" placeholder="&#x8BF7;&#x8F93;&#x5165;&#x7528;&#x6237;&#x540D;" />
+              </div>
+              <div>
+                <div class="text-xs text-slate-500 dark:text-slate-300 mb-1">&#x5934;&#x50CF;</div>
+                <input id="avatarInput" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white" type="file" accept="image/*" />
+              </div>
             </div>
           </div>
-
-          <div class="flex justify-end">
-            <button id="saveProfileBtn" class="rounded-full bg-emerald-500/80 text-white px-4 py-2 text-sm">保存资料</button>
+          <div class="pt-4 border-t border-white/20">
+            <label class="text-sm text-slate-800 dark:text-slate-100">&#x4FEE;&#x6539;&#x5BC6;&#x7801;</label>
+            <div class="mt-2 grid gap-2">
+              <input id="oldPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="&#x5F53;&#x524D;&#x5BC6;&#x7801;" />
+              <input id="newPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="&#x65B0;&#x5BC6;&#x7801;" />
+              <input id="confirmPassword" class="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white/50 dark:bg-slate-700/50 px-3 py-2 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500" type="password" placeholder="&#x786E;&#x8BA4;&#x65B0;&#x5BC6;&#x7801;" />
+              <button id="updatePasswordBtn" class="rounded-full border border-gray-200/50 bg-white/60 dark:bg-black/40 px-4 py-2 text-sm">&#x4FDD;&#x5B58;&#x4FEE;&#x6539;</button>
+            </div>
+          </div>
+<div class="flex justify-end">
+            <button id="saveProfileBtn" class="rounded-full bg-emerald-500/80 text-white px-4 py-2 text-sm">&#x4FDD;&#x5B58;&#x8D44;&#x6599;</button>
           </div>
         </div>
       </div>
@@ -77,63 +89,112 @@
         setTimeout(() => toast.remove(), 2400);
       }
 
-      fetch("/api/settings")
+      fetch("/api/settings", { credentials: "include", cache: "no-store" })
         .then((res) => res.json())
         .then((data) => {
           if (data.userName) userNameInput.value = data.userName;
         });
 
-      saveProfileBtn.addEventListener("click", () => {
-        fetch("/api/settings", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userName: userNameInput.value.trim()
-          })
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Failed");
-            showToast("Saved");
-          })
-          .catch(() => showToast("Save failed", "error"));
-      });
-
-      
-
-      avatarInput.addEventListener("change", () => {
-        if (!avatarInput.files || !avatarInput.files[0]) return;
+      async function uploadAvatarIfNeeded() {
+        if (!avatarInput.files || !avatarInput.files[0]) return false;
         const formData = new FormData();
         formData.append("avatar", avatarInput.files[0]);
-        fetch("/api/settings/avatar", { method: "POST", body: formData })
-          .then((res) => res.json())
-          .then(() => showToast("Saved"))
-          .catch(() => showToast("Save failed", "error"));
+        const res = await fetch("/api/settings/avatar", {
+          credentials: "include",
+          method: "POST",
+          body: formData
+        });
+        if (!res.ok) throw new Error("avatar_failed");
+        return true;
+      }
+
+      saveProfileBtn.addEventListener("click", async () => {
+        const nextName = userNameInput.value.trim();
+        try {
+          const avatarUpdated = await uploadAvatarIfNeeded();
+          if (nextName) {
+            const res = await fetch("/api/settings", {
+              credentials: "include",
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userName: nextName })
+            });
+            if (!res.ok) {
+              const data = await res.json().catch(() => ({}));
+              if (res.status === 409 || data.error === "username_exists") {
+                showToast("该用户名已存在", "error");
+                return;
+              }
+              if (data.error === "invalid_username") {
+                showToast("用户名不合法", "error");
+                return;
+              }
+              showToast("保存失败", "error");
+              return;
+            }
+            try {
+              localStorage.setItem("lastUsername", nextName);
+            } catch (err) {}
+          }
+          if (!nextName && !avatarUpdated) {
+            showToast("没有可保存的更改", "error");
+            return;
+          }
+          showToast("保存成功");
+          if (nextName || avatarUpdated) {
+            setTimeout(() => {
+              window.location.href = "/";
+            }, 600);
+          }
+        } catch (err) {
+          showToast("保存失败", "error");
+        }
       });
 
-      
-
-      updatePasswordBtn.addEventListener("click", () => {
+      updatePasswordBtn.addEventListener("click", async () => {
         const oldPasswordValue = oldPassword.value.trim();
         const newPasswordValue = newPassword.value.trim();
         const confirmValue = confirmPassword.value.trim();
         if (!oldPasswordValue || !newPasswordValue || newPasswordValue !== confirmValue) {
-          showToast("Saved");
+          showToast("请填写完整且两次密码一致", "error");
           return;
         }
-        fetch("/api/auth/update-password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ oldPassword: oldPasswordValue, newPassword: newPasswordValue })
-        })
-          .then((res) => {
-            if (!res.ok) throw new Error("Failed");
-            oldPassword.value = "";
-            newPassword.value = "";
-            confirmPassword.value = "";
-            showToast("Saved");
-          })
-          .catch(() => showToast("Save failed", "error"));
+        try {
+          const res = await fetch("/api/auth/update-password", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ oldPassword: oldPasswordValue, newPassword: newPasswordValue })
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            if (data.error === "Incorrect password") {
+              showToast("原密码错误", "error");
+              return;
+            }
+            if (data.error === "Invalid payload") {
+              showToast("请填写完整信息", "error");
+              return;
+            }
+            showToast("保存失败", "error");
+            return;
+          }
+          oldPassword.value = "";
+          newPassword.value = "";
+          confirmPassword.value = "";
+          showToast("密码已更新");
+        } catch (err) {
+          showToast("保存失败", "error");
+        }
       });
     </script>
   </body>
 </html>
+
+
+
+
+
+
+
+
+
