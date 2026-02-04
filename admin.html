@@ -79,10 +79,10 @@
           <button data-section="register">注册入口</button>
           <button data-section="invites">邀请码</button>
           <button data-section="users">用户管理</button>
-          <button data-section="contact">联系我们</button>
           <button data-section="blacklist">黑名单</button>
           <button data-section="security">安全策略</button>
           <button data-section="backup">备份</button>
+          <button data-section="guides">使用手册</button>
           <button data-section="loginlogs">登录记录</button>
           <button data-section="adminlogs">操作日志</button>
           <button data-section="credentials">管理员账户</button>
@@ -210,6 +210,37 @@
             <button id="importBackupBtn" class="btn btn-ghost">导入数据</button>
           </div>
           <p class="text-xs text-slate-500 mt-2">导出文件可直接导入到新部署的项目，导入将覆盖现有数据。</p>
+        </div>
+        <div id="section-guides" class="admin-section hidden">
+          <h3 class="font-semibold text-lg">使用手册</h3>
+          <div class="mt-4 grid gap-3">
+            <div class="list-item">
+              <div>
+                <div class="font-semibold">管理员操作指南</div>
+                <div class="text-xs text-slate-500 mt-1">包含注册入口、邀请码、用户管理、黑名单与审计日志的使用说明。</div>
+              </div>
+              <span class="text-xs text-slate-500">ADMIN_GUIDE.md</span>
+            </div>
+            <div class="list-item">
+              <div>
+                <div class="font-semibold">部署与运维指南</div>
+                <div class="text-xs text-slate-500 mt-1">包含环境变量、Docker 部署、备份与恢复流程。</div>
+              </div>
+              <span class="text-xs text-slate-500">DEPLOYMENT_GUIDE.md</span>
+            </div>
+            <div class="bg-white/80 border border-slate-200 rounded-2xl p-4 text-sm text-slate-700">
+              <ol class="list-decimal pl-5 space-y-1">
+                <li>首次登录后绑定 TOTP 二次验证。</li>
+                <li>开放注册窗口后再生成邀请码。</li>
+                <li>用户密码重置会在操作日志中记录。</li>
+                <li>黑名单命中将返回 403 并记录日志。</li>
+              </ol>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <a href="/guide/admin" target="_blank" class="btn btn-primary">打开管理员手册</a>
+              <a href="/guide/deploy" target="_blank" class="btn btn-ghost">打开部署指南</a>
+            </div>
+          </div>
         </div>
         <div id="section-loginlogs" class="admin-section hidden">
           <h3 class="font-semibold text-lg">用户登录记录</h3>
@@ -434,7 +465,6 @@
           `;
           list.appendChild(row);
         });
-        renderContactUsers(users);
       }
 
       async function handleUserAction(id, action, active) {
@@ -702,7 +732,6 @@
           loadRegisterWindow(),
           loadInvites(),
           loadUsers(),
-          loadContact(),
           loadBlacklist(),
           loadSecurityPolicy(),
           loadLoginLogs(),
@@ -716,17 +745,23 @@
       document.getElementById("openRegisterBtn").addEventListener("click", () => openRegister(true));
       document.getElementById("closeRegisterBtn").addEventListener("click", () => openRegister(false));
       document.getElementById("generateInviteBtn").addEventListener("click", generateInvites);
-      document.getElementById("addContactItemBtn").addEventListener("click", () => {
-        document.getElementById("contactList").appendChild(createContactRow());
-      });
-      document.getElementById("saveContactBtn").addEventListener("click", saveContact);
       document.getElementById("addBlacklistBtn").addEventListener("click", addBlacklist);
       document.getElementById("savePolicyBtn").addEventListener("click", saveSecurityPolicy);
       document.getElementById("exportBackupBtn").addEventListener("click", exportBackup);
       document.getElementById("importBackupBtn").addEventListener("click", importBackup);
       document.getElementById("saveAdminCredentialsBtn").addEventListener("click", saveAdminCredentials);
 
-      document.getElementById("contactUserSelect").addEventListener("change", loadContact);
+      const addContactItemBtn = document.getElementById("addContactItemBtn");
+      if (addContactItemBtn) {
+        addContactItemBtn.addEventListener("click", () => {
+          const contactList = document.getElementById("contactList");
+          if (contactList) contactList.appendChild(createContactRow());
+        });
+      }
+      const saveContactBtn = document.getElementById("saveContactBtn");
+      if (saveContactBtn) saveContactBtn.addEventListener("click", saveContact);
+      const contactUserSelect = document.getElementById("contactUserSelect");
+      if (contactUserSelect) contactUserSelect.addEventListener("change", loadContact);
 
       document.getElementById("adminLogPrev").addEventListener("click", () => {
         adminLogPage = Math.max(1, adminLogPage - 1);

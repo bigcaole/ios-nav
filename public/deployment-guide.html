@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>部署指南</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen text-slate-900 bg-[#f4f5fb]">
+    <div class="fixed inset-0 -z-10 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50"></div>
+    <main class="mx-auto max-w-3xl p-6 md:p-10">
+      <div class="bg-white/90 backdrop-blur-2xl border border-white/70 rounded-3xl shadow-2xl p-8">
+        <div class="flex items-center justify-between">
+          <h1 class="text-2xl font-bold">部署指南</h1>
+          <a href="/" class="text-sm text-slate-600 hover:text-slate-900">返回首页</a>
+        </div>
+
+        <section class="mt-6 space-y-4 text-sm leading-7 text-slate-700">
+          <p>此指南用于 Docker/1Panel 环境部署，适用于生产服务器。</p>
+        </section>
+
+        <section class="mt-8">
+          <h2 class="text-lg font-semibold mb-3">一、准备环境变量</h2>
+          <ol class="list-decimal pl-5 space-y-2 text-sm text-slate-700">
+            <li>设置数据库连接：<code>DATABASE_URL</code></li>
+            <li>设置管理员账号：<code>ADMIN_USERNAME</code> 与 <code>ADMIN_PASSWORD</code></li>
+            <li>设置 JWT 密钥：<code>JWT_SECRET</code></li>
+            <li>管理员面板端口：<code>ADMIN_PORT</code></li>
+          </ol>
+        </section>
+
+        <section class="mt-8">
+          <h2 class="text-lg font-semibold mb-3">二、启动服务</h2>
+          <ol class="list-decimal pl-5 space-y-2 text-sm text-slate-700">
+            <li>执行 <code>docker compose up -d --build</code>。</li>
+            <li>访问主站端口与管理员端口，确认服务可用。</li>
+          </ol>
+        </section>
+
+        <section class="mt-8">
+          <h2 class="text-lg font-semibold mb-3">三、备份与迁移</h2>
+          <ol class="list-decimal pl-5 space-y-2 text-sm text-slate-700">
+            <li>管理员面板导出 JSON 备份。</li>
+            <li>在新服务器导入备份后即可完整恢复。</li>
+          </ol>
+        </section>
+      </div>
+    </main>
+  </body>
+</html>

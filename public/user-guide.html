@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>用户使用手册</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="min-h-screen bg-slate-100 text-slate-900">
+    <main class="mx-auto max-w-4xl p-4 md:p-8">
+      <section class="rounded-3xl border border-slate-200 bg-white/90 p-6 shadow-xl backdrop-blur">
+        <div class="flex items-center justify-between gap-3">
+          <h1 class="text-2xl font-bold">用户使用手册</h1>
+          <a href="/" class="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white">返回首页</a>
+        </div>
+
+        <div class="mt-6 space-y-6 text-sm leading-7">
+          <section>
+            <h2 class="text-lg font-semibold">1. 登录与注册</h2>
+            <ol class="mt-2 list-decimal space-y-1 pl-5">
+              <li>点击首页右上角 <b>登录</b> 进入登录页。</li>
+              <li>若管理员开放注册，可点击 <b>注册</b>，按提示填写用户名、密码、邮箱与邀请码。</li>
+              <li>若账户启用二次验证（TOTP），登录时需输入验证码。</li>
+            </ol>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-semibold">2. 公开主页访问（未登录展示）</h2>
+            <ol class="mt-2 list-decimal space-y-1 pl-5">
+              <li>你的公开主页地址格式为：<code>http(s)://域名/用户名</code>（用户名仅支持英文和数字）。</li>
+              <li>示例：<code>http://127.0.0.1:3000/test3</code>。</li>
+              <li>该页面仅展示你设置为公开的图标，私密图标不会显示。</li>
+            </ol>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-semibold">3. 常用操作</h2>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+              <li>🔒 模式切换：预览 / 排序 / 编辑 / 增删。</li>
+              <li>排序模式可拖拽图标，支持分类与 Dock 之间互拖。</li>
+              <li>添加或编辑网址时，可直接选择 <code>https://</code> 或 <code>http://</code> 前缀。</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-semibold">4. 资料与安全</h2>
+            <ul class="mt-2 list-disc space-y-1 pl-5">
+              <li>头像菜单 → 编辑资料：可修改用户名、头像、密码。</li>
+              <li>用户名修改会自动校验是否重复。</li>
+              <li>设置页可开启/关闭二次验证（TOTP）。</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 class="text-lg font-semibold">5. 备份与恢复</h2>
+            <p class="mt-2">
+              在设置页可导出/导入个人数据。导入将覆盖当前账户内容，建议操作前先导出备份。
+            </p>
+          </section>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

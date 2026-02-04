@@ -62,6 +62,69 @@ app.use((req, res, next) => {
   res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   next();
 });
+
+// Public profile short URL support: /:username
+// Keep this near the top to avoid any later middleware/route conflicts.
+app.use((req, res, next) => {
+  if (req.method !== "GET") {
+    next();
+    return;
+  }
+  const p = String(req.path || "");
+  const match = p.match(/^\/([A-Za-z0-9]+)$/);
+  if (!match) {
+    next();
+    return;
+  }
+  const reserved = new Set([
+    "api",
+    "public",
+    "icons",
+    "guide",
+    "login",
+    "register",
+    "profile",
+    "manifest",
+    "service-worker",
+    "icon",
+    "favicon",
+    "u"
+  ]);
+  const username = match[1];
+  if (reserved.has(username.toLowerCase())) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// Explicit short URL route (same behavior as middleware above) for better compatibility
+app.get("/:username", (req, res, next) => {
+  const username = String(req.params.username || "").trim();
+  if (!/^[A-Za-z0-9]+$/.test(username)) {
+    next();
+    return;
+  }
+  const reserved = new Set([
+    "api",
+    "public",
+    "icons",
+    "guide",
+    "login",
+    "register",
+    "profile",
+    "manifest",
+    "service-worker",
+    "icon",
+    "favicon",
+    "u"
+  ]);
+  if (reserved.has(username.toLowerCase())) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(__dirname, "index.html"));
+});
 adminApp.use(express.json());
 adminApp.use((err, req, res, next) => {
   if (err) {
@@ -252,7 +315,28 @@ async function initDb() {
 function getFaviconUrl(linkUrl, size = 256) {
   try {
     const parsed = new URL(linkUrl);
-    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(parsed.hostname)}&sz=${size}`;
+    const target = parsed.href;
+    return `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(
+      target
+    )}&size=${size}`;
+  } catch (err) {
+    return null;
+  }
+}
+
+function getSpecialIconUrl(linkUrl) {
+  try {
+    const parsed = new URL(linkUrl);
+    const host = parsed.hostname.replace(/^www\./, "");
+    const map = {
+      "mail.google.com": "https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png",
+      "calendar.google.com":
+        "https://ssl.gstatic.com/calendar/images/dynamiclogo_2020q4/calendar_31_2x.png",
+      "drive.google.com": "https://www.gstatic.com/images/branding/product/1x/drive_2020q4_48dp.png",
+      "google.com": "https://www.gstatic.com/images/branding/product/1x/googleg_48dp.png",
+      "youtube.com": "https://www.youtube.com/s/desktop/7d4f3b7a/img/favicon_144x144.png"
+    };
+    return map[host] || null;
   } catch (err) {
     return null;
   }
@@ -261,6 +345,25 @@ function getFaviconUrl(linkUrl, size = 256) {
 async function downloadIcon(linkUrl, id) {
   const sizes = [256, 128];
   let buffer = null;
+  const specialUrl = getSpecialIconUrl(linkUrl);
+  if (specialUrl) {
+    try {
+      const response = await fetch(specialUrl);
+      if (response.ok) {
+        const nextBuffer = await response.buffer();
+        if (nextBuffer && nextBuffer.length) {
+          buffer = nextBuffer;
+        }
+      }
+    } catch (err) {}
+  }
+  if (buffer) {
+    const safeId = String(id).replace(/[^a-zA-Z0-9-]/g, "");
+    const fileName = `${safeId}.png`;
+    const filePath = path.join(iconDir, fileName);
+    await fs.promises.writeFile(filePath, buffer);
+    return `/icons/${fileName}`;
+  }
   for (const size of sizes) {
     const faviconUrl = getFaviconUrl(linkUrl, size);
     if (!faviconUrl) {
@@ -277,13 +380,27 @@ async function downloadIcon(linkUrl, id) {
     }
   }
   if (!buffer) {
+    try {
+      const parsed = new URL(linkUrl);
+      const host = parsed.hostname.replace(/^www\./, "");
+      const fallbackUrl = `https://icon.horse/icon/${encodeURIComponent(host)}`;
+      const response = await fetch(fallbackUrl);
+      if (response.ok) {
+        const nextBuffer = await response.buffer();
+        if (nextBuffer && nextBuffer.length) {
+          buffer = nextBuffer;
+        }
+      }
+    } catch (err) {}
+  }
+  if (!buffer) {
     return null;
   }
   const safeId = String(id).replace(/[^a-zA-Z0-9-]/g, "");
   const fileName = `${safeId}.png`;
   const filePath = path.join(iconDir, fileName);
   await fs.promises.writeFile(filePath, buffer);
-  return `/public/icons/${fileName}`;
+  return `/icons/${fileName}`;
 }
 
 function parseCookies(req) {
@@ -308,6 +425,11 @@ function getClientIp(req) {
 function getDeviceFingerprint(req) {
   const ua = req.headers["user-agent"] || "";
   return String(ua).slice(0, 400);
+}
+
+function isValidPublicUsername(value) {
+  const text = String(value || "").trim();
+  return text.length >= 2 && /^[A-Za-z0-9]+$/.test(text);
 }
 
 function ipToLong(ip) {
@@ -1221,6 +1343,10 @@ app.get("/api/public/:username", async (req, res) => {
       res.status(400).json({ error: "missing_username" });
       return;
     }
+    if (!/^[A-Za-z0-9]+$/.test(username)) {
+      res.status(400).json({ error: "invalid_username" });
+      return;
+    }
     const userResult = await pool.query(
       "SELECT id, username FROM users WHERE username = $1 AND is_active = TRUE",
       [username]
@@ -1652,6 +1778,10 @@ app.put("/api/settings", requireAuth, async (req, res) => {
       ]);
       const currentName = currentResult.rows[0] ? currentResult.rows[0].username : "";
       if (String(currentName) !== updates.userName) {
+        if (!isValidPublicUsername(updates.userName)) {
+          res.status(400).json({ error: "invalid_username" });
+          return;
+        }
         const exists = await pool.query(
           "SELECT id FROM users WHERE username = $1 AND id <> $2",
           [updates.userName, req.user.id]
@@ -1776,12 +1906,12 @@ async function handleRegister(req, res) {
     }
     const safeUsername = String(username).trim();
     const safeEmail = String(email).trim().toLowerCase();
-    if (safeUsername.length < 2) {
+    if (!isValidPublicUsername(safeUsername)) {
       if (await handleRegisterFailure(req, "invalid_username")) {
         res.status(403).json({ error: "blocked", message: "你的访问已被限制，请联系管理员" });
         return;
       }
-      res.status(400).json({ error: "Username too short" });
+      res.status(400).json({ error: "Username must contain only letters and numbers, length >= 2" });
       return;
     }
     if (String(password).length < 6) {
@@ -2868,7 +2998,7 @@ async function handleAdminCredentialsUpdate(req, res) {
     let idx = 1;
     if (newUsername !== undefined && String(newUsername || "").trim()) {
       const safeUsername = String(newUsername || "").trim();
-      if (safeUsername.length < 2) {
+      if (!isValidPublicUsername(safeUsername)) {
         res.status(400).json({ error: "invalid_new_username" });
         return;
       }
@@ -3073,7 +3203,17 @@ app.delete("/api/links/:id", requireAuth, async (req, res) => {
       [id, req.user.id]
     );
     const iconValue = current.rows[0] && current.rows[0].icon ? current.rows[0].icon : "";
-    const iconPath = iconValue ? path.join(__dirname, iconValue.replace(/^\/+/, "")) : null;
+    let iconPath = null;
+    if (iconValue) {
+      const normalized = iconValue.replace(/^\/+/, "");
+      if (normalized.startsWith("icons/")) {
+        iconPath = path.join(__dirname, "public", normalized);
+      } else if (normalized.startsWith("public/icons/")) {
+        iconPath = path.join(__dirname, normalized);
+      } else {
+        iconPath = path.join(__dirname, normalized);
+      }
+    }
     await pool.query("DELETE FROM links WHERE id = $1 AND user_id = $2", [id, req.user.id]);
     if (iconPath && iconPath.startsWith(iconDir)) {
       fs.unlink(iconPath, () => {});
@@ -3210,8 +3350,37 @@ app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not found" });
 });
 
+// Public profile short URL: /:username (must be before static)
+app.get("/:username", (req, res, next) => {
+  const username = String(req.params.username || "").trim();
+  if (!/^[A-Za-z0-9]+$/.test(username)) {
+    next();
+    return;
+  }
+  const reserved = new Set([
+    "api",
+    "public",
+    "icons",
+    "guide",
+    "login",
+    "register",
+    "profile",
+    "manifest",
+    "service-worker",
+    "icon",
+    "favicon",
+    "u"
+  ]);
+  if (reserved.has(username.toLowerCase())) {
+    next();
+    return;
+  }
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
 // Serve static files from the project root (after API routes)
 app.use("/public", express.static(path.join(__dirname, "public")));
+app.use("/icons", express.static(path.join(__dirname, "public", "icons")));
 app.use(express.static(path.join(__dirname, "public")));
 
 app.get("/index.html", (req, res) => {
@@ -3224,6 +3393,18 @@ app.get("/login.html", (req, res) => {
 
 app.get("/profile.html", (req, res) => {
   res.sendFile(path.join(__dirname, "profile.html"));
+});
+
+app.get("/guide/user", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "user-guide.html"));
+});
+
+app.get("/guide/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-guide.html"));
+});
+
+app.get("/guide/deploy", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "deployment-guide.html"));
 });
 
 adminApp.get("/", (req, res) => {
@@ -3246,6 +3427,14 @@ adminApp.get("/admin.html", (req, res) => {
   res.sendFile(path.join(__dirname, "admin.html"));
 });
 
+adminApp.get("/guide/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "admin-guide.html"));
+});
+
+adminApp.get("/guide/deploy", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "deployment-guide.html"));
+});
+
 app.get("/manifest.json", (req, res) => {
   res.sendFile(path.join(__dirname, "manifest.json"));
 });
@@ -3263,6 +3452,24 @@ app.get("/u/:username", (req, res) => {
 });
 
 app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "index.html"));
+});
+
+// SPA fallback: for non-API routes (e.g. /username) always return index.html
+app.get("*", (req, res, next) => {
+  const p = String(req.path || "");
+  if (
+    p.startsWith("/api/") ||
+    p.startsWith("/public/") ||
+    p.startsWith("/icons/") ||
+    p.startsWith("/guide/") ||
+    p === "/manifest.json" ||
+    p === "/service-worker.js" ||
+    p === "/icon.svg"
+  ) {
+    next();
+    return;
+  }
   res.sendFile(path.join(__dirname, "index.html"));
 });
 
