@@ -586,9 +586,7 @@ if ("serviceWorker" in navigator) {
         iconEl.classList.remove("icon-fallback");
         const candidates = [];
         const normalizedIcon = normalizeIconUrl(iconUrl);
-        const isLocalIcon =
-          normalizedIcon && typeof normalizedIcon === "string" && normalizedIcon.startsWith("/icons/");
-        if (normalizedIcon && !isLocalIcon) {
+        if (normalizedIcon && typeof normalizedIcon === "string" && !normalizedIcon.startsWith("/icons/")) {
           candidates.push(normalizedIcon);
         }
         const fullUrl = normalizeUrlForFavicon(url);
@@ -615,9 +613,6 @@ if ("serviceWorker" in navigator) {
           candidates.push(`${origin}/apple-touch-icon-precomposed.png`);
           candidates.push(`${origin}/favicon-32x32.png`);
           candidates.push(`${origin}/favicon-192x192.png`);
-        }
-        if (normalizedIcon && isLocalIcon) {
-          candidates.push(normalizedIcon);
         }
         let idx = 0;
         const loadNext = () => {
@@ -920,12 +915,14 @@ if ("serviceWorker" in navigator) {
             if (isCardView) {
               cardWrap.style.setProperty("--grid-width", `${gridWidth}px`);
               cardWrap.style.setProperty("--grid-size", `${gridSize}px`);
+              cardWrap.style.setProperty("--card-width", `${gridSize + 32}px`);
               cardWrap.style.width = `${gridSize + 32}px`;
               innerGrid.style.maxWidth = `${gridWidth}px`;
               innerGrid.style.width = `${gridWidth}px`;
             } else {
               cardWrap.style.removeProperty("--grid-width");
               cardWrap.style.removeProperty("--grid-size");
+              cardWrap.style.removeProperty("--card-width");
               cardWrap.style.removeProperty("width");
               innerGrid.style.maxWidth = "100%";
               innerGrid.style.width = "100%";
