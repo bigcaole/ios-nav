@@ -700,7 +700,7 @@ if ("serviceWorker" in navigator) {
             return String(a.id).localeCompare(String(b.id));
           });
 
-          dockItems.forEach((item, index) => {
+        dockItems.forEach((item, index) => {
             const isPrivate = loggedIn && Number(item.is_private) === 1;
             const card = document.createElement("a");
             const showJiggle = editing || deleting;
@@ -796,6 +796,7 @@ if ("serviceWorker" in navigator) {
             card.append(icon, label);
             dockGrid.appendChild(card);
           });
+          updateDockDragState();
 
           if (currentMode === "delete" && dockItems.length < dockLimit) {
             for (let i = dockItems.length; i < dockLimit; i += 1) {
@@ -2319,12 +2320,14 @@ if ("serviceWorker" in navigator) {
           setTimeout(() => {
             initSortables();
             setSortablesEnabled(true);
+            updateDockDragState();
             const containers = document.querySelectorAll(".category-grid");
             console.log("检测到 " + containers.length + " 个分类容器已激活排序");
           }, 150);
         } else {
           setSortablesEnabled(false);
           destroySortables();
+          updateDockDragState();
         }
       }
 
@@ -2370,6 +2373,7 @@ if ("serviceWorker" in navigator) {
           editing = false;
           deleting = false;
         }
+        updateDockDragState();
         updateModeUI();
         try {
           const selection = window.getSelection && window.getSelection();
@@ -2706,6 +2710,15 @@ if ("serviceWorker" in navigator) {
         try {
           localStorage.setItem("pageBrightness", String(brightness));
         } catch (err) {}
+      }
+
+      function updateDockDragState() {
+        if (!dockGrid) return;
+        const enabled = currentMode === "sort" || sortUnlocked;
+        dockGrid.querySelectorAll(".dock-item").forEach((item) => {
+          item.draggable = enabled;
+          item.setAttribute("draggable", enabled ? "true" : "false");
+        });
       }
 
       if (brightnessInput) {

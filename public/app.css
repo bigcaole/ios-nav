@@ -9,8 +9,8 @@
         --category-bar: rgba(245, 246, 249, 0.7);
         --bar-button: rgba(244, 245, 248, 0.55);
         --bar-button-border: rgba(255, 255, 255, 0.32);
-        --dock-border: rgba(0, 0, 0, 0.06);
-        --card-border: rgba(0, 0, 0, 0.04);
+        --dock-border: rgba(0, 0, 0, 0.12);
+        --card-border: rgba(0, 0, 0, 0.1);
         --accent: #007aff;
         --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.05);
         --shadow-2: 0 12px 28px rgba(0, 0, 0, 0.06);
@@ -39,8 +39,8 @@
         --category-bar: rgba(245, 246, 249, 0.7);
         --bar-button: rgba(244, 245, 248, 0.55);
         --bar-button-border: rgba(255, 255, 255, 0.32);
-        --dock-border: rgba(0, 0, 0, 0.06);
-        --card-border: rgba(0, 0, 0, 0.04);
+        --dock-border: rgba(0, 0, 0, 0.12);
+        --card-border: rgba(0, 0, 0, 0.1);
         --accent: #007aff;
         --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.05);
         --shadow-2: 0 12px 28px rgba(0, 0, 0, 0.06);
@@ -1087,7 +1087,7 @@
         padding: 18px 24px;
         border-radius: 24px;
         background: transparent !important;
-        border: 1px solid rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--dock-border);
         backdrop-filter: blur(14px);
         -webkit-backdrop-filter: blur(14px);
         box-shadow: none !important;
@@ -1100,7 +1100,7 @@
       }
       html.dark .dock {
         background: transparent !important;
-        border-color: rgba(0, 0, 0, 0.04);
+        border-color: var(--dock-border);
       }
       .dock::-webkit-scrollbar {
         display: none;
@@ -1549,11 +1549,11 @@
         background: transparent !important;
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       }
       html.dark .site-header {
         background: transparent !important;
-        border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
       }
       .nav-header-bg {
         background: transparent !important;
@@ -1843,7 +1843,7 @@
       }
       #categoryNav {
         background-color: transparent !important;
-        border: 1px solid rgba(0, 0, 0, 0.04);
+        border: 1px solid var(--dock-border);
         box-shadow: none !important;
         display: flex;
         align-items: center;
@@ -1854,7 +1854,7 @@
       }
       html.dark #categoryNav {
         background-color: transparent !important;
-        border-color: rgba(0, 0, 0, 0.04);
+        border-color: var(--dock-border);
       }
       #categoryNav {
         scrollbar-width: none;
@@ -1871,13 +1871,13 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(60, 60, 67, 0.2);
+        border: 1px solid rgba(60, 60, 67, 0.28);
         padding: 6px 16px;
         border-radius: 999px;
         font-size: 14px;
         font-weight: 500;
         color: var(--muted);
-        background: rgba(244, 245, 248, 0.6);
+        background: rgba(255, 255, 255, 0.2);
         cursor: pointer;
         position: relative;
         z-index: 1;
@@ -1887,7 +1887,7 @@
         flex-shrink: 0;
       }
       .category-pill:hover {
-        background: rgba(246, 247, 250, 0.78);
+        background: rgba(255, 255, 255, 0.32);
         transform: scale(1.25);
         z-index: 50;
         box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
@@ -2283,8 +2283,6 @@
 
       /* Refined shadows: sharper, layered, less "blurry" */
       header,
-      #categoryNav,
-      .dock-container,
       .category-card,
       .sheet,
       .modal,
