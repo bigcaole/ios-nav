@@ -165,7 +165,7 @@
     <div class="main-content">
       <div
         id="categoryNav"
-        class="fixed top-[76px] left-1/2 -translate-x-1/2 w-fit max-w-[90%] md:max-w-[65%] h-14 rounded-full shadow-lg ring-1 ring-white/50 dark:ring-white/10 backdrop-blur-xl flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide px-4 z-40 transform"
+        class="fixed top-[76px] left-1/2 -translate-x-1/2 w-fit max-w-[90%] md:max-w-[65%] h-14 rounded-full backdrop-blur-xl flex items-center overflow-x-auto whitespace-nowrap scrollbar-hide px-4 z-40 transform"
       ></div>
       <main class="grid" id="appGrid"></main>
     </div>
@@ -173,15 +173,24 @@
     
     <div
       id="dock-container"
-      class="dock dock-container backdrop-blur-xl ring-1 ring-white/50 dark:ring-white/10 shadow-2xl"
+      class="dock dock-container backdrop-blur-xl"
       aria-label="快捷栏"
     >
       <div class="dock-grid" id="dockGrid" data-dock="true"></div>
     </div>
 
     <div class="brightness-control" id="brightnessControl" aria-label="页面亮度">
-      <span class="brightness-label">亮度</span>
-      <input id="brightnessInput" type="range" min="0" max="100" value="70" />
+      <button class="brightness-toggle" id="brightnessToggle" type="button" aria-label="调节亮度">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path
+            fill="currentColor"
+            d="M12 4a1 1 0 0 1 1 1v1.2a1 1 0 1 1-2 0V5a1 1 0 0 1 1-1Zm0 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Zm0 4.8a1 1 0 0 1 1 1V23a1 1 0 1 1-2 0v-1.2a1 1 0 0 1 1-1ZM4 11a1 1 0 0 1 1-1h1.2a1 1 0 1 1 0 2H5a1 1 0 0 1-1-1Zm12.8 0a1 1 0 0 1 1-1H19a1 1 0 1 1 0 2h-1.2a1 1 0 0 1-1-1ZM6.4 6.4a1 1 0 0 1 1.42 0l.85.86a1 1 0 1 1-1.42 1.41l-.85-.85a1 1 0 0 1 0-1.42Zm8.93 8.93a1 1 0 0 1 1.42 0l.85.85a1 1 0 0 1-1.42 1.42l-.85-.86a1 1 0 0 1 0-1.41Zm-8.93 0a1 1 0 0 1 1.42 1.41l-.85.86a1 1 0 0 1-1.42-1.42l.85-.85Zm8.93-8.93a1 1 0 0 1 1.42 1.42l-.85.85a1 1 0 1 1-1.42-1.41l.85-.86Z"
+          />
+        </svg>
+      </button>
+      <div class="brightness-slider">
+        <input id="brightnessInput" type="range" min="0" max="100" value="60" />
+      </div>
     </div>
 
     <div class="modal" id="modal">

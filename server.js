@@ -1049,7 +1049,7 @@ function normalizeSettings(settings, fallbackName) {
     siteLogo: safe.siteLogo || "",
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     frostBlur: typeof safe.frostBlur === "number" ? safe.frostBlur : 50,
-    pageBrightness: typeof safe.pageBrightness === "number" ? safe.pageBrightness : 70,
+    pageBrightness: typeof safe.pageBrightness === "number" ? safe.pageBrightness : 60,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
     userTotpEnabled: Boolean(safe.userTotpEnabled),
@@ -1235,7 +1235,7 @@ async function ensureAdminUser() {
           siteName: "我的 iOS 风格导航",
           iconScale: 100,
           frostBlur: 50,
-          pageBrightness: 70,
+          pageBrightness: 60,
           siteLogo: "",
           userName: safeUsername,
           userAvatar: ""

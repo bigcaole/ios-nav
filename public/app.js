@@ -71,6 +71,8 @@ if ("serviceWorker" in navigator) {
       const iconSizeInput = document.querySelector("#iconSizeInput");
       const frostBlurInput = document.querySelector("#frostBlurInput");
       const brightnessInput = document.querySelector("#brightnessInput");
+      const brightnessControl = document.querySelector("#brightnessControl");
+      const brightnessToggle = document.querySelector("#brightnessToggle");
       const userTotpToggle = document.querySelector("#userTotpToggle");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
@@ -708,7 +710,9 @@ if ("serviceWorker" in navigator) {
             card.href = item.url;
             card.target = "_blank";
             card.rel = "noreferrer";
-            card.draggable = false;
+            const canDragDock = currentMode === "sort" || sortUnlocked;
+            card.draggable = canDragDock;
+            card.setAttribute("draggable", canDragDock ? "true" : "false");
             card.dataset.id = item.id;
             card.dataset.title = item.title || "";
             card.dataset.originalTitle = item.title || "";
@@ -1632,6 +1636,7 @@ if ("serviceWorker" in navigator) {
           const dockSortable = new Sortable(dockGrid, {
             animation: 180,
             draggable: ".dock-item",
+            handle: ".icon",
             group: { name: "shared", pull: true, put: true },
             sort: true,
             filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
@@ -2694,7 +2699,7 @@ if ("serviceWorker" in navigator) {
       function applyBrightness(value) {
         const brightness = Math.max(0, Math.min(100, Number(value)));
         if (Number.isNaN(brightness)) return;
-        const maxDim = 0.35;
+        const maxDim = 0.45;
         const minDim = 0;
         const dim = maxDim - (brightness / 100) * (maxDim - minDim);
         document.documentElement.style.setProperty("--page-dim", dim.toFixed(2));
@@ -2705,10 +2710,10 @@ if ("serviceWorker" in navigator) {
 
       if (brightnessInput) {
         const savedBrightness = localStorage.getItem("pageBrightness");
-        if (savedBrightness !== null) {
-          brightnessInput.value = savedBrightness;
-          applyBrightness(savedBrightness);
-        }
+        const initialBrightness =
+          savedBrightness !== null ? savedBrightness : brightnessInput.value || "60";
+        brightnessInput.value = initialBrightness;
+        applyBrightness(initialBrightness);
       }
 
       function initMobilePosition() {}
@@ -2720,6 +2725,18 @@ if ("serviceWorker" in navigator) {
           menuToggle.classList.toggle("open");
           const expanded = controlGroup.classList.contains("open");
           menuToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+        });
+      }
+      if (brightnessToggle && brightnessControl) {
+        brightnessToggle.addEventListener("click", (event) => {
+          event.stopPropagation();
+          brightnessControl.classList.toggle("open");
+        });
+        brightnessControl.addEventListener("click", (event) => {
+          event.stopPropagation();
+        });
+        document.addEventListener("click", () => {
+          brightnessControl.classList.remove("open");
         });
       }
       if (controlGroup) {
@@ -3325,7 +3342,7 @@ if ("serviceWorker" in navigator) {
             }
             if (data && data.pageBrightness !== undefined) {
               const value = Math.max(0, Math.min(100, Number(data.pageBrightness)));
-              const safeValue = Number.isNaN(value) ? 70 : value;
+              const safeValue = Number.isNaN(value) ? 60 : value;
               if (brightnessInput) {
                 brightnessInput.value = String(safeValue);
               }
