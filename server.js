@@ -1049,6 +1049,7 @@ function normalizeSettings(settings, fallbackName) {
     siteLogo: safe.siteLogo || "",
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     frostBlur: typeof safe.frostBlur === "number" ? safe.frostBlur : 50,
+    pageBrightness: typeof safe.pageBrightness === "number" ? safe.pageBrightness : 70,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
     userTotpEnabled: Boolean(safe.userTotpEnabled),
@@ -1234,6 +1235,7 @@ async function ensureAdminUser() {
           siteName: "我的 iOS 风格导航",
           iconScale: 100,
           frostBlur: 50,
+          pageBrightness: 70,
           siteLogo: "",
           userName: safeUsername,
           userAvatar: ""
@@ -1793,6 +1795,7 @@ app.put("/api/settings", requireAuth, async (req, res) => {
     userName,
     iconScale,
     frostBlur,
+    pageBrightness,
     userTotpEnabled
   } = req.body || {};
   const updates = {};
@@ -1804,6 +1807,10 @@ app.put("/api/settings", requireAuth, async (req, res) => {
   if (frostBlur !== undefined) {
     const blurValue = Math.max(0, Math.min(100, Number(frostBlur)));
     if (!Number.isNaN(blurValue)) updates.frostBlur = blurValue;
+  }
+  if (pageBrightness !== undefined) {
+    const brightness = Math.max(0, Math.min(100, Number(pageBrightness)));
+    if (!Number.isNaN(brightness)) updates.pageBrightness = brightness;
   }
   if (userName !== undefined) {
     const safeUsername = String(userName).trim();

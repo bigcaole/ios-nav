@@ -70,6 +70,7 @@ if ("serviceWorker" in navigator) {
       const boldToggle = document.querySelector("#boldToggle");
       const iconSizeInput = document.querySelector("#iconSizeInput");
       const frostBlurInput = document.querySelector("#frostBlurInput");
+      const brightnessInput = document.querySelector("#brightnessInput");
       const userTotpToggle = document.querySelector("#userTotpToggle");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
@@ -1659,11 +1660,11 @@ if ("serviceWorker" in navigator) {
               dockGrid.classList.add("dock-drop");
               if (event.item) {
                 event.item.classList.add("is-dragging");
-                event.item.draggable = false;
-                event.item.setAttribute("draggable", "false");
+                event.item.draggable = true;
+                event.item.setAttribute("draggable", "true");
                 event.item.querySelectorAll("img").forEach((img) => {
-                  img.draggable = false;
-                  img.setAttribute("draggable", "false");
+                  img.draggable = true;
+                  img.setAttribute("draggable", "true");
                 });
               }
             },
@@ -2155,6 +2156,9 @@ if ("serviceWorker" in navigator) {
             }
             if (payload.frostBlur !== undefined) {
               applyFrostBlur(payload.frostBlur);
+            }
+            if (payload.pageBrightness !== undefined) {
+              applyBrightness(payload.pageBrightness);
             }
             showToast("保存成功");
           })
@@ -2687,6 +2691,26 @@ if ("serviceWorker" in navigator) {
         document.documentElement.style.setProperty("--glow-opacity", glowOpacity.toFixed(2));
       }
 
+      function applyBrightness(value) {
+        const brightness = Math.max(0, Math.min(100, Number(value)));
+        if (Number.isNaN(brightness)) return;
+        const maxDim = 0.35;
+        const minDim = 0;
+        const dim = maxDim - (brightness / 100) * (maxDim - minDim);
+        document.documentElement.style.setProperty("--page-dim", dim.toFixed(2));
+        try {
+          localStorage.setItem("pageBrightness", String(brightness));
+        } catch (err) {}
+      }
+
+      if (brightnessInput) {
+        const savedBrightness = localStorage.getItem("pageBrightness");
+        if (savedBrightness !== null) {
+          brightnessInput.value = savedBrightness;
+          applyBrightness(savedBrightness);
+        }
+      }
+
       function initMobilePosition() {}
 
       if (menuToggle && controlGroup) {
@@ -3052,6 +3076,9 @@ if ("serviceWorker" in navigator) {
           if (frostBlurInput) {
             payload.frostBlur = frostBlurInput.value;
           }
+          if (brightnessInput) {
+            payload.pageBrightness = brightnessInput.value;
+          }
           if (userTotpToggle) {
             payload.userTotpEnabled = userTotpToggle.checked;
           }
@@ -3105,6 +3132,12 @@ if ("serviceWorker" in navigator) {
         frostBlurInput.addEventListener("input", () => {
           applyFrostBlur(frostBlurInput.value);
           queueAppearanceSave({ frostBlur: frostBlurInput.value });
+        });
+      }
+      if (brightnessInput) {
+        brightnessInput.addEventListener("input", () => {
+          applyBrightness(brightnessInput.value);
+          queueAppearanceSave({ pageBrightness: brightnessInput.value });
         });
       }
 
@@ -3289,6 +3322,14 @@ if ("serviceWorker" in navigator) {
                 frostBlurInput.value = String(safeValue);
               }
               applyFrostBlur(safeValue);
+            }
+            if (data && data.pageBrightness !== undefined) {
+              const value = Math.max(0, Math.min(100, Number(data.pageBrightness)));
+              const safeValue = Number.isNaN(value) ? 70 : value;
+              if (brightnessInput) {
+                brightnessInput.value = String(safeValue);
+              }
+              applyBrightness(safeValue);
             }
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);

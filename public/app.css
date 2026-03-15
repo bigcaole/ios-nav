@@ -20,6 +20,7 @@
         --frost-opacity: 0.2;
         --glow-blur: 110px;
         --glow-opacity: 0.95;
+        --page-dim: 0.08;
         --radius: 22px;
         --base-size: 15px;
         --label-weight: 600;
@@ -76,6 +77,14 @@
         backdrop-filter: blur(var(--frost-blur, 26px));
         -webkit-backdrop-filter: blur(var(--frost-blur, 26px));
         z-index: 1;
+      }
+      #iosBg::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, var(--page-dim, 0.08));
+        z-index: 2;
+        pointer-events: none;
       }
       #iosBg .glow {
         position: absolute;
@@ -227,8 +236,8 @@
         overflow-x: visible !important;
         overflow-y: visible !important;
         padding-bottom: 14px !important;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
       }
       .category-card.nav-active {
         box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.55), 0 16px 32px rgba(0, 122, 255, 0.18);
@@ -579,7 +588,7 @@
         background: transparent !important;
         border: none !important;
         box-shadow: none !important;
-        opacity: 0.1 !important;
+        opacity: 0 !important;
       }
       .mode-sort .sortable-ghost .icon,
       .mode-sort .sortable-ghost .icon-label-capsule,
@@ -1078,9 +1087,9 @@
         border-radius: 24px;
         background: transparent !important;
         border: 1px solid rgba(0, 0, 0, 0.04);
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
-        box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
+        box-shadow: none !important;
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1213,6 +1222,40 @@
         opacity: 1;
         visibility: visible;
         transform: translateX(-50%) translateY(0);
+      }
+      .brightness-control {
+        position: fixed;
+        right: 24px;
+        bottom: 110px;
+        z-index: 60;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        border-radius: 999px;
+        background: transparent;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        box-shadow: none;
+        color: var(--text);
+      }
+      .brightness-control input[type="range"] {
+        width: 120px;
+      }
+      .brightness-label {
+        font-size: 12px;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+      @media (max-width: 640px) {
+        .brightness-control {
+          right: 16px;
+          bottom: 96px;
+        }
+        .brightness-control input[type="range"] {
+          width: 96px;
+        }
       }
       
       .is-editing .dock .label,
@@ -1772,13 +1815,13 @@
       #categoryNav {
         background-color: transparent !important;
         border: 1px solid rgba(0, 0, 0, 0.04);
-        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+        box-shadow: none !important;
         display: flex;
         align-items: center;
         gap: 10px;
         padding: 12px 18px;
-        backdrop-filter: blur(20px);
-        -webkit-backdrop-filter: blur(20px);
+        backdrop-filter: blur(14px);
+        -webkit-backdrop-filter: blur(14px);
       }
       html.dark #categoryNav {
         background-color: transparent !important;
