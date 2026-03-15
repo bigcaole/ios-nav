@@ -140,6 +140,7 @@ if ("serviceWorker" in navigator) {
         let pendingChanges = false;
         let sortUnlocked = false;
         let activeDeleteBubble = null;
+        let navPulseTimer = null;
         const dockLimit = 6;
         let dockFullWarned = false;
       let saveTimer = null;
@@ -498,6 +499,15 @@ if ("serviceWorker" in navigator) {
         return host.charAt(0).toUpperCase() || "A";
       }
 
+      function pickInitial(title, url) {
+        const text = String(title || "").trim();
+        const han = text.match(/[\u4e00-\u9fff]/);
+        if (han) return han[0];
+        const latin = text.replace(/[^A-Za-z0-9]/g, "");
+        if (latin) return latin.charAt(0).toUpperCase();
+        return firstLetter(url);
+      }
+
       function normalizeHost(url) {
         const parsed = tryParseUrl(url);
         return parsed ? parsed.hostname.replace(/^www\./, "") : "";
@@ -551,20 +561,22 @@ if ("serviceWorker" in navigator) {
         return `${currentProtocol}${raw.replace(/^\/+/, "")}`;
       }
 
-      function buildIcon(iconEl, url, iconUrl, isPrivate) {
+      function buildIcon(iconEl, url, iconUrl, isPrivate, title) {
         const seed = hashCode(url);
         const [c1, c2] = colorPair(seed);
 
         function fallbackToLetter() {
           iconEl.innerHTML = "";
+          iconEl.classList.add("icon-fallback");
           iconEl.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
-          iconEl.textContent = firstLetter(url);
+          iconEl.textContent = pickInitial(title, url);
         }
 
         const img = document.createElement("img");
         img.className =
           "w-full h-full object-cover rounded-2xl transition-transform duration-300 hover:scale-110 transform";
         img.draggable = false;
+        iconEl.classList.remove("icon-fallback");
         const candidates = [];
         const normalizedIcon = normalizeIconUrl(iconUrl);
         const isLocalIcon =
@@ -708,7 +720,7 @@ if ("serviceWorker" in navigator) {
             icon.style.willChange = "transform";
             icon.style.clipPath = "inset(0 round 1.25rem)";
             icon.style.webkitClipPath = "inset(0 round 1.25rem)";
-            buildIcon(icon, item.url, item.icon, isPrivate);
+            buildIcon(icon, item.url, item.icon, isPrivate, item.title);
 
             const minus = document.createElement("button");
             minus.className = "minus delete-badge";
@@ -850,6 +862,7 @@ if ("serviceWorker" in navigator) {
           const maxIconSize = 80;
           const gridGap = 18;
           const perRow = 3;
+          const baseIconSize = 64;
           if (isCardView && grid) {
             const availableWidth = Math.min(1200, window.innerWidth - 48);
             const targetCardWidth = 320;
@@ -890,17 +903,14 @@ if ("serviceWorker" in navigator) {
             innerGrid.dataset.category = category;
             innerGrid.dataset.dock = "false";
             innerGrid.style.gap = `${gridGap}px`;
-            const itemCount = grouped.groups[category].length;
-            const scaleT = Math.min(1, Math.max(0, (itemCount - 4) / 12));
-            const baseSize = Math.round(maxIconSize - scaleT * (maxIconSize - minIconSize));
             const minScaleSize = 52;
-            const availableWidth = Math.min(900, window.innerWidth - 120);
+            const availableWidth = Math.min(960, window.innerWidth - 120);
             const maxSizeByWidth = Math.floor(
               (availableWidth - gridGap * (perRow - 1)) / perRow
             );
             const clampedBase = Math.max(
               minScaleSize,
-              Math.min(baseSize, Math.max(minIconSize, maxSizeByWidth))
+              Math.min(baseIconSize, Math.max(minIconSize, maxSizeByWidth))
             );
             const iconSize = Math.round(
               minScaleSize + (clampedBase - minScaleSize) * iconScale
@@ -911,10 +921,16 @@ if ("serviceWorker" in navigator) {
             );
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
-            innerGrid.style.setProperty("--grid-width", `${gridWidth}px`);
-            innerGrid.style.maxWidth = `${gridWidth}px`;
-            innerGrid.style.width = `${gridWidth}px`;
             cardWrap.style.setProperty("--grid-gap", `${gridGap}px`);
+            if (isCardView) {
+              innerGrid.style.setProperty("--grid-width", `${gridWidth}px`);
+              innerGrid.style.maxWidth = `${gridWidth}px`;
+              innerGrid.style.width = `${gridWidth}px`;
+            } else {
+              innerGrid.style.removeProperty("--grid-width");
+              innerGrid.style.maxWidth = "100%";
+              innerGrid.style.width = "100%";
+            }
             if (currentMode === "edit") {
               heading.classList.add("cursor-text", "editable");
             } else {
@@ -964,19 +980,11 @@ if ("serviceWorker" in navigator) {
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
             if (isCardView) {
-              const maxCardIcon = 72;
-              const minCardIcon = 52;
-              const t = Math.min(1, Math.max(0, (items.length - 1) / 8));
-              let cardIconSize = Math.round(
-                maxCardIcon - t * (maxCardIcon - minCardIcon)
+              const maxCardIcon = 70;
+              const minCardIcon = 54;
+              const cardIconSize = Math.round(
+                minCardIcon + (maxCardIcon - minCardIcon) * iconScale
               );
-              const scaledBase = Math.max(cardIconSize, minCardIcon);
-              cardIconSize = Math.round(
-                minCardIcon + (scaledBase - minCardIcon) * iconScale
-              );
-              if (items.length > 6) {
-                cardIconSize = Math.min(maxCardIcon, cardIconSize + 6);
-              }
               cardWrap.style.setProperty("--icon-size", `${cardIconSize}px`);
               cardWrap.classList.toggle("card-compact", items.length > 6);
             }
@@ -1004,7 +1012,7 @@ if ("serviceWorker" in navigator) {
                 icon.style.willChange = "transform";
                 icon.style.clipPath = "inset(0 round 1.25rem)";
                 icon.style.webkitClipPath = "inset(0 round 1.25rem)";
-                buildIcon(icon, item.url, item.icon, isPrivate);
+                buildIcon(icon, item.url, item.icon, isPrivate, item.title);
 
                 const minus = document.createElement("button");
                 minus.className = "minus delete-badge";
@@ -1364,6 +1372,16 @@ if ("serviceWorker" in navigator) {
               const top =
                 target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
               window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+              document.querySelectorAll(".category-card.nav-active").forEach((card) => {
+                card.classList.remove("nav-active");
+              });
+              target.classList.add("nav-active");
+              if (navPulseTimer) {
+                clearTimeout(navPulseTimer);
+              }
+              navPulseTimer = setTimeout(() => {
+                target.classList.remove("nav-active");
+              }, 1200);
             });
             nav.appendChild(pill);
           });
