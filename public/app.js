@@ -136,6 +136,7 @@ if ("serviceWorker" in navigator) {
         let editingLinkId = null;
         let editingDockPosition = null;
         let returnToSettings = null;
+        let returnToMode = null;
         let pendingChanges = false;
         let sortUnlocked = false;
         let activeDeleteBubble = null;
@@ -198,9 +199,11 @@ if ("serviceWorker" in navigator) {
         }
 
         function closeEditModalToPreview() {
+          const nextMode = returnToMode || "preview";
+          returnToMode = null;
           returnToSettings = null;
           closeModal(modal);
-          setActiveMode("preview");
+          setActiveMode(nextMode);
         }
 
       function renderCategorySelect(categories, selectedName) {
@@ -788,6 +791,7 @@ if ("serviceWorker" in navigator) {
               placeholder.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                returnToMode = currentMode;
                 editingLinkId = null;
                 editingDockPosition = null;
                 if (dockInput) {
@@ -844,7 +848,8 @@ if ("serviceWorker" in navigator) {
           const grouped = groupByCategory(normalLinks);
           const minIconSize = 40;
           const maxIconSize = 80;
-          const gridGap = 16;
+          const gridGap = 18;
+          const perRow = 3;
           if (isCardView && grid) {
             const availableWidth = Math.min(1200, window.innerWidth - 48);
             const targetCardWidth = 320;
@@ -889,19 +894,27 @@ if ("serviceWorker" in navigator) {
             const scaleT = Math.min(1, Math.max(0, (itemCount - 4) / 12));
             const baseSize = Math.round(maxIconSize - scaleT * (maxIconSize - minIconSize));
             const minScaleSize = 52;
-            const clampedBase = Math.max(baseSize, minScaleSize);
+            const availableWidth = Math.min(900, window.innerWidth - 120);
+            const maxSizeByWidth = Math.floor(
+              (availableWidth - gridGap * (perRow - 1)) / perRow
+            );
+            const clampedBase = Math.max(
+              minScaleSize,
+              Math.min(baseSize, Math.max(minIconSize, maxSizeByWidth))
+            );
             const iconSize = Math.round(
               minScaleSize + (clampedBase - minScaleSize) * iconScale
             );
-            const availableWidth = Math.min(900, window.innerWidth - 120);
-            const perRow = Math.max(
-              4,
-              Math.min(6, Math.floor((availableWidth + gridGap) / (iconSize + gridGap)))
+            const gridWidth = Math.min(
+              availableWidth,
+              perRow * iconSize + (perRow - 1) * gridGap
             );
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
-            innerGrid.style.maxWidth = `${availableWidth}px`;
-            const pageSize = perRow;
+            innerGrid.style.setProperty("--grid-width", `${gridWidth}px`);
+            innerGrid.style.maxWidth = `${gridWidth}px`;
+            innerGrid.style.width = `${gridWidth}px`;
+            cardWrap.style.setProperty("--grid-gap", `${gridGap}px`);
             if (currentMode === "edit") {
               heading.classList.add("cursor-text", "editable");
             } else {
@@ -2622,6 +2635,7 @@ if ("serviceWorker" in navigator) {
 
       function openEditModal(item) {
         if (!item) return;
+        returnToMode = currentMode;
         editingLinkId = item.id;
         if (item && item.is_dock) {
           const pos = Number(item.position_index);
@@ -2811,6 +2825,7 @@ if ("serviceWorker" in navigator) {
       if (addLinkEntryBtn) {
         addLinkEntryBtn.addEventListener("click", () => {
           closeModal(addMenuModal);
+          returnToMode = currentMode;
           editingLinkId = null;
           editingDockPosition = null;
           formTitle.textContent = "添加导航";
@@ -3233,7 +3248,7 @@ if ("serviceWorker" in navigator) {
             .then((res) => {
               if (!res.ok) throw new Error("Failed to save");
               closeEditModalToPreview();
-              window.location.reload(true);
+              return fetchLinks();
             })
             .catch(() => {});
         });
