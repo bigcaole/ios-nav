@@ -579,10 +579,6 @@ if ("serviceWorker" in navigator) {
         iconEl.classList.remove("icon-fallback");
         const candidates = [];
         const normalizedIcon = normalizeIconUrl(iconUrl);
-        if (!normalizedIcon) {
-          fallbackToLetter();
-          return;
-        }
         const isLocalIcon =
           normalizedIcon && typeof normalizedIcon === "string" && normalizedIcon.startsWith("/icons/");
         if (normalizedIcon && !isLocalIcon) {

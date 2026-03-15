@@ -1403,7 +1403,7 @@
         align-items: center;
         justify-content: space-between;
         padding: 8px 24px;
-        background: rgba(255, 255, 255, 0.45);
+        background: rgba(213, 220, 232, 0.72);
         backdrop-filter: blur(18px);
         -webkit-backdrop-filter: blur(18px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.28);
@@ -1413,7 +1413,7 @@
         border-bottom: 1px solid rgba(255, 255, 255, 0.16);
       }
       .nav-header-bg {
-        background: rgba(255, 255, 255, 0.45);
+        background: rgba(213, 220, 232, 0.72);
       }
       html.dark .nav-header-bg {
         background: rgba(20, 26, 36, 0.7);
@@ -1691,7 +1691,7 @@
         display: none;
       }
       #categoryNav {
-        background-color: rgba(255, 255, 255, 0.45) !important;
+        background-color: rgba(213, 220, 232, 0.72) !important;
         border: 1px solid rgba(255, 255, 255, 0.32);
         display: flex;
         align-items: center;
@@ -2080,6 +2080,12 @@
         color: #f8fafc !important;
         font-weight: 600;
         text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
+      }
+      html.dark #avatarMenu button {
+        background: rgba(147, 197, 253, 0.16) !important;
+      }
+      html.dark #avatarMenu button:hover {
+        background: rgba(147, 197, 253, 0.28) !important;
       }
       html.dark #avatarMenu button:hover {
         background: rgba(255, 255, 255, 0.1) !important;
