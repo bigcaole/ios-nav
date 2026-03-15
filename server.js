@@ -1,6 +1,7 @@
 ﻿const fs = require("fs");
 const path = require("path");
 const express = require("express");
+const compression = require("compression");
 const multer = require("multer");
 const fetch = require("node-fetch");
 const bcrypt = require("bcrypt");
@@ -8,6 +9,7 @@ const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
+const { API_NO_STORE, HTML_NO_CACHE, sendHtml, staticOptions } = require("./lib/http");
 
 const app = express();
 const adminApp = express();
@@ -26,7 +28,10 @@ if (!jwtSecret) {
 const uploadDir = path.join(__dirname, "uploads");
 const iconDir = path.join(__dirname, "public", "icons");
 const publicUploadDir = path.join(__dirname, "public", "uploads");
-const upload = multer({ dest: uploadDir });
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 const assetStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, publicUploadDir);
@@ -37,7 +42,18 @@ const assetStorage = multer.diskStorage({
     cb(null, name);
   }
 });
-const assetUpload = multer({ storage: assetStorage });
+const assetUpload = multer({
+  storage: assetStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+    if (!allowed.includes(file.mimetype)) {
+      cb(new Error("invalid_file_type"));
+      return;
+    }
+    cb(null, true);
+  }
+});
 
 const registerAttempts = new Map();
 const loginFailures = new Map();
@@ -52,14 +68,22 @@ const AUTO_BLOCK_HOURS = 6;
 const DEFAULT_LOGIN_BLOCK_MINUTES = AUTO_BLOCK_HOURS * 60;
 let lastLoginLogCleanupKey = "";
 let lastBackupDayKey = "";
+const DEFAULT_LINKS = [
+  { title: "Google", url: "https://www.google.com" },
+  { title: "Gmail", url: "https://mail.google.com" },
+  { title: "Calendar", url: "https://calendar.google.com" },
+  { title: "Drive", url: "https://drive.google.com" }
+];
 
 fs.mkdirSync(uploadDir, { recursive: true });
 fs.mkdirSync(iconDir, { recursive: true });
 fs.mkdirSync(publicUploadDir, { recursive: true });
 
+
 app.use(express.json());
-app.use((req, res, next) => {
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+app.use(compression());
+app.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", API_NO_STORE);
   next();
 });
 
@@ -95,7 +119,7 @@ app.use((req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 
 // Explicit short URL route (same behavior as middleware above) for better compatibility
@@ -123,9 +147,10 @@ app.get("/:username", (req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 adminApp.use(express.json());
+adminApp.use(compression());
 adminApp.use((err, req, res, next) => {
   if (err) {
     res.status(400).json({ error: "invalid_json" });
@@ -133,8 +158,8 @@ adminApp.use((err, req, res, next) => {
   }
   next();
 });
-adminApp.use((req, res, next) => {
-  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+adminApp.use("/api", (req, res, next) => {
+  res.setHeader("Cache-Control", API_NO_STORE);
   next();
 });
 
@@ -207,6 +232,12 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS user_login_logs_user_id_idx ON user_login_logs (user_id)"
+  );
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS user_login_logs_created_idx ON user_login_logs (created_at DESC)"
+  );
   await pool.query(`
     CREATE TABLE IF NOT EXISTS user_settings (
       user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
@@ -223,6 +254,13 @@ async function initDb() {
       UNIQUE (user_id, name)
     )
   `);
+  await pool.query("CREATE INDEX IF NOT EXISTS categories_user_id_idx ON categories (user_id)");
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS categories_user_private_idx ON categories (user_id, is_private)"
+  );
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS categories_user_sort_idx ON categories (user_id, sort_index)"
+  );
   await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS user_id UUID`);
   await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE`);
   await pool.query(`
@@ -255,6 +293,16 @@ async function initDb() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  await pool.query("CREATE INDEX IF NOT EXISTS links_user_id_idx ON links (user_id)");
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS links_user_category_idx ON links (user_id, category_id)"
+  );
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS links_user_dock_idx ON links (user_id, is_dock, position_index)"
+  );
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS links_user_private_idx ON links (user_id, is_private)"
+  );
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS is_dock BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS position_index INTEGER`);
   await pool.query(`
@@ -273,42 +321,33 @@ async function initDb() {
 
   await ensureAdminUser();
 
-  const usersResult = await pool.query("SELECT id FROM users");
-  for (const user of usersResult.rows) {
-    const countResult = await pool.query(
-      "SELECT COUNT(*)::int AS total FROM links WHERE user_id = $1",
-      [user.id]
-    );
-    if (countResult.rows[0] && countResult.rows[0].total === 0) {
-      const defaults = [
-        { title: "Google", url: "https://www.google.com" },
-        { title: "Gmail", url: "https://mail.google.com" },
-        { title: "Calendar", url: "https://calendar.google.com" },
-        { title: "Drive", url: "https://drive.google.com" }
-      ];
-      for (let i = 0; i < defaults.length; i += 1) {
-        const item = defaults[i];
-        await pool.query(
-          "INSERT INTO links (user_id, title, url, is_dock, sort_index, position_index) VALUES ($1, $2, $3, $4, $5, $6)",
-          [user.id, item.title, item.url, true, i, i]
-        );
-      }
-    }
-    const dockMissing = await pool.query(
-      "SELECT id FROM links WHERE user_id = $1 AND is_dock = TRUE AND position_index IS NULL ORDER BY sort_index ASC, created_at ASC",
-      [user.id]
-    );
-    let position = 0;
-    for (const row of dockMissing.rows) {
-      if (position >= 6) {
-        break;
-      }
+  const usersWithoutLinks = await pool.query(
+    "SELECT id FROM users u WHERE NOT EXISTS (SELECT 1 FROM links l WHERE l.user_id = u.id)"
+  );
+  for (const user of usersWithoutLinks.rows) {
+    for (let i = 0; i < DEFAULT_LINKS.length; i += 1) {
+      const item = DEFAULT_LINKS[i];
       await pool.query(
-        "UPDATE links SET position_index = $1 WHERE id = $2 AND user_id = $3",
-        [position, row.id, user.id]
+        "INSERT INTO links (user_id, title, url, is_dock, sort_index, position_index) VALUES ($1, $2, $3, $4, $5, $6)",
+        [user.id, item.title, item.url, true, i, i]
       );
-      position += 1;
     }
+  }
+
+  const dockMissing = await pool.query(
+    "SELECT id, user_id FROM links WHERE is_dock = TRUE AND position_index IS NULL ORDER BY user_id ASC, sort_index ASC, created_at ASC"
+  );
+  const dockPositions = new Map();
+  for (const row of dockMissing.rows) {
+    const current = dockPositions.get(row.user_id) || 0;
+    if (current >= 6) {
+      continue;
+    }
+    await pool.query(
+      "UPDATE links SET position_index = $1 WHERE id = $2 AND user_id = $3",
+      [current, row.id, row.user_id]
+    );
+    dockPositions.set(row.user_id, current + 1);
   }
 }
 
@@ -1971,6 +2010,13 @@ async function handleRegister(req, res) {
           userAvatar: ""
         }
       ]);
+      for (let i = 0; i < DEFAULT_LINKS.length; i += 1) {
+        const item = DEFAULT_LINKS[i];
+        await client.query(
+          "INSERT INTO links (user_id, title, url, is_dock, sort_index, position_index) VALUES ($1, $2, $3, $4, $5, $6)",
+          [userResult.rows[0].id, item.title, item.url, true, i, i]
+        );
+      }
       const updateInvite = await client.query(
         "UPDATE invite_codes SET used_at = NOW(), used_by = $1 WHERE id = $2 AND used_at IS NULL",
         [userResult.rows[0].id, inviteResult.rows[0].id]
@@ -2012,7 +2058,7 @@ app.get("/register.html", async (req, res) => {
       res.status(404).send("Not found");
       return;
     }
-    res.sendFile(path.join(__dirname, "register.html"));
+    sendHtml(res, path.join(__dirname, "register.html"));
   } catch (err) {
     res.status(500).send("Server error");
   }
@@ -3346,6 +3392,26 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
   }
 });
 
+app.use((err, req, res, next) => {
+  if (!err) {
+    next();
+    return;
+  }
+  if (err instanceof SyntaxError && err.type === "entity.parse.failed") {
+    res.status(400).json({ error: "invalid_json" });
+    return;
+  }
+  if (err.code === "LIMIT_FILE_SIZE") {
+    res.status(413).json({ error: "file_too_large" });
+    return;
+  }
+  if (err.message === "invalid_file_type") {
+    res.status(400).json({ error: "invalid_file_type" });
+    return;
+  }
+  res.status(500).json({ error: "Server error" });
+});
+
 app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not found" });
 });
@@ -3379,80 +3445,83 @@ app.get("/:username", (req, res, next) => {
 });
 
 // Serve static files from the project root (after API routes)
-app.use("/public", express.static(path.join(__dirname, "public")));
-app.use("/icons", express.static(path.join(__dirname, "public", "icons")));
-app.use(express.static(path.join(__dirname, "public")));
+app.use("/public", express.static(path.join(__dirname, "public"), staticOptions));
+app.use("/icons", express.static(path.join(__dirname, "public", "icons"), staticOptions));
+app.use(express.static(path.join(__dirname, "public"), staticOptions));
 
 app.get("/index.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 
 app.get("/login.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "login.html"));
+  sendHtml(res, path.join(__dirname, "login.html"));
 });
 
 app.get("/profile.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "profile.html"));
+  sendHtml(res, path.join(__dirname, "profile.html"));
 });
 
 app.get("/guide/user", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "user-guide.html"));
+  sendHtml(res, path.join(__dirname, "public", "user-guide.html"));
 });
 
 app.get("/guide/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin-guide.html"));
+  sendHtml(res, path.join(__dirname, "public", "admin-guide.html"));
 });
 
 app.get("/guide/deploy", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "deployment-guide.html"));
+  sendHtml(res, path.join(__dirname, "public", "deployment-guide.html"));
 });
 
 adminApp.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtml(res, path.join(__dirname, "admin.html"));
 });
 
 adminApp.get("/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtml(res, path.join(__dirname, "admin.html"));
 });
 
 adminApp.get("/admin/", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtml(res, path.join(__dirname, "admin.html"));
 });
 
 adminApp.get("/admin/index.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtml(res, path.join(__dirname, "admin.html"));
 });
 
 adminApp.get("/admin.html", (req, res) => {
-  res.sendFile(path.join(__dirname, "admin.html"));
+  sendHtml(res, path.join(__dirname, "admin.html"));
 });
 
 adminApp.get("/guide/admin", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "admin-guide.html"));
+  sendHtml(res, path.join(__dirname, "public", "admin-guide.html"));
 });
 
 adminApp.get("/guide/deploy", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "deployment-guide.html"));
+  sendHtml(res, path.join(__dirname, "public", "deployment-guide.html"));
 });
 
 app.get("/manifest.json", (req, res) => {
+  res.setHeader("Cache-Control", HTML_NO_CACHE);
   res.sendFile(path.join(__dirname, "manifest.json"));
 });
 
 app.get("/service-worker.js", (req, res) => {
+  res.setHeader("Cache-Control", HTML_NO_CACHE);
   res.sendFile(path.join(__dirname, "service-worker.js"));
 });
 
 app.get("/icon.svg", (req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=604800, stale-while-revalidate=86400");
   res.sendFile(path.join(__dirname, "icon.svg"));
 });
 
 app.get("/u/:username", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 
 app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 
 // SPA fallback: for non-API routes (e.g. /username) always return index.html
@@ -3470,7 +3539,7 @@ app.get("*", (req, res, next) => {
     next();
     return;
   }
-  res.sendFile(path.join(__dirname, "index.html"));
+  sendHtml(res, path.join(__dirname, "index.html"));
 });
 
 initDb()
@@ -3486,4 +3555,3 @@ initDb()
     console.error("Failed to initialize database", err);
     process.exit(1);
   });
-

@@ -1,8 +1,16 @@
-const CACHE_NAME = "mynavsite-v2";
+const CACHE_NAME = "mynavsite-v4";
 const ASSETS = [
   "/",
   "/index.html",
   "/login.html",
+  "/register.html",
+  "/profile.html",
+  "/app.css",
+  "/app.js",
+  "/tw-lite.css",
+  "/admin.css",
+  "/admin.js",
+  "/vendor-sortable.min.js",
   "/manifest.json",
   "/service-worker.js",
   "/icon.svg"
@@ -40,6 +48,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   if (url.pathname.startsWith("/api/") || url.pathname.endsWith(".db")) {
     event.respondWith(fetch(event.request));
+    return;
+  }
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() => {
+        return caches.match("/index.html");
+      })
+    );
     return;
   }
   event.respondWith(
