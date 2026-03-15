@@ -868,7 +868,7 @@ if ("serviceWorker" in navigator) {
           }
           grid.innerHTML = "";
           const grouped = groupByCategory(normalLinks);
-          const gridGap = 22;
+          const gridGap = 26;
           const perRow = 3;
           const baseIconSize = 64;
           const safeScale = Math.max(0.6, iconScale);
@@ -910,15 +910,21 @@ if ("serviceWorker" in navigator) {
             innerGrid.dataset.dock = "false";
             innerGrid.style.gap = `${gridGap}px`;
             const items = grouped.groups[category];
-            const gridWidth = perRow * iconSize + (perRow - 1) * gridGap;
-            const rowHeight = iconSize + 30;
+            const edgePad = isCardView ? Math.round(iconSize * 0.22) : 0;
+            const gridWidth = perRow * iconSize + (perRow - 1) * gridGap + edgePad * 2;
+            const rowHeight = iconSize + 36;
             const visibleCount = Math.min(items.length, 9);
             const rows = Math.max(1, Math.ceil(visibleCount / perRow));
-            const gridHeight = rows * rowHeight + (rows - 1) * gridGap;
+            const gridHeight = rows * rowHeight + (rows - 1) * gridGap + edgePad * 2;
             const gridSize = Math.max(gridWidth, gridHeight);
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
             cardWrap.style.setProperty("--grid-gap", `${gridGap}px`);
+            if (edgePad) {
+              innerGrid.style.padding = `${edgePad}px`;
+            } else {
+              innerGrid.style.removeProperty("padding");
+            }
             if (isCardView) {
               cardWrap.style.setProperty("--grid-width", `${gridWidth}px`);
               cardWrap.style.setProperty("--grid-size", `${gridSize}px`);
@@ -1642,9 +1648,9 @@ if ("serviceWorker" in navigator) {
             sort: true,
             filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
             preventOnFilter: false,
-            forceFallback: false,
-            fallbackOnBody: false,
-            fallbackTolerance: 0,
+            forceFallback: true,
+            fallbackOnBody: true,
+            fallbackTolerance: 3,
             fallbackClass: "sortable-fallback",
             delay: 0,
             delayOnTouchOnly: true,
