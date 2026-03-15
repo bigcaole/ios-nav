@@ -38,7 +38,6 @@ if ("serviceWorker" in navigator) {
       const modeButtons = modeControl ? Array.from(modeControl.querySelectorAll(".mode-btn")) : [];
       const viewToggleBtn = document.querySelector("#viewToggleBtn");
       const linkForm = document.querySelector("#linkForm");
-      const themeToggle = document.querySelector("#themeToggle");
       const formTitle = document.querySelector("#formTitle");
       const saveBtn = document.querySelector("#saveBtn");
       const topControls = document.querySelector("#top-controls");
@@ -67,15 +66,6 @@ if ("serviceWorker" in navigator) {
       const siteLogoText = document.querySelector("#siteLogoText");
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
-      const bgColorInput = document.querySelector("#bgColorInput");
-      const lightTopBarColorInput = document.querySelector("#lightTopBarColor");
-      const lightDockColorInput = document.querySelector("#lightDockColor");
-      const lightCategoryBarColorInput = document.querySelector("#lightCategoryBarColor");
-      const darkTopBarColorInput = document.querySelector("#darkTopBarColor");
-      const darkDockColorInput = document.querySelector("#darkDockColor");
-      const darkCategoryBarColorInput = document.querySelector("#darkCategoryBarColor");
-      const saveBgBtn = document.querySelector("#saveBgBtn");
-      const resetBgBtn = document.querySelector("#resetBgBtn");
       const fontSizeInput = document.querySelector("#fontSizeInput");
       const boldToggle = document.querySelector("#boldToggle");
       const iconSizeInput = document.querySelector("#iconSizeInput");
@@ -98,10 +88,6 @@ if ("serviceWorker" in navigator) {
       let currentProtocol = "https://";
       let isAdmin = false;
       let registerOpenUntil = null;
-      const DEFAULT_LIGHT_BAR = "#f9f9f9";
-      const DEFAULT_DARK_BAR = "#1c1c1e";
-      const BAR_ALPHA_LIGHT = 0.7;
-      const BAR_ALPHA_DARK = 0.7;
       const publicUsername = (() => {
         try {
           const params = new URLSearchParams(window.location.search);
@@ -150,7 +136,6 @@ if ("serviceWorker" in navigator) {
         let pendingChanges = false;
         let sortUnlocked = false;
         let activeDeleteBubble = null;
-        let navPulseTimer = null;
         const dockLimit = 6;
         let dockFullWarned = false;
       let saveTimer = null;
@@ -607,7 +592,9 @@ if ("serviceWorker" in navigator) {
           candidates.push(normalizedIcon);
         }
         const fullUrl = normalizeUrlForFavicon(url);
+        const parsedUrl = tryParseUrl(fullUrl || url);
         const host = normalizeHost(fullUrl || url);
+        const origin = parsedUrl ? parsedUrl.origin : "";
         const specialIcons = {
           "mail.google.com": "https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_48dp.png",
           "calendar.google.com":
@@ -621,19 +608,13 @@ if ("serviceWorker" in navigator) {
         if (host && specialIcons[host]) {
           candidates.push(specialIcons[host]);
         }
-        if (fullUrl) {
-          candidates.push(
-            `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(
-              fullUrl
-            )}&size=256`
-          );
-        }
-        if (host) {
-          candidates.push(`https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico`);
-          candidates.push(`https://icon.horse/icon/${encodeURIComponent(host)}`);
-          candidates.push(
-            `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=256`
-          );
+        if (origin) {
+          candidates.push(`${origin}/favicon.ico`);
+          candidates.push(`${origin}/favicon.png`);
+          candidates.push(`${origin}/apple-touch-icon.png`);
+          candidates.push(`${origin}/apple-touch-icon-precomposed.png`);
+          candidates.push(`${origin}/favicon-32x32.png`);
+          candidates.push(`${origin}/favicon-192x192.png`);
         }
         if (normalizedIcon && isLocalIcon) {
           candidates.push(normalizedIcon);
@@ -885,17 +866,13 @@ if ("serviceWorker" in navigator) {
           }
           grid.innerHTML = "";
           const grouped = groupByCategory(normalLinks);
-          const minIconSize = 40;
-          const maxIconSize = 80;
           const gridGap = 18;
           const perRow = 3;
           const baseIconSize = 64;
+          const safeScale = Math.max(0.6, iconScale);
+          const iconSize = Math.round(baseIconSize * safeScale);
           if (isCardView && grid) {
-            const availableWidth = Math.min(1200, window.innerWidth - 48);
-            const targetCardWidth = 320;
-            const rawCols = availableWidth / targetCardWidth;
-            const cols = Math.max(1, Math.round(rawCols));
-            grid.style.setProperty("--card-cols", cols);
+            grid.style.removeProperty("--card-cols");
           }
           grouped.order.forEach((category) => {
             const cardWrap = document.createElement("section");
@@ -930,31 +907,26 @@ if ("serviceWorker" in navigator) {
             innerGrid.dataset.category = category;
             innerGrid.dataset.dock = "false";
             innerGrid.style.gap = `${gridGap}px`;
-            const minScaleSize = 52;
-            const availableWidth = Math.min(960, window.innerWidth - 120);
-            const maxSizeByWidth = Math.floor(
-              (availableWidth - gridGap * (perRow - 1)) / perRow
-            );
-            const clampedBase = Math.max(
-              minScaleSize,
-              Math.min(baseIconSize, Math.max(minIconSize, maxSizeByWidth))
-            );
-            const iconSize = Math.round(
-              minScaleSize + (clampedBase - minScaleSize) * iconScale
-            );
-            const gridWidth = Math.min(
-              availableWidth,
-              perRow * iconSize + (perRow - 1) * gridGap
-            );
+            const items = grouped.groups[category];
+            const gridWidth = perRow * iconSize + (perRow - 1) * gridGap;
+            const rowHeight = iconSize + 22;
+            const visibleCount = Math.min(items.length, 9);
+            const rows = Math.max(1, Math.ceil(visibleCount / perRow));
+            const gridHeight = rows * rowHeight + (rows - 1) * gridGap;
+            const gridSize = Math.max(gridWidth, gridHeight);
             innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
             innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
             cardWrap.style.setProperty("--grid-gap", `${gridGap}px`);
             if (isCardView) {
-              innerGrid.style.setProperty("--grid-width", `${gridWidth}px`);
+              cardWrap.style.setProperty("--grid-width", `${gridWidth}px`);
+              cardWrap.style.setProperty("--grid-size", `${gridSize}px`);
+              cardWrap.style.width = `${gridSize + 32}px`;
               innerGrid.style.maxWidth = `${gridWidth}px`;
               innerGrid.style.width = `${gridWidth}px`;
             } else {
-              innerGrid.style.removeProperty("--grid-width");
+              cardWrap.style.removeProperty("--grid-width");
+              cardWrap.style.removeProperty("--grid-size");
+              cardWrap.style.removeProperty("width");
               innerGrid.style.maxWidth = "100%";
               innerGrid.style.width = "100%";
             }
@@ -1003,16 +975,8 @@ if ("serviceWorker" in navigator) {
               input.addEventListener("blur", () => commit(true));
             });
 
-            const items = grouped.groups[category];
-            innerGrid.style.setProperty("--icon-size", `${iconSize}px`);
-            innerGrid.style.setProperty("--grid-gap", `${gridGap}px`);
             if (isCardView) {
-              const maxCardIcon = 70;
-              const minCardIcon = 54;
-              const cardIconSize = Math.round(
-                minCardIcon + (maxCardIcon - minCardIcon) * iconScale
-              );
-              cardWrap.style.setProperty("--icon-size", `${cardIconSize}px`);
+              cardWrap.style.setProperty("--icon-size", `${iconSize}px`);
               cardWrap.classList.toggle("card-compact", items.length > 6);
             }
             const renderItem = (item) => {
@@ -1403,12 +1367,6 @@ if ("serviceWorker" in navigator) {
                 card.classList.remove("nav-active");
               });
               target.classList.add("nav-active");
-              if (navPulseTimer) {
-                clearTimeout(navPulseTimer);
-              }
-              navPulseTimer = setTimeout(() => {
-                target.classList.remove("nav-active");
-              }, 1200);
             });
             nav.appendChild(pill);
           });
@@ -2137,102 +2095,6 @@ if ("serviceWorker" in navigator) {
         activeDeleteBubble = bubble;
       }
 
-      function applyBackground(color) {
-        if (iosBg) {
-          iosBg.style.backgroundColor = color || "";
-        }
-        document.body.style.backgroundColor = color || "";
-        const themeMeta = document.querySelector('meta[name="theme-color"]');
-        if (themeMeta && color) {
-          themeMeta.setAttribute("content", color);
-        }
-      }
-
-      function hexToRgba(hex, alpha) {
-        const raw = String(hex || "").trim();
-        if (!raw.startsWith("#")) return "";
-        let r = 0;
-        let g = 0;
-        let b = 0;
-        if (raw.length === 4) {
-          r = parseInt(raw[1] + raw[1], 16);
-          g = parseInt(raw[2] + raw[2], 16);
-          b = parseInt(raw[3] + raw[3], 16);
-        } else if (raw.length === 7) {
-          r = parseInt(raw.slice(1, 3), 16);
-          g = parseInt(raw.slice(3, 5), 16);
-          b = parseInt(raw.slice(5, 7), 16);
-        } else {
-          return "";
-        }
-        const safeAlpha = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1;
-        return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
-      }
-
-      function colorToHex(value, fallback) {
-        const raw = String(value || "").trim();
-        if (!raw) return fallback || "";
-        if (raw.startsWith("#")) return raw;
-        const match = raw.match(/rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)/i);
-        if (!match) return fallback || "";
-        const toHex = (num) => {
-          const next = Math.max(0, Math.min(255, Number(num)));
-          return next.toString(16).padStart(2, "0");
-        };
-        return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
-      }
-
-      function toRgba(value, alpha) {
-        const raw = String(value || "").trim();
-        if (!raw) return "";
-        if (raw.startsWith("rgb")) return raw;
-        if (raw.startsWith("#")) {
-          return hexToRgba(raw, alpha);
-        }
-        return raw;
-      }
-
-      function applyBarColors(payload) {
-        const root = document.documentElement;
-        const lightTop = payload.lightTopBar || DEFAULT_LIGHT_BAR;
-        const lightDock = payload.lightDock || DEFAULT_LIGHT_BAR;
-        const lightCategory = payload.lightCategory || DEFAULT_LIGHT_BAR;
-        const darkTop = payload.darkTopBar || DEFAULT_DARK_BAR;
-        const darkDock = payload.darkDock || DEFAULT_DARK_BAR;
-        const darkCategory = payload.darkCategory || DEFAULT_DARK_BAR;
-        root.style.setProperty("--top-bar-light", toRgba(lightTop, BAR_ALPHA_LIGHT));
-        root.style.setProperty("--dock-light", toRgba(lightDock, BAR_ALPHA_LIGHT));
-        root.style.setProperty("--category-bar-light", toRgba(lightCategory, BAR_ALPHA_LIGHT));
-        root.style.setProperty("--top-bar-dark", toRgba(darkTop, BAR_ALPHA_DARK));
-        root.style.setProperty("--dock-dark", toRgba(darkDock, BAR_ALPHA_DARK));
-        root.style.setProperty("--category-bar-dark", toRgba(darkCategory, BAR_ALPHA_DARK));
-      }
-
-      function getBarColorPayloadFromInputs() {
-        return {
-          topBarColorLight: lightTopBarColorInput ? lightTopBarColorInput.value : undefined,
-          dockColorLight: lightDockColorInput ? lightDockColorInput.value : undefined,
-          categoryBarColorLight: lightCategoryBarColorInput
-            ? lightCategoryBarColorInput.value
-            : undefined,
-          topBarColorDark: darkTopBarColorInput ? darkTopBarColorInput.value : undefined,
-          dockColorDark: darkDockColorInput ? darkDockColorInput.value : undefined,
-          categoryBarColorDark: darkCategoryBarColorInput
-            ? darkCategoryBarColorInput.value
-            : undefined
-        };
-      }
-
-      function applyBarColorsFromInputs() {
-        applyBarColors({
-          lightTopBar: lightTopBarColorInput ? lightTopBarColorInput.value : "",
-          lightDock: lightDockColorInput ? lightDockColorInput.value : "",
-          lightCategory: lightCategoryBarColorInput ? lightCategoryBarColorInput.value : "",
-          darkTopBar: darkTopBarColorInput ? darkTopBarColorInput.value : "",
-          darkDock: darkDockColorInput ? darkDockColorInput.value : "",
-          darkCategory: darkCategoryBarColorInput ? darkCategoryBarColorInput.value : ""
-        });
-      }
 
       function applyViewMode(mode) {
         if (window.innerWidth < 768 && mode !== "card") {
@@ -2291,9 +2153,6 @@ if ("serviceWorker" in navigator) {
             if (payload.siteName && siteTitle) {
               siteTitle.textContent = payload.siteName;
               document.title = payload.siteName;
-            }
-            if (payload.backgroundColor !== undefined) {
-              applyBackground(payload.backgroundColor);
             }
             if (payload.iconScale !== undefined) {
               applyIconScale(payload.iconScale);
@@ -2807,42 +2666,7 @@ if ("serviceWorker" in navigator) {
         renderLinks(allLinks);
       }
 
-      function setTheme(mode, persist) {
-        const useDark = mode === "dark";
-        document.documentElement.classList.toggle("dark", useDark);
-        if (themeToggle) {
-          themeToggle.setAttribute("aria-pressed", useDark ? "true" : "false");
-        }
-        if (persist) {
-          localStorage.setItem("theme", useDark ? "dark" : "light");
-        }
-      }
-
-      function updateThemeButton() {
-        const isDark = document.documentElement.classList.contains("dark");
-        if (themeToggle) {
-          themeToggle.setAttribute("aria-pressed", isDark ? "true" : "false");
-        }
-      }
-
       function initMobilePosition() {}
-
-      if (themeToggle) {
-        try {
-          const storedTheme = localStorage.getItem("theme");
-          if (storedTheme) {
-            setTheme(storedTheme, false);
-          } else {
-            const prefersDark =
-              window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
-            setTheme(prefersDark ? "dark" : "light", false);
-          }
-          themeToggle.addEventListener("click", () => {
-            const isDark = document.documentElement.classList.contains("dark");
-            setTheme(isDark ? "light" : "dark", true);
-          });
-        } catch (err) {}
-      }
 
       if (menuToggle && controlGroup) {
         menuToggle.addEventListener("click", (event) => {
@@ -3201,14 +3025,12 @@ if ("serviceWorker" in navigator) {
           const payload = {
             siteName: siteNameInput.value.trim()
           };
-          Object.assign(payload, getBarColorPayloadFromInputs());
           if (iconSizeInput) {
             payload.iconScale = iconSizeInput.value;
           }
           if (userTotpToggle) {
             payload.userTotpEnabled = userTotpToggle.checked;
           }
-          applyBarColorsFromInputs();
           saveAppearanceSettings(payload);
         });
       }
@@ -3219,48 +3041,6 @@ if ("serviceWorker" in navigator) {
         });
       }
 
-      if (bgColorInput) {
-        bgColorInput.addEventListener("input", () => {
-          applyBackground(bgColorInput.value);
-        });
-        bgColorInput.addEventListener("change", () => {
-          queueAppearanceSave({ backgroundColor: bgColorInput.value });
-        });
-      }
-
-      const barColorInputs = [
-        lightTopBarColorInput,
-        lightDockColorInput,
-        lightCategoryBarColorInput,
-        darkTopBarColorInput,
-        darkDockColorInput,
-        darkCategoryBarColorInput
-      ];
-      barColorInputs.forEach((input) => {
-        if (!input) return;
-        input.addEventListener("input", () => {
-          applyBarColorsFromInputs();
-        });
-        input.addEventListener("change", () => {
-          queueAppearanceSave(getBarColorPayloadFromInputs());
-        });
-      });
-
-      if (saveBgBtn) {
-        saveBgBtn.addEventListener("click", () => {
-          saveAppearanceSettings({ backgroundColor: bgColorInput.value });
-        });
-      }
-
-      if (resetBgBtn) {
-        resetBgBtn.addEventListener("click", () => {
-          if (bgColorInput) {
-            bgColorInput.value = "#f2f2f7";
-          }
-          applyBackground("");
-          saveAppearanceSettings({ backgroundColor: "" });
-        });
-      }
 
       if (logoInput) {
         logoInput.addEventListener("change", () => {
@@ -3465,12 +3245,6 @@ if ("serviceWorker" in navigator) {
             if (data && data.siteLogo !== undefined) {
               applySiteLogo(data.siteLogo || "");
             }
-            if (data && data.backgroundColor !== undefined) {
-              if (bgColorInput && data.backgroundColor) {
-                bgColorInput.value = data.backgroundColor;
-              }
-              applyBackground(data.backgroundColor || "");
-            }
             if (data && data.iconScale !== undefined) {
               const value = Math.max(0, Math.min(100, Number(data.iconScale)));
               if (iconSizeInput) {
@@ -3478,38 +3252,6 @@ if ("serviceWorker" in navigator) {
               }
               applyIconScale(Number.isNaN(value) ? 100 : value);
             }
-            const lightTop = (data && data.topBarColorLight) || DEFAULT_LIGHT_BAR;
-            const lightDock = (data && data.dockColorLight) || DEFAULT_LIGHT_BAR;
-            const lightCategory = (data && data.categoryBarColorLight) || DEFAULT_LIGHT_BAR;
-            const darkTop = (data && data.topBarColorDark) || DEFAULT_DARK_BAR;
-            const darkDock = (data && data.dockColorDark) || DEFAULT_DARK_BAR;
-            const darkCategory = (data && data.categoryBarColorDark) || DEFAULT_DARK_BAR;
-            if (lightTopBarColorInput) {
-              lightTopBarColorInput.value = colorToHex(lightTop, DEFAULT_LIGHT_BAR);
-            }
-            if (lightDockColorInput) {
-              lightDockColorInput.value = colorToHex(lightDock, DEFAULT_LIGHT_BAR);
-            }
-            if (lightCategoryBarColorInput) {
-              lightCategoryBarColorInput.value = colorToHex(lightCategory, DEFAULT_LIGHT_BAR);
-            }
-            if (darkTopBarColorInput) {
-              darkTopBarColorInput.value = colorToHex(darkTop, DEFAULT_DARK_BAR);
-            }
-            if (darkDockColorInput) {
-              darkDockColorInput.value = colorToHex(darkDock, DEFAULT_DARK_BAR);
-            }
-            if (darkCategoryBarColorInput) {
-              darkCategoryBarColorInput.value = colorToHex(darkCategory, DEFAULT_DARK_BAR);
-            }
-            applyBarColors({
-              lightTopBar: lightTop,
-              lightDock,
-              lightCategory,
-              darkTopBar: darkTop,
-              darkDock,
-              darkCategory
-            });
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);
             }
@@ -3553,7 +3295,6 @@ if ("serviceWorker" in navigator) {
           });
       }
       applyFontSettings();
-      updateThemeButton();
       initMobilePosition();
       initDockFisheye();
       initCategoryFisheye();

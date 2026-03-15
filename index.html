@@ -6,24 +6,6 @@
     <title>我的 iOS 风格导航</title>
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#f2f2f7" />
-    <script>
-      (function () {
-        try {
-          const saved = localStorage.getItem("theme");
-          const hour = new Date().getHours();
-          const prefersDark =
-            window.matchMedia &&
-            window.matchMedia("(prefers-color-scheme: dark)").matches;
-          const autoDark = hour >= 18 || hour < 6 || prefersDark;
-          const shouldDark = saved ? saved === "dark" : autoDark;
-          if (shouldDark) {
-            document.documentElement.classList.add("dark");
-          } else {
-            document.documentElement.classList.remove("dark");
-          }
-        } catch (err) {}
-      })();
-    </script>
     <link rel="stylesheet" href="/tw-lite.css" />
     <link rel="stylesheet" href="/app.css" />
   </head>
@@ -34,6 +16,8 @@
       <span class="glow g3"></span>
       <span class="glow g4"></span>
       <span class="glow g5"></span>
+      <span class="glow g6"></span>
+      <span class="glow g7"></span>
     </div>
     <div id="editToolbar" class="edit-toolbar">
       <span id="editStatusLabel" class="text-slate-900 dark:text-white font-medium">正在编辑...</span>
@@ -155,23 +139,6 @@
               d="M17 9h-7V7a2 2 0 1 1 4 0 1 1 0 0 0 2 0 4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2Z"
             />
           </svg>
-        </button>
-        <button
-          class="theme-toggle flex items-center justify-center flex-shrink-0 bg-white/60 dark:bg-black/60 backdrop-blur-lg rounded-full border border-white/20 w-12 h-12 transition-all hover:scale-105 active:scale-95 transform"
-          id="themeToggle"
-          aria-label="切换日夜模式"
-          aria-pressed="false"
-        >
-        <svg class="sun" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-4.5a1 1 0 0 1 1 1V5a1 1 0 1 1-2 0V3.5a1 1 0 0 1 1-1Zm0 15.5a1 1 0 0 1 1 1V21a1 1 0 1 1-2 0v-2a1 1 0 0 1 1-1Zm8.5-6a1 1 0 0 1-1 1H19a1 1 0 1 1 0-2h1.5a1 1 0 0 1 1 1ZM5 12a1 1 0 0 1-1 1H2.5a1 1 0 1 1 0-2H4a1 1 0 0 1 1 1Zm11.95-6.45a1 1 0 0 1 1.41 0l1.06 1.06a1 1 0 1 1-1.41 1.41l-1.06-1.06a1 1 0 0 1 0-1.41ZM5.58 17.82a1 1 0 0 1 1.41 0l1.06 1.06a1 1 0 0 1-1.41 1.41l-1.06-1.06a1 1 0 0 1 0-1.41Zm12.84 1.06a1 1 0 0 1-1.41 0l-1.06-1.06a1 1 0 1 1 1.41-1.41l1.06 1.06a1 1 0 0 1 0 1.41ZM7.05 6.64a1 1 0 0 1-1.41 0L4.58 5.58a1 1 0 1 1 1.41-1.41l1.06 1.06a1 1 0 0 1 0 1.41Z"
-          />
-        </svg>
-        <svg class="moon" viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M20.5 15.5A8.5 8.5 0 0 1 8.5 3.5a.5.5 0 0 1 .7.6 7 7 0 1 0 9.7 9.7.5.5 0 0 1 .6.7Z"
-          />
-        </svg>
         </button>
         <div id="avatarWrap" class="relative flex-shrink-0 hidden">
           <button
@@ -375,56 +342,6 @@
               type="file"
               accept="image/*"
             />
-          </div>
-          <div class="field">
-            <label for="bgColorInput" class="text-slate-800 dark:text-slate-100">背景颜色</label>
-            <input id="bgColorInput" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-            <div class="mt-2 flex gap-2">
-              <button
-                type="button"
-                class="btn bg-blue-600 text-white border border-blue-600/60"
-                id="saveBgBtn"
-              >保存背景</button>
-              <button
-                type="button"
-                class="btn bg-slate-100 text-slate-700 border border-slate-200"
-                id="resetBgBtn"
-              >恢复默认</button>
-            </div>
-          </div>
-          <div class="field">
-            <label class="text-slate-800 dark:text-slate-100">栏位颜色（亮模式）</label>
-            <div class="grid gap-2 sm:grid-cols-3">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">顶部栏</span>
-                <input id="lightTopBarColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">Dock 栏</span>
-                <input id="lightDockColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">分类栏</span>
-                <input id="lightCategoryBarColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-            </div>
-          </div>
-          <div class="field">
-            <label class="text-slate-800 dark:text-slate-100">栏位颜色（暗模式）</label>
-            <div class="grid gap-2 sm:grid-cols-3">
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">顶部栏</span>
-                <input id="darkTopBarColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">Dock 栏</span>
-                <input id="darkDockColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <span class="text-slate-700 dark:text-slate-200 text-sm">分类栏</span>
-                <input id="darkCategoryBarColor" class="h-10 w-24 rounded-lg border border-slate-300 dark:border-gray-600" type="color" />
-              </div>
-            </div>
           </div>
         </div>
         <div class="settings-row">
