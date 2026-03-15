@@ -1,36 +1,37 @@
 :root {
-        --bg-a: #ffffff;
-        --bg-b: #f6f8fc;
-        --card: rgba(255, 255, 255, 0.62);
-        --text: #121418;
-        --muted: #5e6775;
-        --dock: rgba(255, 255, 255, 0.48);
-        --dock-border: rgba(255, 255, 255, 0.35);
-        --shadow-1: 0 6px 16px rgba(15, 23, 42, 0.12),
-          0 1px 2px rgba(15, 23, 42, 0.08);
-        --shadow-2: 0 10px 24px rgba(15, 23, 42, 0.16),
-          0 2px 6px rgba(15, 23, 42, 0.1);
-        --shadow-3: 0 16px 32px rgba(15, 23, 42, 0.2),
-          0 4px 10px rgba(15, 23, 42, 0.12);
+        --bg-a: #f2f2f7;
+        --bg-b: #f2f2f7;
+        --card: rgba(255, 255, 255, 0.8);
+        --text: #000000;
+        --muted: rgba(60, 60, 67, 0.6);
+        --dock: rgba(249, 249, 249, 0.7);
+        --dock-border: rgba(0, 0, 0, 0.06);
+        --card-border: rgba(0, 0, 0, 0.04);
+        --accent: #007aff;
+        --shadow-1: 0 8px 20px rgba(0, 0, 0, 0.05);
+        --shadow-2: 0 12px 28px rgba(0, 0, 0, 0.06);
+        --shadow-3: 0 16px 36px rgba(0, 0, 0, 0.08);
         --shadow: var(--shadow-1);
         --radius: 22px;
         --base-size: 15px;
         --label-weight: 600;
         --title-weight: 700;
-        --dynamic-text: #0f172a;
-        --dynamic-placeholder: #64748b;
+        --dynamic-text: var(--text);
+        --dynamic-placeholder: rgba(60, 60, 67, 0.45);
       }
       html.dark {
-        --bg-a: #121622;
-        --bg-b: #171e2a;
-        --card: rgba(18, 28, 44, 0.7);
-        --text: #f4f7fb;
-        --muted: #b0b8c6;
-        --dock: rgba(26, 32, 42, 0.7);
-        --dock-border: rgba(255, 255, 255, 0.12);
-        --shadow-1: 0 6px 16px rgba(0, 0, 0, 0.38), 0 1px 2px rgba(0, 0, 0, 0.22);
-        --shadow-2: 0 12px 26px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.28);
-        --shadow-3: 0 18px 36px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.32);
+        --bg-a: #000000;
+        --bg-b: #000000;
+        --card: #1c1c1e;
+        --text: #ffffff;
+        --muted: rgba(235, 235, 245, 0.6);
+        --dock: rgba(28, 28, 30, 0.7);
+        --dock-border: #38383a;
+        --card-border: #38383a;
+        --accent: #0a84ff;
+        --shadow-1: 0 0 0 1px rgba(56, 56, 58, 0.6);
+        --shadow-2: 0 8px 20px rgba(0, 0, 0, 0.35);
+        --shadow-3: 0 12px 28px rgba(0, 0, 0, 0.45);
         --shadow: var(--shadow-1);
       }
       * {
@@ -46,11 +47,11 @@
         transition: background 0.35s ease, color 0.35s ease;
       }
       #iosBg {
-        background: linear-gradient(180deg, var(--bg-a), var(--bg-b));
+        background: var(--bg-a);
         overflow: hidden;
       }
       html.dark #iosBg {
-        background: linear-gradient(180deg, var(--bg-a), var(--bg-b));
+        background: var(--bg-a);
       }
       #iosBg .glow {
         position: absolute;
@@ -171,8 +172,8 @@
         max-width: 100%;
         border-radius: 18px;
         padding: 12px 12px;
-        box-shadow: none;
         background: var(--card);
+        border: 1px solid var(--card-border);
         display: flex;
         flex-direction: column;
         align-items: flex-start;
@@ -185,14 +186,14 @@
         overflow-x: visible !important;
         overflow-y: visible !important;
         padding-bottom: 14px !important;
-        backdrop-filter: blur(30px);
-        -webkit-backdrop-filter: blur(30px);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
       }
       .category-card.nav-active {
-        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.35), var(--shadow-2);
+        box-shadow: 0 0 0 2px rgba(0, 122, 255, 0.35), var(--shadow-2);
       }
       html.dark .category-card.nav-active {
-        box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.35), var(--shadow-2);
+        box-shadow: 0 0 0 2px rgba(10, 132, 255, 0.35), var(--shadow-2);
       }
       .view-card .grid {
         display: grid;
@@ -1005,11 +1006,11 @@
         max-width: 90vw;
         padding: 18px 24px;
         border-radius: 24px;
-        background: rgba(255, 255, 255, 0.4) !important;
-        border: 1px solid rgba(255, 255, 255, 0.24);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        box-shadow: 0 24px 50px rgba(15, 23, 42, 0.25);
+        background: var(--dock) !important;
+        border: 1px solid var(--dock-border);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        box-shadow: var(--shadow-2);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -1018,8 +1019,8 @@
         overflow: visible;
       }
       html.dark .dock {
-        background: rgba(20, 26, 36, 0.65) !important;
-        border-color: rgba(255, 255, 255, 0.16);
+        background: var(--dock) !important;
+        border-color: var(--dock-border);
       }
       .dock::-webkit-scrollbar {
         display: none;
@@ -1349,7 +1350,7 @@
         transition: background-color 0.35s ease, color 0.35s ease, box-shadow 0.35s ease;
       }
       .btn.primary {
-        background: #0a84ff;
+        background: var(--accent);
         color: #ffffff;
       }
       .theme-toggle {
@@ -1374,10 +1375,10 @@
         transform: scale(0.7);
       }
       .ios-bg {
-        background: #ffffff;
+        background: var(--bg-a);
       }
       html.dark .ios-bg {
-        background: #111722;
+        background: var(--bg-a);
       }
       .header-logo,
       .site-title,
@@ -1403,23 +1404,23 @@
         align-items: center;
         justify-content: space-between;
         padding: 8px 24px;
-        background: rgba(213, 220, 232, 0.72);
-        backdrop-filter: blur(18px);
-        -webkit-backdrop-filter: blur(18px);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+        background: var(--dock);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid var(--dock-border);
       }
       html.dark .site-header {
-        background: rgba(20, 26, 36, 0.7);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+        background: var(--dock);
+        border-bottom: 1px solid var(--dock-border);
       }
       .nav-header-bg {
-        background: rgba(213, 220, 232, 0.72);
+        background: var(--dock);
       }
       html.dark .nav-header-bg {
-        background: rgba(20, 26, 36, 0.7);
+        background: var(--dock);
       }
       #top-controls button {
-        color: #0f172a;
+        color: var(--text);
       }
       #top-controls {
         align-items: center;
@@ -1427,8 +1428,8 @@
       #top-controls button span,
       #top-controls button svg,
       #avatarText {
-        color: #0f172a !important;
-        filter: drop-shadow(0 1px 4px rgba(15, 23, 42, 0.25));
+        color: var(--text) !important;
+        filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.12));
       }
       #top-controls .theme-toggle .sun {
         color: #facc15 !important;
@@ -1497,13 +1498,13 @@
         filter: none;
       }
       html.dark #top-controls button {
-        color: #e2e8f0;
+        color: var(--text);
       }
       html.dark #top-controls button span,
       html.dark #top-controls button svg,
       html.dark #avatarText {
-        color: #f8fafc !important;
-        filter: drop-shadow(0 1px 4px rgba(255, 255, 255, 0.25));
+        color: var(--text) !important;
+        filter: drop-shadow(0 1px 4px rgba(255, 255, 255, 0.18));
       }
       html.dark #top-controls button:hover {
         color: #ffffff;
@@ -1574,23 +1575,23 @@
       .site-title {
         font-size: calc(var(--base-size) * 1.35);
         font-weight: var(--title-weight);
-        color: #0f172a;
-        text-shadow: 0 2px 10px rgba(15, 23, 42, 0.22);
+        color: var(--text);
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
       html.dark .site-title {
-        color: #f8fafc;
+        color: var(--text);
         text-shadow: 0 2px 12px rgba(0, 0, 0, 0.35);
       }
       .site-slogan {
         font-size: calc(var(--base-size) * 0.75);
-        color: #5f6b7c;
+        color: var(--muted);
         white-space: nowrap;
       }
       html.dark .site-slogan {
-        color: #c0c8d6;
+        color: var(--muted);
       }
       .mode-control {
         position: absolute;
@@ -1601,7 +1602,7 @@
         gap: 6px;
         padding: 6px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, 0.6);
+        background: rgba(255, 255, 255, 0.65);
         backdrop-filter: blur(16px);
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.3);
@@ -1621,8 +1622,8 @@
         pointer-events: auto;
       }
       html.dark .mode-control {
-        background: rgba(15, 23, 42, 0.6);
-        border-color: rgba(255, 255, 255, 0.12);
+        background: rgba(28, 28, 30, 0.75);
+        border-color: var(--dock-border);
       }
       .mode-btn {
         border: none;
@@ -1639,12 +1640,12 @@
         color: #f1f5f9 !important;
       }
       .mode-btn.active {
-        background: rgba(37, 99, 235, 0.35);
+        background: var(--accent);
         color: #ffffff;
         text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
       }
       html.dark .mode-btn.active {
-        background: rgba(37, 99, 235, 0.4);
+        background: var(--accent);
         color: #ffffff;
       }
       @media (max-width: 640px) {
@@ -1691,16 +1692,18 @@
         display: none;
       }
       #categoryNav {
-        background-color: rgba(213, 220, 232, 0.72) !important;
-        border: 1px solid rgba(255, 255, 255, 0.32);
+        background-color: var(--dock) !important;
+        border: 1px solid var(--dock-border);
         display: flex;
         align-items: center;
         gap: 10px;
         padding: 12px 18px;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
       }
       html.dark #categoryNav {
-        background-color: rgba(20, 26, 36, 0.7) !important;
-        border-color: rgba(255, 255, 255, 0.16);
+        background-color: var(--dock) !important;
+        border-color: var(--dock-border);
       }
       #categoryNav {
         scrollbar-width: none;
@@ -1717,13 +1720,13 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid rgba(15, 23, 42, 0.12);
+        border: 1px solid rgba(60, 60, 67, 0.2);
         padding: 6px 16px;
         border-radius: 999px;
         font-size: 14px;
         font-weight: 500;
-        color: #334155;
-        background: rgba(255, 255, 255, 0.4);
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.7);
         cursor: pointer;
         position: relative;
         z-index: 1;
@@ -1733,32 +1736,32 @@
         flex-shrink: 0;
       }
       .category-pill:hover {
-        background: rgba(255, 255, 255, 0.75);
+        background: rgba(255, 255, 255, 0.9);
         transform: scale(1.25);
         z-index: 50;
-        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
-        color: #111827;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
+        color: #000000;
       }
       .category-pill.active {
-        background: rgba(15, 23, 42, 0.9);
+        background: var(--accent);
         color: #ffffff;
         border-color: transparent;
-        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.2);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.16);
       }
       html.dark .category-pill {
-        color: #e5e7eb;
-        border-color: rgba(148, 163, 184, 0.35);
-        background: rgba(255, 255, 255, 0.08);
+        color: var(--muted);
+        border-color: var(--dock-border);
+        background: rgba(28, 28, 30, 0.75);
       }
       html.dark .category-pill:hover {
-        background: rgba(255, 255, 255, 0.16);
+        background: rgba(40, 40, 44, 0.85);
         color: #ffffff;
       }
       html.dark .category-pill.active {
-        background: rgba(255, 255, 255, 0.92);
-        color: #0f172a;
+        background: var(--accent);
+        color: #ffffff;
         border-color: transparent;
-        box-shadow: 0 8px 16px rgba(15, 23, 42, 0.35);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35);
       }
       .page-intro {
         padding-left: 24px;
