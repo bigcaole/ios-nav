@@ -4,9 +4,11 @@
         --card: rgba(255, 255, 255, 0.8);
         --text: #000000;
         --muted: rgba(60, 60, 67, 0.6);
-        --top-bar: rgba(248, 248, 252, 0.82);
-        --dock: rgba(248, 248, 252, 0.8);
-        --category-bar: rgba(248, 248, 252, 0.78);
+        --top-bar: rgba(245, 246, 249, 0.72);
+        --dock: rgba(245, 246, 249, 0.72);
+        --category-bar: rgba(245, 246, 249, 0.7);
+        --bar-button: rgba(244, 245, 248, 0.55);
+        --bar-button-border: rgba(255, 255, 255, 0.32);
         --dock-border: rgba(0, 0, 0, 0.06);
         --card-border: rgba(0, 0, 0, 0.04);
         --accent: #007aff;
@@ -29,9 +31,11 @@
         --card: rgba(255, 255, 255, 0.8);
         --text: #000000;
         --muted: rgba(60, 60, 67, 0.6);
-        --top-bar: rgba(248, 248, 252, 0.82);
-        --dock: rgba(248, 248, 252, 0.8);
-        --category-bar: rgba(248, 248, 252, 0.78);
+        --top-bar: rgba(245, 246, 249, 0.72);
+        --dock: rgba(245, 246, 249, 0.72);
+        --category-bar: rgba(245, 246, 249, 0.7);
+        --bar-button: rgba(244, 245, 248, 0.55);
+        --bar-button-border: rgba(255, 255, 255, 0.32);
         --dock-border: rgba(0, 0, 0, 0.06);
         --card-border: rgba(0, 0, 0, 0.04);
         --accent: #007aff;
@@ -1476,6 +1480,14 @@
       #top-controls button {
         color: var(--text);
       }
+      #top-controls button,
+      #menuToggle,
+      #controlGroup button,
+      #avatarBtn {
+        background: var(--bar-button) !important;
+        border-color: var(--bar-button-border) !important;
+        box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+      }
       #top-controls {
         align-items: center;
       }
@@ -1748,6 +1760,7 @@
       #categoryNav {
         background-color: var(--category-bar) !important;
         border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
         display: flex;
         align-items: center;
         gap: 10px;
@@ -1780,7 +1793,7 @@
         font-size: 14px;
         font-weight: 500;
         color: var(--muted);
-        background: rgba(255, 255, 255, 0.7);
+        background: rgba(244, 245, 248, 0.6);
         cursor: pointer;
         position: relative;
         z-index: 1;
@@ -1790,7 +1803,7 @@
         flex-shrink: 0;
       }
       .category-pill:hover {
-        background: rgba(255, 255, 255, 0.9);
+        background: rgba(246, 247, 250, 0.78);
         transform: scale(1.25);
         z-index: 50;
         box-shadow: 0 12px 24px rgba(0, 0, 0, 0.12);
