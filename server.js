@@ -1048,6 +1048,12 @@ function normalizeSettings(settings, fallbackName) {
     siteName: safe.siteName || "我的 iOS 风格导航",
     siteLogo: safe.siteLogo || "",
     backgroundColor: safe.backgroundColor || "",
+    topBarColorLight: safe.topBarColorLight || "",
+    dockColorLight: safe.dockColorLight || "",
+    categoryBarColorLight: safe.categoryBarColorLight || "",
+    topBarColorDark: safe.topBarColorDark || "",
+    dockColorDark: safe.dockColorDark || "",
+    categoryBarColorDark: safe.categoryBarColorDark || "",
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
@@ -1788,10 +1794,32 @@ app.get("/api/settings", async (req, res) => {
 });
 
 app.put("/api/settings", requireAuth, async (req, res) => {
-  const { siteName, backgroundColor, userName, iconScale, userTotpEnabled } = req.body || {};
+  const {
+    siteName,
+    backgroundColor,
+    topBarColorLight,
+    dockColorLight,
+    categoryBarColorLight,
+    topBarColorDark,
+    dockColorDark,
+    categoryBarColorDark,
+    userName,
+    iconScale,
+    userTotpEnabled
+  } = req.body || {};
   const updates = {};
   if (siteName !== undefined) updates.siteName = String(siteName);
   if (backgroundColor !== undefined) updates.backgroundColor = String(backgroundColor);
+  if (topBarColorLight !== undefined) updates.topBarColorLight = String(topBarColorLight);
+  if (dockColorLight !== undefined) updates.dockColorLight = String(dockColorLight);
+  if (categoryBarColorLight !== undefined) {
+    updates.categoryBarColorLight = String(categoryBarColorLight);
+  }
+  if (topBarColorDark !== undefined) updates.topBarColorDark = String(topBarColorDark);
+  if (dockColorDark !== undefined) updates.dockColorDark = String(dockColorDark);
+  if (categoryBarColorDark !== undefined) {
+    updates.categoryBarColorDark = String(categoryBarColorDark);
+  }
   if (iconScale !== undefined) {
     const scale = Math.max(0, Math.min(100, Number(iconScale)));
     if (!Number.isNaN(scale)) updates.iconScale = scale;

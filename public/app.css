@@ -4,7 +4,12 @@
         --card: rgba(255, 255, 255, 0.8);
         --text: #000000;
         --muted: rgba(60, 60, 67, 0.6);
-        --dock: rgba(249, 249, 249, 0.7);
+        --top-bar-light: rgba(249, 249, 249, 0.7);
+        --dock-light: rgba(249, 249, 249, 0.7);
+        --category-bar-light: rgba(249, 249, 249, 0.7);
+        --top-bar: var(--top-bar-light);
+        --dock: var(--dock-light);
+        --category-bar: var(--category-bar-light);
         --dock-border: rgba(0, 0, 0, 0.06);
         --card-border: rgba(0, 0, 0, 0.04);
         --accent: #007aff;
@@ -25,7 +30,12 @@
         --card: #1c1c1e;
         --text: #ffffff;
         --muted: rgba(235, 235, 245, 0.6);
-        --dock: rgba(28, 28, 30, 0.7);
+        --top-bar-dark: rgba(28, 28, 30, 0.7);
+        --dock-dark: rgba(28, 28, 30, 0.7);
+        --category-bar-dark: rgba(28, 28, 30, 0.7);
+        --top-bar: var(--top-bar-dark);
+        --dock: var(--dock-dark);
+        --category-bar: var(--category-bar-dark);
         --dock-border: #38383a;
         --card-border: #38383a;
         --accent: #0a84ff;
@@ -1404,20 +1414,20 @@
         align-items: center;
         justify-content: space-between;
         padding: 8px 24px;
-        background: var(--dock);
+        background: var(--top-bar);
         backdrop-filter: blur(20px);
         -webkit-backdrop-filter: blur(20px);
         border-bottom: 1px solid var(--dock-border);
       }
       html.dark .site-header {
-        background: var(--dock);
+        background: var(--top-bar);
         border-bottom: 1px solid var(--dock-border);
       }
       .nav-header-bg {
-        background: var(--dock);
+        background: var(--top-bar);
       }
       html.dark .nav-header-bg {
-        background: var(--dock);
+        background: var(--top-bar);
       }
       #top-controls button {
         color: var(--text);
@@ -1692,7 +1702,7 @@
         display: none;
       }
       #categoryNav {
-        background-color: var(--dock) !important;
+        background-color: var(--category-bar) !important;
         border: 1px solid var(--dock-border);
         display: flex;
         align-items: center;
@@ -1702,7 +1712,7 @@
         -webkit-backdrop-filter: blur(20px);
       }
       html.dark #categoryNav {
-        background-color: var(--dock) !important;
+        background-color: var(--category-bar) !important;
         border-color: var(--dock-border);
       }
       #categoryNav {

@@ -68,6 +68,12 @@ if ("serviceWorker" in navigator) {
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
       const bgColorInput = document.querySelector("#bgColorInput");
+      const lightTopBarColorInput = document.querySelector("#lightTopBarColor");
+      const lightDockColorInput = document.querySelector("#lightDockColor");
+      const lightCategoryBarColorInput = document.querySelector("#lightCategoryBarColor");
+      const darkTopBarColorInput = document.querySelector("#darkTopBarColor");
+      const darkDockColorInput = document.querySelector("#darkDockColor");
+      const darkCategoryBarColorInput = document.querySelector("#darkCategoryBarColor");
       const saveBgBtn = document.querySelector("#saveBgBtn");
       const resetBgBtn = document.querySelector("#resetBgBtn");
       const fontSizeInput = document.querySelector("#fontSizeInput");
@@ -92,6 +98,10 @@ if ("serviceWorker" in navigator) {
       let currentProtocol = "https://";
       let isAdmin = false;
       let registerOpenUntil = null;
+      const DEFAULT_LIGHT_BAR = "#f9f9f9";
+      const DEFAULT_DARK_BAR = "#1c1c1e";
+      const BAR_ALPHA_LIGHT = 0.7;
+      const BAR_ALPHA_DARK = 0.7;
       const publicUsername = (() => {
         try {
           const params = new URLSearchParams(window.location.search);
@@ -572,6 +582,18 @@ if ("serviceWorker" in navigator) {
           iconEl.textContent = pickInitial(title, url);
         }
 
+        function isGenericPlaceholder(src, width, height) {
+          const source = String(src || "").toLowerCase();
+          if (!source) return false;
+          const fromProxy =
+            source.includes("google.com/s2/favicons") ||
+            source.includes("gstatic.com/faviconv2") ||
+            source.includes("icon.horse");
+          if (!fromProxy) return false;
+          const size = Math.max(width || 0, height || 0);
+          return size > 0 && size <= 24;
+        }
+
         const img = document.createElement("img");
         img.className =
           "w-full h-full object-cover rounded-2xl transition-transform duration-300 hover:scale-110 transform";
@@ -627,6 +649,11 @@ if ("serviceWorker" in navigator) {
         img.alt = "";
         img.onerror = () => {
           loadNext();
+        };
+        img.onload = () => {
+          if (isGenericPlaceholder(img.src, img.naturalWidth, img.naturalHeight)) {
+            loadNext();
+          }
         };
         iconEl.innerHTML = "";
         iconEl.appendChild(img);
@@ -2121,6 +2148,92 @@ if ("serviceWorker" in navigator) {
         }
       }
 
+      function hexToRgba(hex, alpha) {
+        const raw = String(hex || "").trim();
+        if (!raw.startsWith("#")) return "";
+        let r = 0;
+        let g = 0;
+        let b = 0;
+        if (raw.length === 4) {
+          r = parseInt(raw[1] + raw[1], 16);
+          g = parseInt(raw[2] + raw[2], 16);
+          b = parseInt(raw[3] + raw[3], 16);
+        } else if (raw.length === 7) {
+          r = parseInt(raw.slice(1, 3), 16);
+          g = parseInt(raw.slice(3, 5), 16);
+          b = parseInt(raw.slice(5, 7), 16);
+        } else {
+          return "";
+        }
+        const safeAlpha = Number.isFinite(alpha) ? Math.min(1, Math.max(0, alpha)) : 1;
+        return `rgba(${r}, ${g}, ${b}, ${safeAlpha})`;
+      }
+
+      function colorToHex(value, fallback) {
+        const raw = String(value || "").trim();
+        if (!raw) return fallback || "";
+        if (raw.startsWith("#")) return raw;
+        const match = raw.match(/rgba?\((\d+)[, ]+(\d+)[, ]+(\d+)/i);
+        if (!match) return fallback || "";
+        const toHex = (num) => {
+          const next = Math.max(0, Math.min(255, Number(num)));
+          return next.toString(16).padStart(2, "0");
+        };
+        return `#${toHex(match[1])}${toHex(match[2])}${toHex(match[3])}`;
+      }
+
+      function toRgba(value, alpha) {
+        const raw = String(value || "").trim();
+        if (!raw) return "";
+        if (raw.startsWith("rgb")) return raw;
+        if (raw.startsWith("#")) {
+          return hexToRgba(raw, alpha);
+        }
+        return raw;
+      }
+
+      function applyBarColors(payload) {
+        const root = document.documentElement;
+        const lightTop = payload.lightTopBar || DEFAULT_LIGHT_BAR;
+        const lightDock = payload.lightDock || DEFAULT_LIGHT_BAR;
+        const lightCategory = payload.lightCategory || DEFAULT_LIGHT_BAR;
+        const darkTop = payload.darkTopBar || DEFAULT_DARK_BAR;
+        const darkDock = payload.darkDock || DEFAULT_DARK_BAR;
+        const darkCategory = payload.darkCategory || DEFAULT_DARK_BAR;
+        root.style.setProperty("--top-bar-light", toRgba(lightTop, BAR_ALPHA_LIGHT));
+        root.style.setProperty("--dock-light", toRgba(lightDock, BAR_ALPHA_LIGHT));
+        root.style.setProperty("--category-bar-light", toRgba(lightCategory, BAR_ALPHA_LIGHT));
+        root.style.setProperty("--top-bar-dark", toRgba(darkTop, BAR_ALPHA_DARK));
+        root.style.setProperty("--dock-dark", toRgba(darkDock, BAR_ALPHA_DARK));
+        root.style.setProperty("--category-bar-dark", toRgba(darkCategory, BAR_ALPHA_DARK));
+      }
+
+      function getBarColorPayloadFromInputs() {
+        return {
+          topBarColorLight: lightTopBarColorInput ? lightTopBarColorInput.value : undefined,
+          dockColorLight: lightDockColorInput ? lightDockColorInput.value : undefined,
+          categoryBarColorLight: lightCategoryBarColorInput
+            ? lightCategoryBarColorInput.value
+            : undefined,
+          topBarColorDark: darkTopBarColorInput ? darkTopBarColorInput.value : undefined,
+          dockColorDark: darkDockColorInput ? darkDockColorInput.value : undefined,
+          categoryBarColorDark: darkCategoryBarColorInput
+            ? darkCategoryBarColorInput.value
+            : undefined
+        };
+      }
+
+      function applyBarColorsFromInputs() {
+        applyBarColors({
+          lightTopBar: lightTopBarColorInput ? lightTopBarColorInput.value : "",
+          lightDock: lightDockColorInput ? lightDockColorInput.value : "",
+          lightCategory: lightCategoryBarColorInput ? lightCategoryBarColorInput.value : "",
+          darkTopBar: darkTopBarColorInput ? darkTopBarColorInput.value : "",
+          darkDock: darkDockColorInput ? darkDockColorInput.value : "",
+          darkCategory: darkCategoryBarColorInput ? darkCategoryBarColorInput.value : ""
+        });
+      }
+
       function applyViewMode(mode) {
         if (window.innerWidth < 768 && mode !== "card") {
           mode = "card";
@@ -3088,12 +3201,14 @@ if ("serviceWorker" in navigator) {
           const payload = {
             siteName: siteNameInput.value.trim()
           };
+          Object.assign(payload, getBarColorPayloadFromInputs());
           if (iconSizeInput) {
             payload.iconScale = iconSizeInput.value;
           }
           if (userTotpToggle) {
             payload.userTotpEnabled = userTotpToggle.checked;
           }
+          applyBarColorsFromInputs();
           saveAppearanceSettings(payload);
         });
       }
@@ -3112,6 +3227,24 @@ if ("serviceWorker" in navigator) {
           queueAppearanceSave({ backgroundColor: bgColorInput.value });
         });
       }
+
+      const barColorInputs = [
+        lightTopBarColorInput,
+        lightDockColorInput,
+        lightCategoryBarColorInput,
+        darkTopBarColorInput,
+        darkDockColorInput,
+        darkCategoryBarColorInput
+      ];
+      barColorInputs.forEach((input) => {
+        if (!input) return;
+        input.addEventListener("input", () => {
+          applyBarColorsFromInputs();
+        });
+        input.addEventListener("change", () => {
+          queueAppearanceSave(getBarColorPayloadFromInputs());
+        });
+      });
 
       if (saveBgBtn) {
         saveBgBtn.addEventListener("click", () => {
@@ -3345,6 +3478,38 @@ if ("serviceWorker" in navigator) {
               }
               applyIconScale(Number.isNaN(value) ? 100 : value);
             }
+            const lightTop = (data && data.topBarColorLight) || DEFAULT_LIGHT_BAR;
+            const lightDock = (data && data.dockColorLight) || DEFAULT_LIGHT_BAR;
+            const lightCategory = (data && data.categoryBarColorLight) || DEFAULT_LIGHT_BAR;
+            const darkTop = (data && data.topBarColorDark) || DEFAULT_DARK_BAR;
+            const darkDock = (data && data.dockColorDark) || DEFAULT_DARK_BAR;
+            const darkCategory = (data && data.categoryBarColorDark) || DEFAULT_DARK_BAR;
+            if (lightTopBarColorInput) {
+              lightTopBarColorInput.value = colorToHex(lightTop, DEFAULT_LIGHT_BAR);
+            }
+            if (lightDockColorInput) {
+              lightDockColorInput.value = colorToHex(lightDock, DEFAULT_LIGHT_BAR);
+            }
+            if (lightCategoryBarColorInput) {
+              lightCategoryBarColorInput.value = colorToHex(lightCategory, DEFAULT_LIGHT_BAR);
+            }
+            if (darkTopBarColorInput) {
+              darkTopBarColorInput.value = colorToHex(darkTop, DEFAULT_DARK_BAR);
+            }
+            if (darkDockColorInput) {
+              darkDockColorInput.value = colorToHex(darkDock, DEFAULT_DARK_BAR);
+            }
+            if (darkCategoryBarColorInput) {
+              darkCategoryBarColorInput.value = colorToHex(darkCategory, DEFAULT_DARK_BAR);
+            }
+            applyBarColors({
+              lightTopBar: lightTop,
+              lightDock,
+              lightCategory,
+              darkTopBar: darkTop,
+              darkDock,
+              darkCategory
+            });
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);
             }
