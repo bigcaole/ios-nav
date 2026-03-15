@@ -827,6 +827,11 @@ adminApp.use("/api", (req, res, next) => {
   next();
 });
 
+// Admin static assets (CSS/JS/icons) should be served on the admin port.
+adminApp.use("/public", express.static(path.join(__dirname, "public"), staticOptions));
+adminApp.use("/icons", express.static(path.join(__dirname, "public", "icons"), staticOptions));
+adminApp.use(express.static(path.join(__dirname, "public"), staticOptions));
+
 async function checkRegistrationAccess() {
   const result = await pool.query("SELECT COUNT(*)::int AS total FROM users");
   const total = result.rows[0] ? Number(result.rows[0].total) : 0;

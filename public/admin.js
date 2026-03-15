@@ -45,20 +45,34 @@ const loginCard = document.getElementById("loginCard");
         });
       }
 
+      function setLoggedOutState() {
+        adminName.textContent = "-";
+        loginCard.classList.remove("hidden");
+        totpCard.classList.add("hidden");
+        panelCard.classList.add("hidden");
+        totpField.classList.add("hidden");
+        loginTotp.value = "";
+        totpCode.value = "";
+      }
+
       async function checkAdminLogin() {
-        const res = await apiFetch("/api/admin/me");
-        const data = await res.json();
-        if (data.loggedIn) {
-          adminName.textContent = data.username || "管理员";
-          loginCard.classList.add("hidden");
-          totpCard.classList.add("hidden");
-          panelCard.classList.remove("hidden");
-          showSection("home");
-          await loadAll();
-        } else {
-          loginCard.classList.remove("hidden");
-          panelCard.classList.add("hidden");
+        try {
+          const res = await apiFetch("/api/admin/me");
+          const data = await res.json();
+          if (data.loggedIn) {
+            adminName.textContent = data.username || "管理员";
+            loginCard.classList.add("hidden");
+            totpCard.classList.add("hidden");
+            panelCard.classList.remove("hidden");
+            totpField.classList.add("hidden");
+            showSection("home");
+            await loadAll();
+            return;
+          }
+        } catch (err) {
+          showToast("无法连接管理员服务", "error");
         }
+        setLoggedOutState();
       }
 
       async function handleLogin() {
@@ -78,6 +92,8 @@ const loginCard = document.getElementById("loginCard");
           return;
         }
         if (data.totpRequired) {
+          totpCard.classList.add("hidden");
+          panelCard.classList.add("hidden");
           totpField.classList.remove("hidden");
           showToast("请输入二次验证码", "error");
           return;
@@ -85,6 +101,8 @@ const loginCard = document.getElementById("loginCard");
         if (data.setupRequired) {
           loginCard.classList.add("hidden");
           totpCard.classList.remove("hidden");
+          panelCard.classList.add("hidden");
+          totpField.classList.add("hidden");
           totpSecret.textContent = data.secret || "";
           totpQr.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
             data.otpauth || ""
@@ -111,8 +129,7 @@ const loginCard = document.getElementById("loginCard");
 
       async function handleLogout() {
         await apiFetch("/api/admin/logout", { method: "POST" });
-        loginCard.classList.remove("hidden");
-        panelCard.classList.add("hidden");
+        setLoggedOutState();
       }
 
       async function loadRegisterWindow() {
