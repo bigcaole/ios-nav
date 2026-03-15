@@ -868,7 +868,7 @@ if ("serviceWorker" in navigator) {
           }
           grid.innerHTML = "";
           const grouped = groupByCategory(normalLinks);
-          const gridGap = 18;
+          const gridGap = 22;
           const perRow = 3;
           const baseIconSize = 64;
           const safeScale = Math.max(0.6, iconScale);
@@ -911,7 +911,7 @@ if ("serviceWorker" in navigator) {
             innerGrid.style.gap = `${gridGap}px`;
             const items = grouped.groups[category];
             const gridWidth = perRow * iconSize + (perRow - 1) * gridGap;
-            const rowHeight = iconSize + 22;
+            const rowHeight = iconSize + 30;
             const visibleCount = Math.min(items.length, 9);
             const rows = Math.max(1, Math.ceil(visibleCount / perRow));
             const gridHeight = rows * rowHeight + (rows - 1) * gridGap;
