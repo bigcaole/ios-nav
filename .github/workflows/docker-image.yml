@@ -28,5 +28,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/bigcaole/mynavsite-pro:latest
-            ghcr.io/bigcaole/mynavsite-pro:${{ github.sha }}
+            ghcr.io/bigcaole/ios-nav:latest
+            ghcr.io/bigcaole/ios-nav:${{ github.sha }}

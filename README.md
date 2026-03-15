@@ -1,4 +1,4 @@
-# MyNavSite PRO
+# iOS Nav
 
 一款保持 iOS 风格交互体验的导航站点（桌面 + 移动端），支持分类、图标拖拽排序、Dock 快捷栏、私有分类、管理员后台与安全策略。
 
@@ -31,18 +31,18 @@ docker compose up -d --build
 
 ```bash
 docker run -d \
-  --name mynavsite-pro \
+  --name ios-nav \
   -p 3000:3000 -p 3001:3001 \
-  -e DATABASE_URL="postgresql://user:pass@host:5432/mynavsite" \
+  -e DATABASE_URL="postgresql://user:pass@host:5432/iosnav" \
   -e JWT_SECRET="replace-with-a-very-long-random-string" \
   -e ADMIN_USERNAME="admin" \
   -e ADMIN_PASSWORD="change-me-now" \
   -e ADMIN_PORT=3001 \
   -e PORT=3000 \
   -e NODE_ENV=production \
-  -v /data/mynavsite/uploads:/app/public/uploads \
-  -v /data/mynavsite/icons:/app/public/icons \
-  ghcr.io/bigcaole/mynavsite-pro:latest
+  -v /data/ios-nav/uploads:/app/public/uploads \
+  -v /data/ios-nav/icons:/app/public/icons \
+  ghcr.io/bigcaole/ios-nav:latest
 ```
 
 > 建议将 `uploads` 与 `icons` 做持久化挂载。
@@ -108,7 +108,3 @@ docker run -d \
 
 ## License
 Private / Internal
-
-<!-- workflow trigger: 2026-03-14T22:48:31Z -->
-
-<!-- workflow trigger: 2026-03-14T23:53:58Z -->
