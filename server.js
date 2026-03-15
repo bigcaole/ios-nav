@@ -1048,6 +1048,7 @@ function normalizeSettings(settings, fallbackName) {
     siteName: safe.siteName || "我的 iOS 风格导航",
     siteLogo: safe.siteLogo || "",
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
+    frostBlur: typeof safe.frostBlur === "number" ? safe.frostBlur : 50,
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
     userTotpEnabled: Boolean(safe.userTotpEnabled),
@@ -1231,8 +1232,8 @@ async function ensureAdminUser() {
         newAdminId,
         {
           siteName: "我的 iOS 风格导航",
-          backgroundColor: "",
           iconScale: 100,
+          frostBlur: 50,
           siteLogo: "",
           userName: safeUsername,
           userAvatar: ""
@@ -1791,6 +1792,7 @@ app.put("/api/settings", requireAuth, async (req, res) => {
     siteName,
     userName,
     iconScale,
+    frostBlur,
     userTotpEnabled
   } = req.body || {};
   const updates = {};
@@ -1798,6 +1800,10 @@ app.put("/api/settings", requireAuth, async (req, res) => {
   if (iconScale !== undefined) {
     const scale = Math.max(0, Math.min(100, Number(iconScale)));
     if (!Number.isNaN(scale)) updates.iconScale = scale;
+  }
+  if (frostBlur !== undefined) {
+    const blurValue = Math.max(0, Math.min(100, Number(frostBlur)));
+    if (!Number.isNaN(blurValue)) updates.frostBlur = blurValue;
   }
   if (userName !== undefined) {
     const safeUsername = String(userName).trim();

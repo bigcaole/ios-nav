@@ -69,6 +69,7 @@ if ("serviceWorker" in navigator) {
       const fontSizeInput = document.querySelector("#fontSizeInput");
       const boldToggle = document.querySelector("#boldToggle");
       const iconSizeInput = document.querySelector("#iconSizeInput");
+      const frostBlurInput = document.querySelector("#frostBlurInput");
       const userTotpToggle = document.querySelector("#userTotpToggle");
       const exportBtn = document.querySelector("#exportBtn");
       const importFile = document.querySelector("#importFile");
@@ -2154,6 +2155,9 @@ if ("serviceWorker" in navigator) {
             if (payload.iconScale !== undefined) {
               applyIconScale(payload.iconScale);
             }
+            if (payload.frostBlur !== undefined) {
+              applyFrostBlur(payload.frostBlur);
+            }
             showToast("保存成功");
           })
           .catch(() => {
@@ -2663,6 +2667,19 @@ if ("serviceWorker" in navigator) {
         renderLinks(allLinks);
       }
 
+      function applyFrostBlur(value) {
+        const clarity = Math.max(0, Math.min(100, Number(value)));
+        if (Number.isNaN(clarity)) return;
+        const maxBlur = 60;
+        const minBlur = 6;
+        const blur = maxBlur - (clarity / 100) * (maxBlur - minBlur);
+        const minOpacity = 0.14;
+        const maxOpacity = 0.32;
+        const opacity = maxOpacity - (clarity / 100) * (maxOpacity - minOpacity);
+        document.documentElement.style.setProperty("--frost-blur", `${blur.toFixed(1)}px`);
+        document.documentElement.style.setProperty("--frost-opacity", opacity.toFixed(2));
+      }
+
       function initMobilePosition() {}
 
       if (menuToggle && controlGroup) {
@@ -3025,6 +3042,9 @@ if ("serviceWorker" in navigator) {
           if (iconSizeInput) {
             payload.iconScale = iconSizeInput.value;
           }
+          if (frostBlurInput) {
+            payload.frostBlur = frostBlurInput.value;
+          }
           if (userTotpToggle) {
             payload.userTotpEnabled = userTotpToggle.checked;
           }
@@ -3072,6 +3092,12 @@ if ("serviceWorker" in navigator) {
         iconSizeInput.addEventListener("input", () => {
           applyIconScale(iconSizeInput.value);
           queueAppearanceSave({ iconScale: iconSizeInput.value });
+        });
+      }
+      if (frostBlurInput) {
+        frostBlurInput.addEventListener("input", () => {
+          applyFrostBlur(frostBlurInput.value);
+          queueAppearanceSave({ frostBlur: frostBlurInput.value });
         });
       }
 
@@ -3248,6 +3274,14 @@ if ("serviceWorker" in navigator) {
                 iconSizeInput.value = Number.isNaN(value) ? 100 : String(value);
               }
               applyIconScale(Number.isNaN(value) ? 100 : value);
+            }
+            if (data && data.frostBlur !== undefined) {
+              const value = Math.max(0, Math.min(100, Number(data.frostBlur)));
+              const safeValue = Number.isNaN(value) ? 50 : value;
+              if (frostBlurInput) {
+                frostBlurInput.value = String(safeValue);
+              }
+              applyFrostBlur(safeValue);
             }
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);
