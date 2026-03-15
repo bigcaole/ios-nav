@@ -1629,15 +1629,15 @@ if ("serviceWorker" in navigator) {
           const rect = dockGrid.getBoundingClientRect();
           console.log("Dock grid rect:", rect.width, rect.height);
           const dockSortable = new Sortable(dockGrid, {
-            animation: 260,
+            animation: 180,
             draggable: ".dock-item",
             group: { name: "shared", pull: true, put: true },
             sort: true,
             filter: ".edit-badge, .delete-badge, .lock, .dock-tooltip, .icon-label-capsule, .rename-input",
             preventOnFilter: false,
-            forceFallback: true,
-            fallbackOnBody: true,
-            fallbackTolerance: 4,
+            forceFallback: false,
+            fallbackOnBody: false,
+            fallbackTolerance: 0,
             fallbackClass: "sortable-fallback",
             delay: 0,
             delayOnTouchOnly: true,
@@ -1645,9 +1645,7 @@ if ("serviceWorker" in navigator) {
             dragoverBubble: false,
             invertSwap: false,
             direction: "horizontal",
-            scroll: true,
-            scrollSensitivity: 80,
-            scrollSpeed: 12,
+            scroll: false,
             swap: false,
             swapThreshold: 0.6,
             easing: "cubic-bezier(0.2, 0.8, 0.2, 1)",
@@ -2670,14 +2668,23 @@ if ("serviceWorker" in navigator) {
       function applyFrostBlur(value) {
         const clarity = Math.max(0, Math.min(100, Number(value)));
         if (Number.isNaN(clarity)) return;
-        const maxBlur = 60;
-        const minBlur = 6;
+        const maxBlur = 90;
+        const minBlur = 0;
         const blur = maxBlur - (clarity / 100) * (maxBlur - minBlur);
-        const minOpacity = 0.14;
-        const maxOpacity = 0.32;
+        const minOpacity = 0.08;
+        const maxOpacity = 0.45;
         const opacity = maxOpacity - (clarity / 100) * (maxOpacity - minOpacity);
+        const maxGlowBlur = 180;
+        const minGlowBlur = 70;
+        const glowBlur = maxGlowBlur - (clarity / 100) * (maxGlowBlur - minGlowBlur);
+        const minGlowOpacity = 0.55;
+        const maxGlowOpacity = 1;
+        const glowOpacity =
+          minGlowOpacity + (clarity / 100) * (maxGlowOpacity - minGlowOpacity);
         document.documentElement.style.setProperty("--frost-blur", `${blur.toFixed(1)}px`);
         document.documentElement.style.setProperty("--frost-opacity", opacity.toFixed(2));
+        document.documentElement.style.setProperty("--glow-blur", `${glowBlur.toFixed(1)}px`);
+        document.documentElement.style.setProperty("--glow-opacity", glowOpacity.toFixed(2));
       }
 
       function initMobilePosition() {}
