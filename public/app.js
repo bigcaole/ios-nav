@@ -608,6 +608,8 @@ if ("serviceWorker" in navigator) {
         img.loading = "lazy";
         img.decoding = "async";
         img.referrerPolicy = "no-referrer";
+        img.style.opacity = "0";
+        img.style.transition = "opacity 0.2s ease";
         img.draggable = false;
         iconEl.classList.remove("icon-fallback");
         const candidates = [];
@@ -643,6 +645,9 @@ if ("serviceWorker" in navigator) {
         let idx = 0;
         const loadNext = () => {
           if (!candidates.length || idx >= candidates.length) {
+            if (img.parentNode) {
+              img.remove();
+            }
             return;
           }
           img.src = candidates[idx++];
@@ -661,9 +666,10 @@ if ("serviceWorker" in navigator) {
               iconCache.set(cacheKey, img.src);
             }
           } catch (err) {}
-          iconEl.innerHTML = "";
+          iconEl.textContent = "";
+          iconEl.style.background = "";
           iconEl.classList.remove("icon-fallback");
-          iconEl.appendChild(img);
+          img.style.opacity = "1";
           if (isPrivate) {
             const lock = document.createElement("div");
             lock.className = "lock";
@@ -675,11 +681,10 @@ if ("serviceWorker" in navigator) {
         fallbackToLetter();
         const cached = cacheKey ? iconCache.get(cacheKey) : null;
         if (cached) {
-          img.src = cached;
-        } else {
-          iconEl.appendChild(img);
-          loadNext();
+          candidates.unshift(cached);
         }
+        iconEl.appendChild(img);
+        loadNext();
       }
 
             function groupByCategory(links) {
