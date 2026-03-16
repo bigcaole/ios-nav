@@ -1561,8 +1561,8 @@ if ("serviceWorker" in navigator) {
 
           const categorySortable = new Sortable(grid, {
             animation: 250,
-            draggable: ".category-card:not(.category-empty)",
-            handle: ".category-drag-handle",
+            draggable: ".category-card:not(.category-empty):not(.category-add-card)",
+            handle: ".category-title, .category-drag-handle",
             forceFallback: true,
             fallbackOnBody: true,
             fallbackTolerance: 3,

@@ -1847,6 +1847,10 @@
       .mode-sort .category-drag-handle {
         cursor: grab;
       }
+      .mode-sort .category-title {
+        pointer-events: auto !important;
+        cursor: grab;
+      }
       .category-card.category-empty {
         display: none;
       }
