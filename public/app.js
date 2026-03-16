@@ -626,8 +626,6 @@ if ("serviceWorker" in navigator) {
         img.referrerPolicy = "no-referrer";
         img.style.opacity = "0";
         img.style.transition = "opacity 0.2s ease";
-        img.style.position = "absolute";
-        img.style.inset = "14%";
         img.style.pointerEvents = "none";
         img.draggable = false;
         iconEl.classList.remove("icon-fallback");
