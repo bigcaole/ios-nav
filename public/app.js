@@ -966,6 +966,8 @@ if ("serviceWorker" in navigator) {
               isCardView ? "category-card card-view" : "category-card";
             cardWrap.dataset.category = category;
             cardWrap.dataset.original = category;
+            cardWrap.dataset.fixedW = "";
+            cardWrap.dataset.fixedH = "";
             cardWrap.id = `category-${slugify(category)}`;
             if (grouped.privacy && grouped.privacy[category]) {
               cardWrap.dataset.private = "true";
@@ -1576,6 +1578,25 @@ if ("serviceWorker" in navigator) {
             cardsWithoutPos.push(card);
           }
         });
+        const lockCardSize = (card) => {
+          const rect = card.getBoundingClientRect();
+          const storedW = Number(card.dataset.fixedW);
+          const storedH = Number(card.dataset.fixedH);
+          if (!Number.isFinite(storedW) || storedW <= 0) {
+            card.dataset.fixedW = rect.width ? String(rect.width) : "";
+          }
+          if (!Number.isFinite(storedH) || storedH <= 0) {
+            card.dataset.fixedH = rect.height ? String(rect.height) : "";
+          }
+          const finalW = Number(card.dataset.fixedW);
+          const finalH = Number(card.dataset.fixedH);
+          if (Number.isFinite(finalW) && finalW > 0) {
+            card.style.width = `${finalW}px`;
+          }
+          if (Number.isFinite(finalH) && finalH > 0) {
+            card.style.height = `${finalH}px`;
+          }
+        };
         const placeCard = (card, posX, posY, snap) => {
           const rect = card.getBoundingClientRect();
           const size = { w: rect.width, h: rect.height };
@@ -1586,6 +1607,7 @@ if ("serviceWorker" in navigator) {
           card.style.left = `${state.paddingLeft + target.x}px`;
           card.style.top = `${state.paddingTop + target.y}px`;
           state.placed.push({ card, x: target.x, y: target.y, w: size.w, h: size.h });
+          lockCardSize(card);
         };
         cardsWithPos.forEach((card) => {
           const posX = Number(card.dataset.posX) || 0;
@@ -2245,7 +2267,13 @@ if ("serviceWorker" in navigator) {
             backupGroup.classList.toggle("hidden", !loggedIn);
           }
           if (!options.skipFetch) {
-            fetchLinks();
+            if (loggedIn) {
+              loadCategories()
+                .then(() => fetchLinks())
+                .catch(() => fetchLinks());
+            } else {
+              fetchLinks();
+            }
           }
         } catch (err) {}
       }
