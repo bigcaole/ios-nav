@@ -144,6 +144,7 @@ if ("serviceWorker" in navigator) {
         let pendingChanges = false;
         let sortUnlocked = false;
         let activeDeleteBubble = null;
+        let activeDeleteId = null;
         const dockLimit = 6;
         let dockFullWarned = false;
       let saveTimer = null;
@@ -889,8 +890,14 @@ if ("serviceWorker" in navigator) {
             }
 
             card.append(icon, label);
-            dockGrid.appendChild(card);
-          });
+          dockGrid.appendChild(card);
+        });
+          if (currentMode === "delete" && activeDeleteId) {
+            const target = dockGrid.querySelector(`.dock-item[data-id="${activeDeleteId}"]`);
+            if (target) {
+              showDeleteBubble(target, activeDeleteId);
+            }
+          }
           updateDockDragState();
 
           if (currentMode === "delete" && dockItems.length < dockLimit) {
@@ -2445,7 +2452,9 @@ if ("serviceWorker" in navigator) {
       function applySearch() {
         try {
           renderLinks(allLinks);
-          renderDockLinks(allLinks);
+          if (!(currentMode === "delete" && activeDeleteBubble)) {
+            renderDockLinks(allLinks);
+          }
         } catch (err) {
           console.log("No data found");
         }
@@ -2573,11 +2582,13 @@ if ("serviceWorker" in navigator) {
           activeDeleteBubble.remove();
           activeDeleteBubble = null;
         }
+        activeDeleteId = null;
       }
 
       function showDeleteBubble(card, id) {
         if (!card) return;
         closeDeleteBubble();
+        activeDeleteId = String(id || "");
         const bubble = document.createElement("div");
         bubble.className = "delete-bubble";
         bubble.innerHTML =
