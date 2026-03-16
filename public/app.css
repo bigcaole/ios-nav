@@ -59,6 +59,8 @@
         font-size: var(--base-size);
         transition: background 0.35s ease, color 0.35s ease;
         background: transparent;
+        overflow-y: scroll;
+        scrollbar-gutter: stable;
       }
       #iosBg {
         background: var(--bg-a);
@@ -524,12 +526,6 @@
       .mode-sort .app:hover .icon {
         transform: none !important;
         box-shadow: none !important;
-      }
-      body.mode-sort {
-        scrollbar-width: none;
-      }
-      body.mode-sort::-webkit-scrollbar {
-        display: none;
       }
       .mode-sort .category-grid {
         min-height: 50px;
