@@ -678,11 +678,24 @@ if ("serviceWorker" in navigator) {
             iconEl.appendChild(lock);
           }
         };
-        fallbackToLetter();
         const cached = cacheKey ? iconCache.get(cacheKey) : null;
         if (cached) {
-          candidates.unshift(cached);
+          iconEl.innerHTML = "";
+          iconEl.style.background = "";
+          iconEl.classList.remove("icon-fallback");
+          img.src = cached;
+          img.style.opacity = "1";
+          iconEl.appendChild(img);
+          if (isPrivate) {
+            const lock = document.createElement("div");
+            lock.className = "lock";
+            lock.innerHTML =
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
+            iconEl.appendChild(lock);
+          }
+          return;
         }
+        fallbackToLetter();
         iconEl.appendChild(img);
         loadNext();
       }
