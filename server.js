@@ -245,6 +245,25 @@ async function initDb() {
     )
   `);
   await pool.query(`
+    CREATE TABLE IF NOT EXISTS visitor_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      event_type TEXT NOT NULL,
+      link_id UUID,
+      link_title TEXT,
+      link_url TEXT,
+      category TEXT,
+      ip TEXT,
+      city TEXT,
+      region TEXT,
+      country TEXT,
+      user_agent TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
+  await pool.query("CREATE INDEX IF NOT EXISTS visitor_logs_user_id_idx ON visitor_logs (user_id)");
+  await pool.query("CREATE INDEX IF NOT EXISTS visitor_logs_created_idx ON visitor_logs (created_at DESC)");
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -468,6 +487,47 @@ function getClientIp(req) {
 function getDeviceFingerprint(req) {
   const ua = req.headers["user-agent"] || "";
   return String(ua).slice(0, 400);
+}
+
+function isPrivateIp(ip) {
+  if (!ip) return true;
+  const value = String(ip).toLowerCase();
+  if (value === "127.0.0.1" || value === "::1" || value.startsWith("fe80:")) return true;
+  if (value.startsWith("10.") || value.startsWith("192.168.")) return true;
+  if (value.startsWith("172.")) {
+    const seg = Number(value.split(".")[1]);
+    if (seg >= 16 && seg <= 31) return true;
+  }
+  if (value.startsWith("fc") || value.startsWith("fd")) return true;
+  return false;
+}
+
+const geoCache = new Map();
+async function resolveGeo(ip) {
+  if (!ip || isPrivateIp(ip)) return null;
+  const cached = geoCache.get(ip);
+  const now = Date.now();
+  if (cached && now - cached.ts < 12 * 60 * 60 * 1000) {
+    return cached.data;
+  }
+  try {
+    const res = await fetch(`https://ipapi.co/${encodeURIComponent(ip)}/json/`, {
+      headers: { "User-Agent": "MyNavSite" }
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const data = await res.json();
+    const payload = {
+      city: data.city || "",
+      region: data.region || data.region_code || "",
+      country: data.country_name || data.country || ""
+    };
+    geoCache.set(ip, { data: payload, ts: now });
+    return payload;
+  } catch (err) {
+    return null;
+  }
 }
 
 function isValidPublicUsername(value) {
@@ -2446,6 +2506,29 @@ adminApp.get("/api/admin/logs", requireAdmin, async (req, res) => {
   }
 });
 
+adminApp.get("/api/admin/visitors", requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(100, Math.max(10, Number(req.query.pageSize) || 10));
+    const offset = (page - 1) * pageSize;
+    const countResult = await pool.query("SELECT COUNT(*)::int AS total FROM visitor_logs");
+    const total = countResult.rows[0] ? Number(countResult.rows[0].total) : 0;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const result = await pool.query(
+      `SELECT v.id, v.user_id, u.username, v.event_type, v.link_id, v.link_title, v.link_url,
+              v.category, v.ip, v.city, v.region, v.country, v.user_agent, v.created_at
+       FROM visitor_logs v
+       LEFT JOIN users u ON u.id = v.user_id
+       ORDER BY v.created_at DESC
+       LIMIT $1 OFFSET $2`,
+      [pageSize, offset]
+    );
+    res.json({ items: result.rows, page, totalPages });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.post("/api/logout", (req, res) => {
   const secure = getSecureCookieFlag(req);
   res.setHeader(
@@ -2453,6 +2536,59 @@ app.post("/api/logout", (req, res) => {
     `token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; ${secure}`
   );
   res.json({ ok: true });
+});
+
+app.post("/api/visit/track", async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const eventType = payload.type === "click" ? "click" : "visit";
+    const linkId = payload.linkId ? String(payload.linkId) : null;
+    const title = payload.title ? String(payload.title).slice(0, 200) : null;
+    const linkUrl = payload.url ? String(payload.url).slice(0, 500) : null;
+    const category = payload.category ? String(payload.category).slice(0, 120) : null;
+    const viewUser = payload.viewUser ? String(payload.viewUser).trim() : "";
+    const authUser = req.authUser || (await getAuthUser(req));
+    let userId = authUser ? authUser.id : null;
+    if (!userId && linkId) {
+      const linkResult = await pool.query("SELECT user_id FROM links WHERE id = $1", [linkId]);
+      if (linkResult.rowCount) {
+        userId = linkResult.rows[0].user_id;
+      }
+    }
+    if (!userId && viewUser) {
+      const userResult = await pool.query("SELECT id FROM users WHERE username = $1", [viewUser]);
+      if (userResult.rowCount) {
+        userId = userResult.rows[0].id;
+      }
+    }
+    if (!userId) {
+      res.json({ ok: true, skipped: true });
+      return;
+    }
+    const ip = getClientIp(req);
+    const geo = await resolveGeo(ip);
+    const ua = getDeviceFingerprint(req);
+    await pool.query(
+      `INSERT INTO visitor_logs (user_id, event_type, link_id, link_title, link_url, category, ip, city, region, country, user_agent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        userId,
+        eventType,
+        linkId,
+        title,
+        linkUrl,
+        category,
+        ip || null,
+        geo ? geo.city : null,
+        geo ? geo.region : null,
+        geo ? geo.country : null,
+        ua || null
+      ]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 app.post("/api/auth/update-password", requireAuth, async (req, res) => {

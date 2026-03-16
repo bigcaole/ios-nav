@@ -91,6 +91,8 @@ if ("serviceWorker" in navigator) {
       let currentMode = "preview";
       let categoryLayoutState = null;
       let categoryDragState = null;
+      let currentUsername = "";
+      let visitorTracked = false;
       let currentProtocol = "https://";
       let isAdmin = false;
       let registerOpenUntil = null;
@@ -803,6 +805,15 @@ if ("serviceWorker" in navigator) {
             card.dataset.category = "";
             card.dataset.dock = "true";
             card.dataset.positionIndex = String(index);
+            card.addEventListener("click", () => {
+              if (currentMode !== "preview") return;
+              trackVisitorEvent("click", {
+                linkId: item.id,
+                title: item.title || "",
+                url: item.url,
+                category: item.category || ""
+              });
+            });
 
             const icon = document.createElement("div");
             icon.className =
@@ -1096,6 +1107,15 @@ if ("serviceWorker" in navigator) {
                 card.dataset.title = item.title || "";
                 card.dataset.originalTitle = item.title || "";
                 card.dataset.category = category;
+            card.addEventListener("click", () => {
+              if (currentMode !== "preview") return;
+              trackVisitorEvent("click", {
+                linkId: item.id,
+                title: item.title || "",
+                url: item.url,
+                category
+              });
+            });
 
                 const icon = document.createElement("div");
                 icon.className =
@@ -1877,6 +1897,9 @@ if ("serviceWorker" in navigator) {
                 allLinks = data;
                 renderLinks(allLinks);
                 renderDockLinks(allLinks);
+                if (currentMode === "preview") {
+                  trackVisitorEvent("visit");
+                }
               } else {
                 console.log("No data found");
                 renderLinks([]);
@@ -2307,6 +2330,35 @@ if ("serviceWorker" in navigator) {
             avatarText.classList.remove("hidden");
           }
         }
+      }
+
+      function trackVisitorEvent(type, payload = {}) {
+        const viewUser = publicUsername || currentUsername || "";
+        if (type === "visit" && visitorTracked) {
+          return;
+        }
+        const body = {
+          type,
+          viewUser,
+          ...payload
+        };
+        try {
+          const data = JSON.stringify(body);
+          if (navigator.sendBeacon) {
+            const blob = new Blob([data], { type: "application/json" });
+            navigator.sendBeacon("/api/visit/track", blob);
+          } else {
+            fetch("/api/visit/track", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: data,
+              keepalive: true
+            }).catch(() => {});
+          }
+          if (type === "visit") {
+            visitorTracked = true;
+          }
+        } catch (err) {}
       }
 
       function applySiteLogo(logoPath) {
@@ -3890,6 +3942,7 @@ if ("serviceWorker" in navigator) {
         applyVisitorModeUI();
         loadSettings(publicUsername);
         fetchLinks();
+        trackVisitorEvent("visit");
       } else {
         fetch("/api/me", { credentials: "include", cache: "no-store" })
           .then((res) => res.json())
@@ -3906,6 +3959,7 @@ if ("serviceWorker" in navigator) {
                 localStorage.setItem("lastUsername", data.userName);
               } catch (err) {}
             }
+            currentUsername = data.username || "";
             applyUserProfile(data.userName || "Admin", data.userAvatar || "");
             if (data && data.error === "blocked") {
               showToast(data.message || "\u4f60\u7684\u8bbf\u95ee\u5df2\u88ab\u9650\u5236\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458");

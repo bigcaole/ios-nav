@@ -19,6 +19,8 @@ const loginCard = document.getElementById("loginCard");
       let adminLogPages = 1;
       let loginLogPage = 1;
       let loginLogPages = 1;
+      let visitorLogPage = 1;
+      let visitorLogPages = 1;
 
       function showToast(message, type = "success") {
         const toast = document.createElement("div");
@@ -448,6 +450,27 @@ const loginCard = document.getElementById("loginCard");
         });
       }
 
+      async function loadVisitorLogs() {
+        const res = await apiFetch(`/api/admin/visitors?page=${visitorLogPage}`);
+        const data = await res.json();
+        visitorLogPages = data.totalPages || 1;
+        const list = document.getElementById("visitorLogList");
+        list.innerHTML = "";
+        (data.items || []).forEach((log) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const locationParts = [log.country, log.region, log.city].filter(Boolean).join(" ");
+          const title = log.event_type === "click" ? "点击图标" : "访问页面";
+          row.innerHTML = `<div>
+            <div class="font-semibold">${title} ${log.link_title ? `- ${log.link_title}` : ""}</div>
+            <div class="text-xs text-slate-500">${formatDateTime(log.created_at)}</div>
+            <div class="text-xs text-slate-500 mt-1">IP：${log.ip || "-"} ${locationParts ? `(${locationParts})` : ""}</div>
+            ${log.link_url ? `<div class="text-xs text-slate-500 mt-1">链接：${log.link_url}</div>` : ""}
+          </div>`;
+          list.appendChild(row);
+        });
+      }
+
       async function saveAdminCredentials() {
         const payload = {
           currentUsername: document.getElementById("currentAdminUsername").value.trim(),
@@ -476,6 +499,7 @@ const loginCard = document.getElementById("loginCard");
           loadBlacklist(),
           loadSecurityPolicy(),
           loadLoginLogs(),
+          loadVisitorLogs(),
           loadAdminLogs()
         ]);
       }
@@ -519,6 +543,14 @@ const loginCard = document.getElementById("loginCard");
       document.getElementById("loginLogNext").addEventListener("click", () => {
         loginLogPage = Math.min(loginLogPages, loginLogPage + 1);
         loadLoginLogs();
+      });
+      document.getElementById("visitorLogPrev").addEventListener("click", () => {
+        visitorLogPage = Math.max(1, visitorLogPage - 1);
+        loadVisitorLogs();
+      });
+      document.getElementById("visitorLogNext").addEventListener("click", () => {
+        visitorLogPage = Math.min(visitorLogPages, visitorLogPage + 1);
+        loadVisitorLogs();
       });
 
       document.getElementById("userList").addEventListener("click", (e) => {
