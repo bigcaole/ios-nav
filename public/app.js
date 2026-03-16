@@ -1585,6 +1585,7 @@ if ("serviceWorker" in navigator) {
           });
           return;
         }
+        const isMobileLayout = window.innerWidth < 768;
         const cards = getCategoryCards();
         if (!cards.length) {
           categoryLayoutState = null;
@@ -1597,7 +1598,7 @@ if ("serviceWorker" in navigator) {
         cards.forEach((card) => {
           const rawX = Number(card.dataset.posX);
           const rawY = Number(card.dataset.posY);
-          if (Number.isFinite(rawX) && Number.isFinite(rawY)) {
+          if (!isMobileLayout && Number.isFinite(rawX) && Number.isFinite(rawY)) {
             cardsWithPos.push(card);
           } else {
             cardsWithoutPos.push(card);
@@ -1622,12 +1623,14 @@ if ("serviceWorker" in navigator) {
             card.style.height = `${finalH}px`;
           }
         };
-        const placeCard = (card, posX, posY, snap) => {
+        const placeCard = (card, posX, posY, snap, commitPosition = true) => {
           const rect = card.getBoundingClientRect();
           const size = { w: rect.width, h: rect.height };
           const target = findFreePosition(state, posX, posY, size, null, { snap });
-          card.dataset.posX = String(target.x);
-          card.dataset.posY = String(target.y);
+          if (commitPosition) {
+            card.dataset.posX = String(target.x);
+            card.dataset.posY = String(target.y);
+          }
           card.style.position = "absolute";
           card.style.left = `${state.paddingLeft + target.x}px`;
           card.style.top = `${state.paddingTop + target.y}px`;
@@ -1637,7 +1640,7 @@ if ("serviceWorker" in navigator) {
         cardsWithPos.forEach((card) => {
           const posX = Number(card.dataset.posX) || 0;
           const posY = Number(card.dataset.posY) || 0;
-          placeCard(card, posX, posY, false);
+          placeCard(card, posX, posY, false, true);
         });
         let cursorX = 0;
         let cursorY = 0;
@@ -1651,7 +1654,7 @@ if ("serviceWorker" in navigator) {
             cursorY += rowHeight + state.gap;
             rowHeight = 0;
           }
-          placeCard(card, cursorX, cursorY, true);
+          placeCard(card, cursorX, cursorY, true, !isMobileLayout);
           cursorX += cardWidth + state.gap;
           rowHeight = Math.max(rowHeight, cardHeight);
         });
@@ -1664,6 +1667,7 @@ if ("serviceWorker" in navigator) {
       function initCategoryFreeDrag() {
         if (!grid) return;
         if (viewMode !== "card") return;
+        if (window.innerWidth < 768) return;
         const cards = getCategoryCards();
         cards.forEach((card) => {
           if (card.classList.contains("category-add-card")) return;
