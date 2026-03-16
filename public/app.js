@@ -1432,7 +1432,7 @@ if ("serviceWorker" in navigator) {
 
       function isOverlapping(state, rect, ignoreCard) {
         if (!state) return false;
-        const pad = Math.max(6, state.gap * 0.4);
+        const pad = Math.max(12, state.gap);
         return state.placed.some((item) => {
           if (ignoreCard && item.card === ignoreCard) {
             return false;
@@ -1441,17 +1441,69 @@ if ("serviceWorker" in navigator) {
         });
       }
 
+      function snapToNeighborEdges(state, desiredX, desiredY, size) {
+        if (!state || !state.placed.length) {
+          return { x: desiredX, y: desiredY };
+        }
+        const maxX = Math.max(0, state.availableWidth - size.w);
+        const clampX = (x) => clampValue(x, 0, maxX);
+        let bestX = desiredX;
+        let bestY = desiredY;
+        let bestDx = Infinity;
+        let bestDy = Infinity;
+        state.placed.forEach((item) => {
+          const overlapY =
+            Math.min(desiredY + size.h, item.y + item.h) -
+            Math.max(desiredY, item.y);
+          const overlapX =
+            Math.min(desiredX + size.w, item.x + item.w) -
+            Math.max(desiredX, item.x);
+          const yAligned = overlapY > Math.min(size.h, item.h) * 0.3;
+          const xAligned = overlapX > Math.min(size.w, item.w) * 0.3;
+          if (yAligned) {
+            const rightX = item.x + item.w + state.gap;
+            const leftX = item.x - size.w - state.gap;
+            const dxRight = Math.abs(desiredX - rightX);
+            const dxLeft = Math.abs(desiredX - leftX);
+            if (dxRight < bestDx && dxRight <= state.gap * 2.5) {
+              bestDx = dxRight;
+              bestX = rightX;
+            }
+            if (dxLeft < bestDx && dxLeft <= state.gap * 2.5) {
+              bestDx = dxLeft;
+              bestX = leftX;
+            }
+          }
+          if (xAligned) {
+            const bottomY = item.y + item.h + state.gap;
+            const topY = item.y - size.h - state.gap;
+            const dyBottom = Math.abs(desiredY - bottomY);
+            const dyTop = Math.abs(desiredY - topY);
+            if (dyBottom < bestDy && dyBottom <= state.gap * 2.5) {
+              bestDy = dyBottom;
+              bestY = bottomY;
+            }
+            if (dyTop < bestDy && dyTop <= state.gap * 2.5) {
+              bestDy = dyTop;
+              bestY = topY;
+            }
+          }
+        });
+        return { x: clampX(bestX), y: Math.max(0, bestY) };
+      }
+
       function findFreePosition(state, desiredX, desiredY, size, ignoreCard) {
         if (!state) return { x: 0, y: 0 };
         const maxX = Math.max(0, state.availableWidth - size.w);
         const clampX = (x) => clampValue(x, 0, maxX);
-        const baseX = clampX(desiredX);
-        const baseY = Math.max(0, desiredY);
+        const snapped = snapToNeighborEdges(state, desiredX, desiredY, size);
+        const baseX = clampX(snapped.x);
+        const baseY = Math.max(0, snapped.y);
         const baseRect = { x: baseX, y: baseY, w: size.w, h: size.h };
         if (!isOverlapping(state, baseRect, ignoreCard)) {
           return { x: baseX, y: baseY };
         }
-        const step = Math.max(8, Math.round(state.gap / 2));
+        const step = Math.max(8, Math.round(state.gap));
         const maxRadius = 800;
         for (let radius = step; radius <= maxRadius; radius += step) {
           for (let dy = -radius; dy <= radius; dy += step) {
