@@ -868,7 +868,7 @@ if ("serviceWorker" in navigator) {
           }
           grid.innerHTML = "";
           const grouped = groupByCategory(normalLinks);
-          const gridGap = 26;
+          const gridGap = 30;
           const perRow = 3;
           const baseIconSize = 64;
           const safeScale = Math.max(0.6, iconScale);
@@ -910,9 +910,9 @@ if ("serviceWorker" in navigator) {
             innerGrid.dataset.dock = "false";
             innerGrid.style.gap = `${gridGap}px`;
             const items = grouped.groups[category];
-            const edgePad = isCardView ? Math.round(iconSize * 0.22) : 0;
+            const edgePad = isCardView ? Math.round(iconSize * 0.35) : 0;
             const gridWidth = perRow * iconSize + (perRow - 1) * gridGap + edgePad * 2;
-            const rowHeight = iconSize + 36;
+            const rowHeight = iconSize + 44;
             const visibleCount = Math.min(items.length, 9);
             const rows = Math.max(1, Math.ceil(visibleCount / perRow));
             const gridHeight = rows * rowHeight + (rows - 1) * gridGap + edgePad * 2;
@@ -1480,8 +1480,9 @@ if ("serviceWorker" in navigator) {
           destroySortables();
           return;
         }
-        console.log("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "sortUnlocked:", sortUnlocked);
-        if (!window.Sortable || !loggedIn || !sortUnlocked) {
+        const allowSort = loggedIn && (sortUnlocked || currentMode === "sort");
+        console.log("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "allowSort:", allowSort);
+        if (!window.Sortable || !allowSort) {
           destroySortables();
           return;
         }
