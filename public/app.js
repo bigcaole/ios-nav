@@ -1568,7 +1568,10 @@ if ("serviceWorker" in navigator) {
             fallbackTolerance: 3,
             fallbackClass: "sortable-fallback",
             easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-            swapThreshold: 0.65,
+            direction: viewMode === "card" ? "horizontal" : "vertical",
+            invertSwap: true,
+            invertedSwapThreshold: 0.3,
+            swapThreshold: viewMode === "card" ? 0.35 : 0.65,
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
