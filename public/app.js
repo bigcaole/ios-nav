@@ -966,8 +966,6 @@ if ("serviceWorker" in navigator) {
               isCardView ? "category-card card-view" : "category-card";
             cardWrap.dataset.category = category;
             cardWrap.dataset.original = category;
-            cardWrap.dataset.fixedW = "";
-            cardWrap.dataset.fixedH = "";
             cardWrap.id = `category-${slugify(category)}`;
             if (grouped.privacy && grouped.privacy[category]) {
               cardWrap.dataset.private = "true";
@@ -1852,6 +1850,11 @@ if ("serviceWorker" in navigator) {
       function fetchLinks() {
         if (isVisitorMode) {
           return fetchPublicView();
+        }
+        if (loggedIn && (!Array.isArray(allCategories) || !allCategories.length)) {
+          return loadCategories()
+            .then(() => fetchLinks())
+            .catch(() => fetchLinks());
         }
         const url = loggedIn
           ? "/api/links?includePrivate=1"

@@ -527,11 +527,11 @@
         transform: none !important;
         box-shadow: none !important;
       }
-      .mode-sort .category-grid {
+      body.mode-sort:not(.view-card) .category-grid {
         min-height: 50px;
       }
-      .mode-sort .category-grid {
-        min-height: 50px;
+      body.mode-sort.view-card .category-grid {
+        min-height: var(--grid-size, auto);
       }
       .mode-sort .app {
         transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
