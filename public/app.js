@@ -614,7 +614,7 @@ if ("serviceWorker" in navigator) {
         iconEl.classList.remove("icon-fallback");
         const candidates = [];
         const normalizedIcon = normalizeIconUrl(iconUrl);
-        if (normalizedIcon && typeof normalizedIcon === "string" && !normalizedIcon.startsWith("/icons/")) {
+        if (normalizedIcon && typeof normalizedIcon === "string") {
           candidates.push(normalizedIcon);
         }
         const fullUrl = normalizeUrlForFavicon(url);
