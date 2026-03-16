@@ -1494,13 +1494,16 @@ if ("serviceWorker" in navigator) {
         return { x: clampX(bestX), y: Math.max(0, bestY) };
       }
 
-      function findFreePosition(state, desiredX, desiredY, size, ignoreCard) {
+      function findFreePosition(state, desiredX, desiredY, size, ignoreCard, options = {}) {
         if (!state) return { x: 0, y: 0 };
         const maxX = Math.max(0, state.availableWidth - size.w);
         const clampX = (x) => clampValue(x, 0, maxX);
-        const snapped = snapToNeighborEdges(state, desiredX, desiredY, size);
-        const baseX = clampX(snapped.x);
-        const baseY = Math.max(0, snapped.y);
+        const allowSnap = options.snap !== false;
+        const basePoint = allowSnap
+          ? snapToNeighborEdges(state, desiredX, desiredY, size)
+          : { x: desiredX, y: desiredY };
+        const baseX = clampX(basePoint.x);
+        const baseY = Math.max(0, basePoint.y);
         const baseRect = { x: baseX, y: baseY, w: size.w, h: size.h };
         if (!isOverlapping(state, baseRect, ignoreCard)) {
           return { x: baseX, y: baseY };
@@ -1569,10 +1572,10 @@ if ("serviceWorker" in navigator) {
             cardsWithoutPos.push(card);
           }
         });
-        const placeCard = (card, posX, posY) => {
+        const placeCard = (card, posX, posY, snap) => {
           const rect = card.getBoundingClientRect();
           const size = { w: rect.width, h: rect.height };
-          const target = findFreePosition(state, posX, posY, size);
+          const target = findFreePosition(state, posX, posY, size, null, { snap });
           card.dataset.posX = String(target.x);
           card.dataset.posY = String(target.y);
           card.style.position = "absolute";
@@ -1583,7 +1586,7 @@ if ("serviceWorker" in navigator) {
         cardsWithPos.forEach((card) => {
           const posX = Number(card.dataset.posX) || 0;
           const posY = Number(card.dataset.posY) || 0;
-          placeCard(card, posX, posY);
+          placeCard(card, posX, posY, false);
         });
         let cursorX = 0;
         let cursorY = 0;
@@ -1597,7 +1600,7 @@ if ("serviceWorker" in navigator) {
             cursorY += rowHeight + state.gap;
             rowHeight = 0;
           }
-          placeCard(card, cursorX, cursorY);
+          placeCard(card, cursorX, cursorY, true);
           cursorX += cardWidth + state.gap;
           rowHeight = Math.max(rowHeight, cardHeight);
         });
@@ -1650,7 +1653,7 @@ if ("serviceWorker" in navigator) {
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
               const size = { w: cardRect.width, h: cardRect.height };
-              const target = findFreePosition(state, relX, relY, size, card);
+              const target = findFreePosition(state, relX, relY, size, card, { snap: true });
               card.dataset.posX = String(target.x);
               card.dataset.posY = String(target.y);
               card.style.left = `${state.paddingLeft + target.x}px`;
