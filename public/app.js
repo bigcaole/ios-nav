@@ -89,6 +89,8 @@ if ("serviceWorker" in navigator) {
       let editing = false;
       let deleting = false;
       let currentMode = "preview";
+      let categoryLayoutState = null;
+      let categoryDragState = null;
       let currentProtocol = "https://";
       let isAdmin = false;
       let registerOpenUntil = null;
@@ -315,7 +317,13 @@ if ("serviceWorker" in navigator) {
               if (typeof item === "string") {
                 return { id: item, name: item };
               }
-              return { id: item.id, name: item.name, is_private: Boolean(item.is_private) };
+              return {
+                id: item.id,
+                name: item.name,
+                is_private: Boolean(item.is_private),
+                pos_x: Number.isFinite(item.pos_x) ? item.pos_x : null,
+                pos_y: Number.isFinite(item.pos_y) ? item.pos_y : null
+              };
             });
             allCategories = categories;
             renderCategorySelect(categories, selectedName);
@@ -960,6 +968,15 @@ if ("serviceWorker" in navigator) {
             } else {
               cardWrap.dataset.private = "false";
             }
+            const categoryInfo = getCategoryByName(category);
+            if (categoryInfo) {
+              if (Number.isFinite(categoryInfo.pos_x)) {
+                cardWrap.dataset.posX = String(categoryInfo.pos_x);
+              }
+              if (Number.isFinite(categoryInfo.pos_y)) {
+                cardWrap.dataset.posY = String(categoryInfo.pos_y);
+              }
+            }
 
             const heading = document.createElement("div");
             heading.className = "category-title category-title-capsule";
@@ -1301,10 +1318,10 @@ if ("serviceWorker" in navigator) {
 
             if (!usePagedCards || items.length <= 9) {
               cardWrap.appendChild(innerGrid);
-            }
-            grid.appendChild(cardWrap);
-          });
-          if (currentMode === "delete") {
+          }
+          grid.appendChild(cardWrap);
+        });
+        if (currentMode === "delete") {
             const addCard = document.createElement("section");
             addCard.className = "category-card category-add-card";
             const addBtn = document.createElement("button");
@@ -1320,11 +1337,13 @@ if ("serviceWorker" in navigator) {
             openModal(categoryManagerModal, { returnToSettings: false });
             });
             addCard.appendChild(addBtn);
-            grid.appendChild(addCard);
-          }
+          grid.appendChild(addCard);
+        }
           renderCategoryNav(grouped.order);
       document.body.classList.toggle("is-editing", editing);
       document.body.classList.toggle("is-deleting", deleting);
+          applyCategoryFreeLayout();
+          initCategoryFreeDrag();
           initCategoryFisheye();
           initSortables();
           updateEmptyCategories();
@@ -1342,6 +1361,222 @@ if ("serviceWorker" in navigator) {
         container.querySelectorAll(".app").forEach((app) => {
           app.dataset.dock = isDock ? "true" : "false";
           app.dataset.category = categoryName;
+        });
+      }
+
+      function getCategoryCards() {
+        if (!grid) return [];
+        return Array.from(grid.querySelectorAll(".category-card"));
+      }
+
+      function getCategoryCardOrder(cards) {
+        const withPos = cards
+          .filter((card) => !card.classList.contains("category-add-card"))
+          .map((card, index) => {
+            const posX = Number(card.dataset.posX);
+            const posY = Number(card.dataset.posY);
+            return {
+              card,
+              name: card.dataset.category || "",
+              posX: Number.isFinite(posX) ? posX : null,
+              posY: Number.isFinite(posY) ? posY : null,
+              index
+            };
+          });
+        if (grid && grid.classList.contains("free-layout")) {
+          withPos.sort((a, b) => {
+            const ay = Number.isFinite(a.posY) ? a.posY : 9999;
+            const by = Number.isFinite(b.posY) ? b.posY : 9999;
+            if (ay !== by) return ay - by;
+            const ax = Number.isFinite(a.posX) ? a.posX : 9999;
+            const bx = Number.isFinite(b.posX) ? b.posX : 9999;
+            if (ax !== bx) return ax - bx;
+            return a.index - b.index;
+          });
+        }
+        return withPos;
+      }
+
+      function computeCategoryLayoutState(cards) {
+        if (!grid || !cards.length) return null;
+        const gridStyle = getComputedStyle(grid);
+        const gap = Number.parseFloat(gridStyle.gap) || 18;
+        const paddingLeft = Number.parseFloat(gridStyle.paddingLeft) || 0;
+        const paddingRight = Number.parseFloat(gridStyle.paddingRight) || 0;
+        const paddingTop = Number.parseFloat(gridStyle.paddingTop) || 0;
+        const paddingBottom = Number.parseFloat(gridStyle.paddingBottom) || 0;
+        let maxWidth = 0;
+        let maxHeight = 0;
+        cards.forEach((card) => {
+          const rect = card.getBoundingClientRect();
+          maxWidth = Math.max(maxWidth, rect.width);
+          maxHeight = Math.max(maxHeight, rect.height);
+        });
+        const cellSize = Math.ceil(Math.max(maxWidth, maxHeight) + gap);
+        const availableWidth = Math.max(0, grid.clientWidth - paddingLeft - paddingRight);
+        const cols = Math.max(1, Math.floor(availableWidth / cellSize));
+        return {
+          gap,
+          cellSize,
+          cols,
+          paddingLeft,
+          paddingRight,
+          paddingTop,
+          paddingBottom,
+          used: new Map()
+        };
+      }
+
+      function findNearestFreeCell(state, startX, startY) {
+        if (!state) return { x: 0, y: 0 };
+        const key = (x, y) => `${x},${y}`;
+        const isFree = (x, y) => !state.used.has(key(x, y));
+        const clampX = (x) => Math.max(0, Math.min(state.cols - 1, x));
+        let baseX = clampX(startX);
+        let baseY = Math.max(0, startY);
+        if (isFree(baseX, baseY)) {
+          return { x: baseX, y: baseY };
+        }
+        const maxRadius = 60;
+        for (let radius = 1; radius <= maxRadius; radius += 1) {
+          for (let dy = -radius; dy <= radius; dy += 1) {
+            for (let dx = -radius; dx <= radius; dx += 1) {
+              if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
+                continue;
+              }
+              const x = clampX(baseX + dx);
+              const y = Math.max(0, baseY + dy);
+              if (isFree(x, y)) {
+                return { x, y };
+              }
+            }
+          }
+        }
+        return { x: baseX, y: baseY };
+      }
+
+      function applyCategoryFreeLayout() {
+        if (!grid) return;
+        const enable = viewMode === "card";
+        grid.classList.toggle("free-layout", enable);
+        if (!enable) {
+          grid.style.minHeight = "";
+          categoryLayoutState = null;
+          getCategoryCards().forEach((card) => {
+            card.style.position = "";
+            card.style.left = "";
+            card.style.top = "";
+            card.style.zIndex = "";
+          });
+          return;
+        }
+        const cards = getCategoryCards();
+        if (!cards.length) {
+          categoryLayoutState = null;
+          return;
+        }
+        const state = computeCategoryLayoutState(cards);
+        if (!state) return;
+        const occupiedKey = (x, y) => `${x},${y}`;
+        const placeCard = (card, x, y) => {
+          card.dataset.posX = String(x);
+          card.dataset.posY = String(y);
+          state.used.set(occupiedKey(x, y), card);
+          card.style.position = "absolute";
+          card.style.left = `${state.paddingLeft + x * state.cellSize}px`;
+          card.style.top = `${state.paddingTop + y * state.cellSize}px`;
+        };
+        cards.forEach((card) => {
+          const rawX = Number(card.dataset.posX);
+          const rawY = Number(card.dataset.posY);
+          const preferredX = Number.isFinite(rawX) ? rawX : 0;
+          const preferredY = Number.isFinite(rawY) ? rawY : 0;
+          const target = findNearestFreeCell(state, preferredX, preferredY);
+          placeCard(card, target.x, target.y);
+        });
+        const order = getCategoryCardOrder(cards);
+        order.forEach((entry) => grid.appendChild(entry.card));
+        const maxRow = Math.max(
+          0,
+          ...order.map((entry) => (Number.isFinite(entry.posY) ? entry.posY : 0))
+        );
+        grid.style.minHeight = `${
+          state.paddingTop + state.paddingBottom + (maxRow + 1) * state.cellSize
+        }px`;
+        categoryLayoutState = state;
+      }
+
+      function initCategoryFreeDrag() {
+        if (!grid) return;
+        if (viewMode !== "card") return;
+        const cards = getCategoryCards();
+        cards.forEach((card) => {
+          if (card.classList.contains("category-add-card")) return;
+          if (card.dataset.freeDragBound) return;
+          const handle =
+            card.querySelector(".category-title") || card.querySelector(".category-drag-handle");
+          if (!handle) return;
+          card.dataset.freeDragBound = "true";
+          handle.addEventListener("pointerdown", (event) => {
+            if (currentMode !== "sort" && !sortUnlocked) {
+              return;
+            }
+            if (!categoryLayoutState) {
+              applyCategoryFreeLayout();
+            }
+            const state = categoryLayoutState;
+            if (!state) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const gridRect = grid.getBoundingClientRect();
+            const cardRect = card.getBoundingClientRect();
+            const offsetX = event.clientX - cardRect.left;
+            const offsetY = event.clientY - cardRect.top;
+            const usedKey = `${card.dataset.posX || 0},${card.dataset.posY || 0}`;
+            if (state.used.has(usedKey)) {
+              state.used.delete(usedKey);
+            }
+            card.classList.add("is-free-dragging");
+            card.style.zIndex = "10000";
+            card.setPointerCapture(event.pointerId);
+            categoryDragState = { card, offsetX, offsetY };
+            const move = (moveEvent) => {
+              if (!categoryDragState) return;
+              const x = moveEvent.clientX - gridRect.left - offsetX;
+              const y = moveEvent.clientY - gridRect.top - offsetY;
+              card.style.left = `${x}px`;
+              card.style.top = `${y}px`;
+            };
+            const up = (upEvent) => {
+              if (!categoryDragState) return;
+              const relX = upEvent.clientX - gridRect.left - state.paddingLeft;
+              const relY = upEvent.clientY - gridRect.top - state.paddingTop;
+              const rawX = Math.round(relX / state.cellSize);
+              const rawY = Math.round(relY / state.cellSize);
+              const target = findNearestFreeCell(state, rawX, rawY);
+              card.dataset.posX = String(target.x);
+              card.dataset.posY = String(target.y);
+              state.used.set(`${target.x},${target.y}`, card);
+              card.style.left = `${state.paddingLeft + target.x * state.cellSize}px`;
+              card.style.top = `${state.paddingTop + target.y * state.cellSize}px`;
+              card.classList.remove("is-free-dragging");
+              card.style.zIndex = "";
+              card.releasePointerCapture(upEvent.pointerId);
+              categoryDragState = null;
+              pendingChanges = true;
+              syncAllOrders();
+              scheduleAutoSave();
+            };
+            const cleanup = () => {
+              document.removeEventListener("pointermove", move);
+              document.removeEventListener("pointerup", up);
+            };
+            document.addEventListener("pointermove", move);
+            document.addEventListener("pointerup", (upEvent) => {
+              cleanup();
+              up(upEvent);
+            }, { once: true });
+          });
         });
       }
 
@@ -1383,6 +1618,9 @@ if ("serviceWorker" in navigator) {
           return;
         }
         if (!grid) return;
+        if (grid.classList.contains("free-layout")) {
+          return;
+        }
         const cards = Array.from(grid.querySelectorAll(".category-card"));
         const visibleCards = [];
         const emptyCards = [];
@@ -1559,6 +1797,7 @@ if ("serviceWorker" in navigator) {
         }
         destroySortables();
 
+        if (viewMode !== "card") {
           const categorySortable = new Sortable(grid, {
             animation: 250,
             draggable: ".category-card:not(.category-empty):not(.category-add-card)",
@@ -1568,10 +1807,10 @@ if ("serviceWorker" in navigator) {
             fallbackTolerance: 3,
             fallbackClass: "sortable-fallback",
             easing: "cubic-bezier(0.25, 1, 0.5, 1)",
-            direction: viewMode === "card" ? "horizontal" : "vertical",
+            direction: "vertical",
             invertSwap: true,
             invertedSwapThreshold: 0.3,
-            swapThreshold: viewMode === "card" ? 0.35 : 0.65,
+            swapThreshold: 0.65,
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
@@ -1590,9 +1829,10 @@ if ("serviceWorker" in navigator) {
                 syncAllOrders();
                 updateEmptyCategories();
               }
-          }
-        });
-        sortables.push(categorySortable);
+            }
+          });
+          sortables.push(categorySortable);
+        }
 
         document.querySelectorAll(".category-grid").forEach((container) => {
           const rect = container.getBoundingClientRect();
@@ -2331,17 +2571,49 @@ if ("serviceWorker" in navigator) {
 
       function syncAllOrders() {
         const orderedCategories = [];
-        document.querySelectorAll(".category-card").forEach((card) => {
-          const name = card.dataset.category || "";
-          if (!name) return;
-          orderedCategories.push(name);
+        const cards = getCategoryCards();
+        const orderedCards = grid && grid.classList.contains("free-layout")
+          ? getCategoryCardOrder(cards)
+          : cards
+              .filter((card) => !card.classList.contains("category-add-card"))
+              .map((card, index) => ({
+                card,
+                name: card.dataset.category || "",
+                posX: Number(card.dataset.posX),
+                posY: Number(card.dataset.posY),
+                index
+              }));
+        orderedCards.forEach((entry) => {
+          if (!entry.name) return;
+          orderedCategories.push(entry.name);
+          if (grid && grid.classList.contains("free-layout")) {
+            entry.card.dataset.posX = String(
+              Number.isFinite(entry.posX) ? entry.posX : 0
+            );
+            entry.card.dataset.posY = String(
+              Number.isFinite(entry.posY) ? entry.posY : 0
+            );
+          }
         });
         if (orderedCategories.length) {
           const existing = Array.isArray(allCategories) ? allCategories : [];
           const map = new Map(existing.map((item) => [item.name, item]));
-          allCategories = orderedCategories.map((name) => {
+          allCategories = orderedCategories.map((name, index) => {
             const match = map.get(name);
-            return match ? match : { name, is_private: false };
+            const card = orderedCards[index]?.card;
+            const posX = card ? Number(card.dataset.posX) : null;
+            const posY = card ? Number(card.dataset.posY) : null;
+            if (match) {
+              match.pos_x = Number.isFinite(posX) ? posX : match.pos_x ?? null;
+              match.pos_y = Number.isFinite(posY) ? posY : match.pos_y ?? null;
+              return match;
+            }
+            return {
+              name,
+              is_private: false,
+              pos_x: Number.isFinite(posX) ? posX : null,
+              pos_y: Number.isFinite(posY) ? posY : null
+            };
           });
           renderCategoryNav(orderedCategories);
         }
@@ -2501,7 +2773,9 @@ if ("serviceWorker" in navigator) {
         const categoryCards = Array.from(document.querySelectorAll(".category-card"));
         const categories = categoryCards.map((card, index) => ({
           name: card.dataset.category || "",
-          sort_index: index
+          sort_index: index,
+          pos_x: Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : null,
+          pos_y: Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : null
         }));
         const renames = categoryCards
           .map((card) => ({
@@ -3318,6 +3592,11 @@ if ("serviceWorker" in navigator) {
 
       setActiveMode("preview");
       applyViewMode(viewMode);
+      window.addEventListener("resize", () => {
+        if (viewMode === "card") {
+          applyCategoryFreeLayout();
+        }
+      });
       updateMobileLongPressLock();
 
       linkForm.addEventListener("submit", (event) => {

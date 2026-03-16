@@ -217,6 +217,13 @@
         justify-content: flex-start;
         flex-direction: row;
       }
+      .grid.card-layout.free-layout {
+        display: block;
+        position: relative;
+      }
+      .grid.card-layout.free-layout .category-card {
+        position: absolute;
+      }
       .category-card {
         width: 100%;
         max-width: 100%;
@@ -1850,6 +1857,10 @@
       .mode-sort .category-title {
         pointer-events: auto !important;
         cursor: grab;
+      }
+      .category-card.is-free-dragging {
+        cursor: grabbing !important;
+        z-index: 10000;
       }
       .category-card.category-empty {
         display: none;

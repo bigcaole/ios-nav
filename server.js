@@ -251,6 +251,8 @@ async function initDb() {
       name TEXT NOT NULL,
       is_private BOOLEAN DEFAULT FALSE,
       sort_index INTEGER DEFAULT 0,
+      pos_x INTEGER,
+      pos_y INTEGER,
       UNIQUE (user_id, name)
     )
   `);
@@ -263,6 +265,8 @@ async function initDb() {
   );
   await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS user_id UUID`);
   await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_private BOOLEAN DEFAULT FALSE`);
+  await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS pos_x INTEGER`);
+  await pool.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS pos_y INTEGER`);
   await pool.query(`
     DO $$
     BEGIN
@@ -741,7 +745,7 @@ async function buildFullBackupPayload() {
   );
   const settings = await pool.query("SELECT user_id, settings FROM user_settings");
   const categories = await pool.query(
-    "SELECT id, user_id, name, is_private, sort_index FROM categories ORDER BY sort_index ASC, name ASC"
+    "SELECT id, user_id, name, is_private, sort_index, pos_x, pos_y FROM categories ORDER BY sort_index ASC, name ASC"
   );
   const links = await pool.query(
     "SELECT id, user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index, created_at FROM links ORDER BY sort_index ASC, created_at ASC"
@@ -1355,7 +1359,7 @@ async function ensureCategory(client, userId, name) {
     return null;
   }
   const result = await client.query(
-    "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, 0) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+    "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, 0, NULL, NULL) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
     [userId, clean]
   );
   return result.rows[0].id;
@@ -1403,7 +1407,7 @@ app.get("/api/public/:username", async (req, res) => {
     }
     const userId = userResult.rows[0].id;
     const categoriesResult = await pool.query(
-      "SELECT id, name, is_private, sort_index FROM categories WHERE user_id = $1 AND is_private = FALSE ORDER BY sort_index ASC, name ASC",
+      "SELECT id, name, is_private, sort_index, pos_x, pos_y FROM categories WHERE user_id = $1 AND is_private = FALSE ORDER BY sort_index ASC, name ASC",
       [userId]
     );
     const linksResult = await pool.query(
@@ -1524,8 +1528,14 @@ app.post("/api/categories/reorder", requireAuth, async (req, res) => {
         continue;
       }
       await client.query(
-        "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index",
-        [req.user.id, name, Number(item.sort_index) || 0]
+        "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index, pos_x = EXCLUDED.pos_x, pos_y = EXCLUDED.pos_y",
+        [
+          req.user.id,
+          name,
+          Number(item.sort_index) || 0,
+          Number.isFinite(Number(item.pos_x)) ? Number(item.pos_x) : null,
+          Number.isFinite(Number(item.pos_y)) ? Number(item.pos_y) : null
+        ]
       );
     }
     await client.query("COMMIT");
@@ -1592,8 +1602,14 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
         continue;
       }
       await client.query(
-        "INSERT INTO categories (user_id, name, sort_index) VALUES ($1, $2, $3) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index",
-        [req.user.id, name, Number(item.sort_index) || 0]
+        "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index, pos_x = EXCLUDED.pos_x, pos_y = EXCLUDED.pos_y",
+        [
+          req.user.id,
+          name,
+          Number(item.sort_index) || 0,
+          Number.isFinite(Number(item.pos_x)) ? Number(item.pos_x) : null,
+          Number.isFinite(Number(item.pos_y)) ? Number(item.pos_y) : null
+        ]
       );
     }
 
@@ -1644,10 +1660,18 @@ app.get("/api/categories", requireAuth, async (req, res) => {
       return;
     }
     const result = await pool.query(
-      "SELECT id, name, is_private FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
+      "SELECT id, name, is_private, sort_index, pos_x, pos_y FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
       [userId]
     );
-    res.json(result.rows.map((row) => ({ id: row.id, name: row.name, is_private: row.is_private })));
+    res.json(
+      result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        is_private: row.is_private,
+        pos_x: row.pos_x,
+        pos_y: row.pos_y
+      }))
+    );
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1667,7 +1691,7 @@ app.post("/api/categories", requireAuth, async (req, res) => {
   }
   try {
     const result = await pool.query(
-      "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, 0) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name, is_private",
+      "INSERT INTO categories (user_id, name, is_private, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, 0, NULL, NULL) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name, is_private, pos_x, pos_y",
       [userId, name, isPrivate]
     );
     res.json(result.rows[0]);
@@ -2869,13 +2893,15 @@ adminApp.post(
 
         for (const item of categories) {
           await client.query(
-            "INSERT INTO categories (id, user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO categories (id, user_id, name, is_private, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5, $6, $7)",
             [
               item.id,
               item.user_id,
               item.name,
               Boolean(item.is_private),
-              Number(item.sort_index) || 0
+              Number(item.sort_index) || 0,
+              Number.isFinite(Number(item.pos_x)) ? Number(item.pos_x) : null,
+              Number.isFinite(Number(item.pos_y)) ? Number(item.pos_y) : null
             ]
           );
         }
@@ -3299,7 +3325,7 @@ app.get("/api/backup/export", requireAuth, async (req, res) => {
     );
     const settings = settingsResult.rows[0] ? settingsResult.rows[0].settings : {};
     const categoriesResult = await pool.query(
-      "SELECT id, name, is_private, sort_index FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
+      "SELECT id, name, is_private, sort_index, pos_x, pos_y FROM categories WHERE user_id = $1 ORDER BY sort_index ASC, name ASC",
       [req.user.id]
     );
     const linksResult = await pool.query(
@@ -3354,8 +3380,15 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
         if (!name) continue;
         const isPrivate = Boolean(item?.is_private);
         const result = await client.query(
-          "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4) RETURNING id",
-          [req.user.id, name, isPrivate, Number(item.sort_index) || 0]
+          "INSERT INTO categories (user_id, name, is_private, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+          [
+            req.user.id,
+            name,
+            isPrivate,
+            Number(item.sort_index) || 0,
+            Number.isFinite(Number(item.pos_x)) ? Number(item.pos_x) : null,
+            Number.isFinite(Number(item.pos_y)) ? Number(item.pos_y) : null
+          ]
         );
         categoryMap.set(name, result.rows[0].id);
       }
@@ -3369,8 +3402,8 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
         if (categoryName && !categoryId) {
           const isPrivate = Boolean(item?.category_private);
           const result = await client.query(
-            "INSERT INTO categories (user_id, name, is_private, sort_index) VALUES ($1, $2, $3, $4) RETURNING id",
-            [req.user.id, categoryName, isPrivate, 0]
+            "INSERT INTO categories (user_id, name, is_private, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id",
+            [req.user.id, categoryName, isPrivate, 0, null, null]
           );
           categoryId = result.rows[0].id;
           categoryMap.set(categoryName, categoryId);
