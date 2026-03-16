@@ -1405,54 +1405,81 @@ if ("serviceWorker" in navigator) {
         const paddingRight = Number.parseFloat(gridStyle.paddingRight) || 0;
         const paddingTop = Number.parseFloat(gridStyle.paddingTop) || 0;
         const paddingBottom = Number.parseFloat(gridStyle.paddingBottom) || 0;
-        let maxWidth = 0;
-        let maxHeight = 0;
-        cards.forEach((card) => {
-          const rect = card.getBoundingClientRect();
-          maxWidth = Math.max(maxWidth, rect.width);
-          maxHeight = Math.max(maxHeight, rect.height);
-        });
-        const cellSize = Math.ceil(Math.max(maxWidth, maxHeight) + gap);
         const availableWidth = Math.max(0, grid.clientWidth - paddingLeft - paddingRight);
-        const cols = Math.max(1, Math.floor(availableWidth / cellSize));
         return {
           gap,
-          cellSize,
-          cols,
           paddingLeft,
           paddingRight,
           paddingTop,
           paddingBottom,
-          used: new Map()
+          availableWidth,
+          placed: []
         };
       }
 
-      function findNearestFreeCell(state, startX, startY) {
+      function clampValue(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function rectsOverlap(a, b, pad) {
+        return !(
+          a.x + a.w + pad <= b.x ||
+          b.x + b.w + pad <= a.x ||
+          a.y + a.h + pad <= b.y ||
+          b.y + b.h + pad <= a.y
+        );
+      }
+
+      function isOverlapping(state, rect, ignoreCard) {
+        if (!state) return false;
+        const pad = Math.max(6, state.gap * 0.4);
+        return state.placed.some((item) => {
+          if (ignoreCard && item.card === ignoreCard) {
+            return false;
+          }
+          return rectsOverlap(rect, item, pad);
+        });
+      }
+
+      function findFreePosition(state, desiredX, desiredY, size, ignoreCard) {
         if (!state) return { x: 0, y: 0 };
-        const key = (x, y) => `${x},${y}`;
-        const isFree = (x, y) => !state.used.has(key(x, y));
-        const clampX = (x) => Math.max(0, Math.min(state.cols - 1, x));
-        let baseX = clampX(startX);
-        let baseY = Math.max(0, startY);
-        if (isFree(baseX, baseY)) {
+        const maxX = Math.max(0, state.availableWidth - size.w);
+        const clampX = (x) => clampValue(x, 0, maxX);
+        const baseX = clampX(desiredX);
+        const baseY = Math.max(0, desiredY);
+        const baseRect = { x: baseX, y: baseY, w: size.w, h: size.h };
+        if (!isOverlapping(state, baseRect, ignoreCard)) {
           return { x: baseX, y: baseY };
         }
-        const maxRadius = 60;
-        for (let radius = 1; radius <= maxRadius; radius += 1) {
-          for (let dy = -radius; dy <= radius; dy += 1) {
-            for (let dx = -radius; dx <= radius; dx += 1) {
+        const step = Math.max(8, Math.round(state.gap / 2));
+        const maxRadius = 800;
+        for (let radius = step; radius <= maxRadius; radius += step) {
+          for (let dy = -radius; dy <= radius; dy += step) {
+            for (let dx = -radius; dx <= radius; dx += step) {
               if (Math.abs(dx) !== radius && Math.abs(dy) !== radius) {
                 continue;
               }
               const x = clampX(baseX + dx);
               const y = Math.max(0, baseY + dy);
-              if (isFree(x, y)) {
+              const rect = { x, y, w: size.w, h: size.h };
+              if (!isOverlapping(state, rect, ignoreCard)) {
                 return { x, y };
               }
             }
           }
         }
         return { x: baseX, y: baseY };
+      }
+
+      function updateFreeLayoutMinHeight(state) {
+        if (!grid || !state) return;
+        const maxBottom = state.placed.reduce(
+          (acc, item) => Math.max(acc, item.y + item.h),
+          0
+        );
+        grid.style.minHeight = `${
+          state.paddingTop + state.paddingBottom + Math.max(0, maxBottom)
+        }px`;
       }
 
       function applyCategoryFreeLayout() {
@@ -1477,32 +1504,52 @@ if ("serviceWorker" in navigator) {
         }
         const state = computeCategoryLayoutState(cards);
         if (!state) return;
-        const occupiedKey = (x, y) => `${x},${y}`;
-        const placeCard = (card, x, y) => {
-          card.dataset.posX = String(x);
-          card.dataset.posY = String(y);
-          state.used.set(occupiedKey(x, y), card);
-          card.style.position = "absolute";
-          card.style.left = `${state.paddingLeft + x * state.cellSize}px`;
-          card.style.top = `${state.paddingTop + y * state.cellSize}px`;
-        };
+        const cardsWithPos = [];
+        const cardsWithoutPos = [];
         cards.forEach((card) => {
           const rawX = Number(card.dataset.posX);
           const rawY = Number(card.dataset.posY);
-          const preferredX = Number.isFinite(rawX) ? rawX : 0;
-          const preferredY = Number.isFinite(rawY) ? rawY : 0;
-          const target = findNearestFreeCell(state, preferredX, preferredY);
-          placeCard(card, target.x, target.y);
+          if (Number.isFinite(rawX) && Number.isFinite(rawY)) {
+            cardsWithPos.push(card);
+          } else {
+            cardsWithoutPos.push(card);
+          }
+        });
+        const placeCard = (card, posX, posY) => {
+          const rect = card.getBoundingClientRect();
+          const size = { w: rect.width, h: rect.height };
+          const target = findFreePosition(state, posX, posY, size);
+          card.dataset.posX = String(target.x);
+          card.dataset.posY = String(target.y);
+          card.style.position = "absolute";
+          card.style.left = `${state.paddingLeft + target.x}px`;
+          card.style.top = `${state.paddingTop + target.y}px`;
+          state.placed.push({ card, x: target.x, y: target.y, w: size.w, h: size.h });
+        };
+        cardsWithPos.forEach((card) => {
+          const posX = Number(card.dataset.posX) || 0;
+          const posY = Number(card.dataset.posY) || 0;
+          placeCard(card, posX, posY);
+        });
+        let cursorX = 0;
+        let cursorY = 0;
+        let rowHeight = 0;
+        cardsWithoutPos.forEach((card) => {
+          const rect = card.getBoundingClientRect();
+          const cardWidth = rect.width;
+          const cardHeight = rect.height;
+          if (cursorX + cardWidth > state.availableWidth && cursorX !== 0) {
+            cursorX = 0;
+            cursorY += rowHeight + state.gap;
+            rowHeight = 0;
+          }
+          placeCard(card, cursorX, cursorY);
+          cursorX += cardWidth + state.gap;
+          rowHeight = Math.max(rowHeight, cardHeight);
         });
         const order = getCategoryCardOrder(cards);
         order.forEach((entry) => grid.appendChild(entry.card));
-        const maxRow = Math.max(
-          0,
-          ...order.map((entry) => (Number.isFinite(entry.posY) ? entry.posY : 0))
-        );
-        grid.style.minHeight = `${
-          state.paddingTop + state.paddingBottom + (maxRow + 1) * state.cellSize
-        }px`;
+        updateFreeLayoutMinHeight(state);
         categoryLayoutState = state;
       }
 
@@ -1532,10 +1579,7 @@ if ("serviceWorker" in navigator) {
             const cardRect = card.getBoundingClientRect();
             const offsetX = event.clientX - cardRect.left;
             const offsetY = event.clientY - cardRect.top;
-            const usedKey = `${card.dataset.posX || 0},${card.dataset.posY || 0}`;
-            if (state.used.has(usedKey)) {
-              state.used.delete(usedKey);
-            }
+            state.placed = state.placed.filter((item) => item.card !== card);
             card.classList.add("is-free-dragging");
             card.style.zIndex = "10000";
             card.setPointerCapture(event.pointerId);
@@ -1549,22 +1593,22 @@ if ("serviceWorker" in navigator) {
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
-              const relX = upEvent.clientX - gridRect.left - state.paddingLeft;
-              const relY = upEvent.clientY - gridRect.top - state.paddingTop;
-              const rawX = Math.round(relX / state.cellSize);
-              const rawY = Math.round(relY / state.cellSize);
-              const target = findNearestFreeCell(state, rawX, rawY);
+              const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
+              const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
+              const size = { w: cardRect.width, h: cardRect.height };
+              const target = findFreePosition(state, relX, relY, size, card);
               card.dataset.posX = String(target.x);
               card.dataset.posY = String(target.y);
-              state.used.set(`${target.x},${target.y}`, card);
-              card.style.left = `${state.paddingLeft + target.x * state.cellSize}px`;
-              card.style.top = `${state.paddingTop + target.y * state.cellSize}px`;
+              card.style.left = `${state.paddingLeft + target.x}px`;
+              card.style.top = `${state.paddingTop + target.y}px`;
+              state.placed.push({ card, x: target.x, y: target.y, w: size.w, h: size.h });
               card.classList.remove("is-free-dragging");
               card.style.zIndex = "";
               card.releasePointerCapture(upEvent.pointerId);
               categoryDragState = null;
               pendingChanges = true;
               syncAllOrders();
+              updateFreeLayoutMinHeight(state);
               scheduleAutoSave();
             };
             const cleanup = () => {
