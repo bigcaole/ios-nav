@@ -1173,7 +1173,7 @@ if ("serviceWorker" in navigator) {
             return card;
             };
 
-            const usePagedCards = isCardView && currentMode === "preview";
+            const usePagedCards = isCardView && (currentMode === "preview" || currentMode === "sort");
             if (usePagedCards && items.length > 9) {
               const pagesContainer = document.createElement("div");
               pagesContainer.className = "card-pages";
@@ -1186,6 +1186,8 @@ if ("serviceWorker" in navigator) {
               for (let i = 0; i < totalPages; i += 1) {
                 const page = document.createElement("div");
                 page.className = "card-page";
+                page.dataset.category = category;
+                page.dataset.dock = "false";
                 const slice = items.slice(i * 9, i * 9 + 9);
                 slice.forEach((item) => {
                   page.appendChild(renderItem(item));
@@ -1930,7 +1932,7 @@ if ("serviceWorker" in navigator) {
           sortables.push(categorySortable);
         }
 
-        document.querySelectorAll(".category-grid").forEach((container) => {
+        document.querySelectorAll(".category-grid, .card-page").forEach((container) => {
           const rect = container.getBoundingClientRect();
           console.log("Category grid rect:", rect.width, rect.height);
           const sortable = new Sortable(container, {
@@ -2714,7 +2716,7 @@ if ("serviceWorker" in navigator) {
           renderCategoryNav(orderedCategories);
         }
 
-        document.querySelectorAll(".category-grid").forEach((container) => {
+        document.querySelectorAll(".category-grid, .card-page").forEach((container) => {
           updateContainerState(container);
           const categoryName = container.dataset.category || "";
           container.querySelectorAll(".app").forEach((app, index) => {
@@ -2770,7 +2772,7 @@ if ("serviceWorker" in navigator) {
             initSortables();
             setSortablesEnabled(true);
             updateDockDragState();
-            const containers = document.querySelectorAll(".category-grid");
+            const containers = document.querySelectorAll(".category-grid, .card-page");
             console.log("检测到 " + containers.length + " 个分类容器已激活排序");
           }, 150);
         } else {
