@@ -583,11 +583,27 @@ if ("serviceWorker" in navigator) {
           normalizeHost(url) ||
           url;
 
+        const lockEl = isPrivate
+          ? (() => {
+              const lock = document.createElement("div");
+              lock.className = "lock";
+              lock.innerHTML =
+                '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
+              return lock;
+            })()
+          : null;
+
         function fallbackToLetter() {
           iconEl.innerHTML = "";
           iconEl.classList.add("icon-fallback");
           iconEl.style.background = `linear-gradient(135deg, ${c1}, ${c2})`;
-          iconEl.textContent = pickInitial(title, url);
+          const text = document.createElement("span");
+          text.className = "icon-fallback-text";
+          text.textContent = pickInitial(title, url);
+          iconEl.appendChild(text);
+          if (lockEl) {
+            iconEl.appendChild(lockEl);
+          }
         }
 
         function isGenericPlaceholder(src, width, height) {
@@ -666,16 +682,18 @@ if ("serviceWorker" in navigator) {
               iconCache.set(cacheKey, img.src);
             }
           } catch (err) {}
-          iconEl.textContent = "";
-          iconEl.style.background = "";
+          const fallbackText = iconEl.querySelector(".icon-fallback-text");
+          if (fallbackText) {
+            fallbackText.remove();
+          }
           iconEl.classList.remove("icon-fallback");
+          iconEl.style.background = "";
+          if (!iconEl.contains(img)) {
+            iconEl.appendChild(img);
+          }
           img.style.opacity = "1";
-          if (isPrivate) {
-            const lock = document.createElement("div");
-            lock.className = "lock";
-            lock.innerHTML =
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
-            iconEl.appendChild(lock);
+          if (lockEl && !iconEl.contains(lockEl)) {
+            iconEl.appendChild(lockEl);
           }
         };
         const cached = cacheKey ? iconCache.get(cacheKey) : null;
@@ -686,13 +704,13 @@ if ("serviceWorker" in navigator) {
           img.src = cached;
           img.style.opacity = "1";
           iconEl.appendChild(img);
-          if (isPrivate) {
-            const lock = document.createElement("div");
-            lock.className = "lock";
-            lock.innerHTML =
-              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
-            iconEl.appendChild(lock);
+          if (lockEl) {
+            iconEl.appendChild(lockEl);
           }
+          return;
+        }
+        if (!candidates.length) {
+          fallbackToLetter();
           return;
         }
         fallbackToLetter();

@@ -738,6 +738,13 @@
         font-size: calc(var(--icon-size, 40px) * 0.42);
         letter-spacing: 0.5px;
       }
+      .icon-fallback-text {
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 1em;
+      }
       @keyframes jiggle {
         0% {
           transform: rotate(-1.5deg);
