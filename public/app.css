@@ -61,6 +61,7 @@
         background: transparent;
         overflow-y: scroll;
         scrollbar-gutter: stable;
+        -webkit-overflow-scrolling: touch;
       }
       #iosBg {
         background: var(--bg-a);
@@ -2400,4 +2401,47 @@
   opacity: 0.92;
   transform: translateY(2px);
   transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+body.is-scrolling {
+  --frost-blur: 16px;
+  --glow-blur: 80px;
+  --glow-opacity: 0.75;
+}
+body.is-scrolling #iosBg .glow {
+  animation-play-state: paused;
+}
+body.is-scrolling #iosBg::before {
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+body.is-scrolling .category-card,
+body.is-scrolling .dock,
+body.is-scrolling .dock-container,
+body.is-scrolling .site-header,
+body.is-scrolling #categoryNav,
+body.is-scrolling .category-nav {
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08) !important;
+}
+body.is-scrolling .app:hover .icon,
+body.is-scrolling .dock-item:hover .icon {
+  transform: none !important;
+}
+@media (max-width: 768px) {
+  body.is-scrolling .category-card,
+  body.is-scrolling .dock,
+  body.is-scrolling .dock-container,
+  body.is-scrolling .site-header,
+  body.is-scrolling #categoryNav,
+  body.is-scrolling .category-nav {
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.07) !important;
+  }
+  body.is-scrolling #iosBg::before {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
 }
