@@ -2445,3 +2445,30 @@ body.is-scrolling .dock-item:hover .icon {
     -webkit-backdrop-filter: blur(10px);
   }
 }
+
+body.is-mobile {
+  --frost-blur: 18px;
+  --glow-blur: 70px;
+  --glow-opacity: 0.72;
+}
+body.is-mobile #iosBg .glow {
+  width: 520px !important;
+  height: 520px !important;
+  filter: blur(var(--glow-blur, 70px)) !important;
+  opacity: var(--glow-opacity, 0.72) !important;
+  animation: none !important;
+}
+body.is-mobile #iosBg::before {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+body.is-mobile .category-card,
+body.is-mobile .dock,
+body.is-mobile .dock-container,
+body.is-mobile .site-header,
+body.is-mobile #categoryNav,
+body.is-mobile .category-nav {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+}

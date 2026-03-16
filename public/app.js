@@ -154,6 +154,16 @@ if ("serviceWorker" in navigator) {
       const iconCache = new Map();
       let scrollLockY = 0;
       let scrollPerfTimer = null;
+      let scrollRaf = null;
+
+      function updateMobileClass() {
+        const isMobileView =
+          window.matchMedia("(max-width: 768px)").matches ||
+          /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        document.body.classList.toggle("is-mobile", isMobileView);
+      }
+      updateMobileClass();
+      window.addEventListener("resize", updateMobileClass, { passive: true });
 
       function lockBodyScroll() {
         const isMobile =
@@ -3332,15 +3342,19 @@ if ("serviceWorker" in navigator) {
       window.addEventListener(
         "scroll",
         () => {
-          if (!document.body.classList.contains("is-scrolling")) {
-            document.body.classList.add("is-scrolling");
-          }
-          if (scrollPerfTimer) {
-            clearTimeout(scrollPerfTimer);
-          }
-          scrollPerfTimer = setTimeout(() => {
-            document.body.classList.remove("is-scrolling");
-          }, 140);
+          if (scrollRaf) return;
+          scrollRaf = requestAnimationFrame(() => {
+            scrollRaf = null;
+            if (!document.body.classList.contains("is-scrolling")) {
+              document.body.classList.add("is-scrolling");
+            }
+            if (scrollPerfTimer) {
+              clearTimeout(scrollPerfTimer);
+            }
+            scrollPerfTimer = setTimeout(() => {
+              document.body.classList.remove("is-scrolling");
+            }, 180);
+          });
         },
         { passive: true }
       );
