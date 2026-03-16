@@ -146,6 +146,7 @@ if ("serviceWorker" in navigator) {
       let appearanceTimer = null;
 
       const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal].filter(Boolean);
+      const iconCache = new Map();
       let scrollLockY = 0;
 
       function lockBodyScroll() {
@@ -174,6 +175,7 @@ if ("serviceWorker" in navigator) {
             item.classList.remove("active");
           }
         });
+        target.classList.remove("closing");
         target.classList.add("active");
         document.body.classList.add("modal-open");
         lockBodyScroll();
@@ -185,16 +187,27 @@ if ("serviceWorker" in navigator) {
 
         function closeModal(target) {
           if (!target) return;
-          target.classList.remove("active");
+          if (!target.classList.contains("active")) return;
+          target.classList.add("closing");
+          const closeDelay = 180;
+          setTimeout(() => {
+            target.classList.remove("active", "closing");
+            if (returnToSettings === target) {
+              returnToSettings = null;
+              if (settingsModal) {
+                openModal(settingsModal);
+              }
+            }
+            if (!document.querySelector(".modal.active")) {
+              document.body.classList.remove("modal-open");
+              unlockBodyScroll();
+            }
+          }, closeDelay);
           if (returnToSettings === target) {
             returnToSettings = null;
-          if (settingsModal) {
-            openModal(settingsModal);
-          }
-        }
-          if (!document.querySelector(".modal.active")) {
-            document.body.classList.remove("modal-open");
-            unlockBodyScroll();
+            if (settingsModal) {
+              openModal(settingsModal);
+            }
           }
         }
 
@@ -564,6 +577,12 @@ if ("serviceWorker" in navigator) {
         const seed = hashCode(url);
         const [c1, c2] = colorPair(seed);
 
+        const cacheKey =
+          normalizeIconUrl(iconUrl) ||
+          normalizeUrlForFavicon(url) ||
+          normalizeHost(url) ||
+          url;
+
         function fallbackToLetter() {
           iconEl.innerHTML = "";
           iconEl.classList.add("icon-fallback");
@@ -586,6 +605,9 @@ if ("serviceWorker" in navigator) {
         const img = document.createElement("img");
         img.className =
           "w-full h-full object-cover rounded-2xl transition-transform duration-300 hover:scale-110 transform";
+        img.loading = "lazy";
+        img.decoding = "async";
+        img.referrerPolicy = "no-referrer";
         img.draggable = false;
         iconEl.classList.remove("icon-fallback");
         const candidates = [];
@@ -621,7 +643,6 @@ if ("serviceWorker" in navigator) {
         let idx = 0;
         const loadNext = () => {
           if (!candidates.length || idx >= candidates.length) {
-            fallbackToLetter();
             return;
           }
           img.src = candidates[idx++];
@@ -633,17 +654,31 @@ if ("serviceWorker" in navigator) {
         img.onload = () => {
           if (isGenericPlaceholder(img.src, img.naturalWidth, img.naturalHeight)) {
             loadNext();
+            return;
+          }
+          try {
+            if (cacheKey) {
+              iconCache.set(cacheKey, img.src);
+            }
+          } catch (err) {}
+          iconEl.innerHTML = "";
+          iconEl.classList.remove("icon-fallback");
+          iconEl.appendChild(img);
+          if (isPrivate) {
+            const lock = document.createElement("div");
+            lock.className = "lock";
+            lock.innerHTML =
+              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
+            iconEl.appendChild(lock);
           }
         };
-        iconEl.innerHTML = "";
-        iconEl.appendChild(img);
-        loadNext();
-        if (isPrivate) {
-          const lock = document.createElement("div");
-          lock.className = "lock";
-          lock.innerHTML =
-            '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2ZM10 7a2 2 0 1 1 4 0v2h-4V7Z"/></svg>';
-          iconEl.appendChild(lock);
+        fallbackToLetter();
+        const cached = cacheKey ? iconCache.get(cacheKey) : null;
+        if (cached) {
+          img.src = cached;
+        } else {
+          iconEl.appendChild(img);
+          loadNext();
         }
       }
 
@@ -2342,6 +2377,9 @@ if ("serviceWorker" in navigator) {
         if (!modes.includes(next)) {
           next = "preview";
         }
+        if (next !== currentMode) {
+          triggerModeTransition();
+        }
         closeDeleteBubble();
         document.querySelectorAll(".app.jiggle").forEach((el) => {
           el.classList.remove("jiggle", "is-shaking");
@@ -2507,6 +2545,14 @@ if ("serviceWorker" in navigator) {
           }
           document.body.classList.remove("is-editing", "is-deleting");
         } catch (err) {}
+      }
+
+      function triggerModeTransition() {
+        document.body.classList.add("mode-transition");
+        clearTimeout(window.__modeTransitionTimer);
+        window.__modeTransitionTimer = setTimeout(() => {
+          document.body.classList.remove("mode-transition");
+        }, 200);
       }
 
       function setEditingState(next) {
