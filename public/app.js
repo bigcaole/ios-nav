@@ -327,6 +327,10 @@ if ("serviceWorker" in navigator) {
             });
             allCategories = categories;
             renderCategorySelect(categories, selectedName);
+            if (Array.isArray(allLinks) && allLinks.length) {
+              renderLinks(allLinks);
+              renderDockLinks(allLinks);
+            }
             return categories;
           })
           .catch((err) => {
@@ -2845,6 +2849,7 @@ if ("serviceWorker" in navigator) {
 
       function setActiveMode(next) {
         console.log("检测到模式切换：正在清理所有排序实例...");
+        const previousMode = currentMode;
         closeDeleteBubble();
         destroySortables();
         document.querySelectorAll(".app.jiggle, .icon.is-shaking, .app.is-shaking").forEach((el) => {
@@ -2864,8 +2869,13 @@ if ("serviceWorker" in navigator) {
         applyMode(next);
         updateMobileLongPressLock();
         if (Array.isArray(allLinks)) {
-          renderLinks(allLinks);
-          renderDockLinks(allLinks);
+          const isSortPreviewSwitch =
+            (previousMode === "preview" && next === "sort") ||
+            (previousMode === "sort" && next === "preview");
+          if (!isSortPreviewSwitch) {
+            renderLinks(allLinks);
+            renderDockLinks(allLinks);
+          }
         }
         console.log("清理完成。");
       }
