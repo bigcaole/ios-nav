@@ -1623,7 +1623,7 @@ if ("serviceWorker" in navigator) {
         }, 0);
         const minTwoCardWidth = maxCardWidth * 2 + state.gap;
         const shouldAutoFlow = state.availableWidth < minTwoCardWidth;
-        const allowStoredPositions = !isMobileLayout && !shouldAutoFlow;
+        const allowStoredPositions = !isMobileLayout;
         const cardsWithPos = [];
         const cardsWithoutPos = [];
         cards.forEach((card) => {
@@ -1663,9 +1663,10 @@ if ("serviceWorker" in navigator) {
           const rect = card.getBoundingClientRect();
           const size = { w: rect.width, h: rect.height };
           const target = findFreePosition(state, posX, posY, size, null, { snap });
+          const moved = target.x !== posX || target.y !== posY;
           const canPersist =
             commitPosition &&
-            (!strictPersist || (target.x === posX && target.y === posY));
+            (!strictPersist || !moved);
           if (canPersist) {
             card.dataset.posX = String(target.x);
             card.dataset.posY = String(target.y);
@@ -1675,16 +1676,32 @@ if ("serviceWorker" in navigator) {
           card.style.top = `${state.paddingTop + target.y}px`;
           state.placed.push({ card, x: target.x, y: target.y, w: size.w, h: size.h });
           lockCardSize(card);
+          return { x: target.x, y: target.y, moved };
         };
-        cardsWithPos.forEach((card) => {
-          const posX = Number(card.dataset.posX) || 0;
-          const posY = Number(card.dataset.posY) || 0;
-          placeCard(card, posX, posY, {
-            snap: false,
-            commitPosition: allowStoredPositions,
-            strictPersist: true
+        let storedLayoutOk = allowStoredPositions && !shouldAutoFlow && cardsWithPos.length > 0;
+        if (storedLayoutOk) {
+          state.placed = [];
+          cardsWithPos.forEach((card) => {
+            const posX = Number(card.dataset.posX) || 0;
+            const posY = Number(card.dataset.posY) || 0;
+            const result = placeCard(card, posX, posY, {
+              snap: false,
+              commitPosition: false,
+              strictPersist: true
+            });
+            if (result.moved) {
+              storedLayoutOk = false;
+            }
           });
-        });
+        }
+        if (!storedLayoutOk) {
+          state.placed = [];
+          cardsWithPos.length = 0;
+          cardsWithoutPos.length = 0;
+          cards.forEach((card) => cardsWithoutPos.push(card));
+        }
+        const shouldPersistPositions =
+          allowStoredPositions && !shouldAutoFlow && storedLayoutOk;
         let cursorX = 0;
         let cursorY = 0;
         let rowHeight = 0;
@@ -1699,7 +1716,7 @@ if ("serviceWorker" in navigator) {
           }
           placeCard(card, cursorX, cursorY, {
             snap: true,
-            commitPosition: !isMobileLayout && !shouldAutoFlow
+            commitPosition: shouldPersistPositions
           });
           cursorX += cardWidth + state.gap;
           rowHeight = Math.max(rowHeight, cardHeight);
