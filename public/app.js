@@ -2707,17 +2707,19 @@ if ("serviceWorker" in navigator) {
 
 
       function applyViewMode(mode) {
-        if (window.innerWidth < 768 && mode !== "card") {
-          mode = "card";
+        const isMobileView = document.body.classList.contains("is-mobile") || window.innerWidth < 768;
+        if (isMobileView) {
+          viewMode = "list";
+        } else {
+          viewMode = mode;
+          localStorage.setItem("viewMode", mode);
         }
-        viewMode = mode;
-        localStorage.setItem("viewMode", mode);
-        document.body.classList.toggle("view-card", mode === "card");
+        document.body.classList.toggle("view-card", viewMode === "card");
         if (viewToggleBtn) {
           const gridIcon = viewToggleBtn.querySelector(".view-icon-grid");
           const cardIcon = viewToggleBtn.querySelector(".view-icon-card");
           if (gridIcon && cardIcon) {
-            if (mode === "card") {
+            if (viewMode === "card") {
               gridIcon.classList.add("hidden");
               cardIcon.classList.remove("hidden");
             } else {
@@ -3905,6 +3907,8 @@ if ("serviceWorker" in navigator) {
       setActiveMode("preview");
       applyViewMode(viewMode);
       window.addEventListener("resize", () => {
+        const preferred = localStorage.getItem("viewMode") || "card";
+        applyViewMode(preferred);
         if (viewMode === "card") {
           applyCategoryFreeLayout();
         }

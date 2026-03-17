@@ -1191,6 +1191,12 @@
           transform: none;
         }
       }
+      body.is-mobile .dock-label-capsule {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        bottom: -18px;
+      }
       .dock-item .minus,
       .dock-item .edit-badge {
         z-index: 3;
