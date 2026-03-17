@@ -976,6 +976,7 @@ if ("serviceWorker" in navigator) {
         try {
           const normalLinks = links.filter((item) => !item.is_dock);
           const isCardView = viewMode === "card";
+          const isMobileView = window.innerWidth < 768;
           if (grid) {
             grid.classList.toggle("card-layout", isCardView);
           }
@@ -985,7 +986,20 @@ if ("serviceWorker" in navigator) {
           const perRow = 3;
           const baseIconSize = 64;
           const safeScale = Math.max(0.6, iconScale);
-          const iconSize = Math.round(baseIconSize * safeScale);
+          let iconSize = Math.round(baseIconSize * safeScale);
+          const maxCardWidth =
+            isCardView && isMobileView
+              ? Math.max(0, (grid?.clientWidth || window.innerWidth) - 12)
+              : null;
+          if (isCardView && isMobileView && maxCardWidth) {
+            const edgePadGuess = Math.round(iconSize * 0.22);
+            const maxIconSize = Math.floor(
+              (maxCardWidth - (perRow - 1) * gridGap - edgePadGuess * 2) / perRow
+            );
+            if (Number.isFinite(maxIconSize) && maxIconSize > 0) {
+              iconSize = Math.min(iconSize, Math.max(40, maxIconSize));
+            }
+          }
           if (isCardView && grid) {
             grid.style.removeProperty("--card-cols");
           }
@@ -1063,10 +1077,16 @@ if ("serviceWorker" in navigator) {
             if (isCardView) {
               cardWrap.style.setProperty("--grid-width", `${gridWidth}px`);
               cardWrap.style.setProperty("--grid-size", `${gridSize}px`);
-              cardWrap.style.setProperty("--card-width", `${gridSize + 32}px`);
-              cardWrap.style.width = `${gridSize + 32}px`;
-              innerGrid.style.maxWidth = `${gridWidth}px`;
-              innerGrid.style.width = `${gridWidth}px`;
+              const rawCardWidth = gridSize + 32;
+              const finalCardWidth =
+                maxCardWidth && maxCardWidth > 0
+                  ? Math.min(rawCardWidth, maxCardWidth)
+                  : rawCardWidth;
+              const innerMax = Math.max(0, finalCardWidth - 32);
+              cardWrap.style.setProperty("--card-width", `${finalCardWidth}px`);
+              cardWrap.style.width = `${finalCardWidth}px`;
+              innerGrid.style.maxWidth = `${Math.min(gridWidth, innerMax)}px`;
+              innerGrid.style.width = `${Math.min(gridWidth, innerMax)}px`;
             } else {
               cardWrap.style.removeProperty("--grid-width");
               cardWrap.style.removeProperty("--grid-size");

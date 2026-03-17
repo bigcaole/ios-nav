@@ -1176,6 +1176,20 @@
         .dock-item .icon {
           padding: 8px;
         }
+        .dock-label-capsule {
+          opacity: 1 !important;
+          visibility: visible !important;
+          transform: none !important;
+          bottom: -18px;
+          font-size: 10px;
+          padding: 2px 6px;
+          background: rgba(0, 0, 0, 0.22);
+          border-color: rgba(255, 255, 255, 0.2);
+          box-shadow: none;
+        }
+        .dock-item:hover .dock-label-capsule {
+          transform: none;
+        }
       }
       .dock-item .minus,
       .dock-item .edit-badge {
@@ -1294,7 +1308,7 @@
       @media (max-width: 640px) {
         .brightness-control {
           right: 16px;
-          bottom: 24px;
+          bottom: 110px;
         }
         .brightness-control.open .brightness-slider,
         .brightness-control:hover .brightness-slider {
