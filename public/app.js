@@ -1031,6 +1031,19 @@ if ("serviceWorker" in navigator) {
             innerGrid.dataset.category = category;
             innerGrid.dataset.dock = "false";
             innerGrid.style.gap = `${gridGap}px`;
+            if (!isCardView && !innerGrid.dataset.wheelBound) {
+              innerGrid.addEventListener(
+                "wheel",
+                (event) => {
+                  if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
+                    event.preventDefault();
+                    innerGrid.scrollLeft += event.deltaY;
+                  }
+                },
+                { passive: false }
+              );
+              innerGrid.dataset.wheelBound = "true";
+            }
             const items = grouped.groups[category];
             const edgePad = isCardView ? Math.round(iconSize * 0.22) : 0;
             const gridWidth = perRow * iconSize + (perRow - 1) * gridGap + edgePad * 2;
@@ -1604,12 +1617,19 @@ if ("serviceWorker" in navigator) {
         }
         const state = computeCategoryLayoutState(cards);
         if (!state) return;
+        const maxCardWidth = cards.reduce((acc, card) => {
+          const rect = card.getBoundingClientRect();
+          return Math.max(acc, rect.width || 0);
+        }, 0);
+        const minTwoCardWidth = maxCardWidth * 2 + state.gap;
+        const shouldAutoFlow = state.availableWidth < minTwoCardWidth;
+        const allowStoredPositions = !isMobileLayout && !shouldAutoFlow;
         const cardsWithPos = [];
         const cardsWithoutPos = [];
         cards.forEach((card) => {
           const rawX = Number(card.dataset.posX);
           const rawY = Number(card.dataset.posY);
-          if (!isMobileLayout && Number.isFinite(rawX) && Number.isFinite(rawY)) {
+          if (allowStoredPositions && Number.isFinite(rawX) && Number.isFinite(rawY)) {
             cardsWithPos.push(card);
           } else {
             cardsWithoutPos.push(card);
@@ -1634,11 +1654,19 @@ if ("serviceWorker" in navigator) {
             card.style.height = `${finalH}px`;
           }
         };
-        const placeCard = (card, posX, posY, snap, commitPosition = true) => {
+        const placeCard = (card, posX, posY, options = {}) => {
+          const {
+            snap = true,
+            commitPosition = true,
+            strictPersist = false
+          } = options;
           const rect = card.getBoundingClientRect();
           const size = { w: rect.width, h: rect.height };
           const target = findFreePosition(state, posX, posY, size, null, { snap });
-          if (commitPosition) {
+          const canPersist =
+            commitPosition &&
+            (!strictPersist || (target.x === posX && target.y === posY));
+          if (canPersist) {
             card.dataset.posX = String(target.x);
             card.dataset.posY = String(target.y);
           }
@@ -1651,7 +1679,11 @@ if ("serviceWorker" in navigator) {
         cardsWithPos.forEach((card) => {
           const posX = Number(card.dataset.posX) || 0;
           const posY = Number(card.dataset.posY) || 0;
-          placeCard(card, posX, posY, false, true);
+          placeCard(card, posX, posY, {
+            snap: false,
+            commitPosition: allowStoredPositions,
+            strictPersist: true
+          });
         });
         let cursorX = 0;
         let cursorY = 0;
@@ -1665,7 +1697,10 @@ if ("serviceWorker" in navigator) {
             cursorY += rowHeight + state.gap;
             rowHeight = 0;
           }
-          placeCard(card, cursorX, cursorY, true, !isMobileLayout);
+          placeCard(card, cursorX, cursorY, {
+            snap: true,
+            commitPosition: !isMobileLayout && !shouldAutoFlow
+          });
           cursorX += cardWidth + state.gap;
           rowHeight = Math.max(rowHeight, cardHeight);
         });

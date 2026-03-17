@@ -426,6 +426,11 @@
         margin: 0;
         pointer-events: auto;
       }
+      body:not(.view-card) .category-grid {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+        touch-action: pan-x;
+      }
       .category-grid::-webkit-scrollbar {
         display: none;
       }
