@@ -1106,8 +1106,9 @@
         border-radius: 24px;
         background: transparent !important;
         border: 1px solid var(--dock-border);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
+        background: rgba(255, 255, 255, 0.32) !important;
+        backdrop-filter: blur(22px) saturate(1.25);
+        -webkit-backdrop-filter: blur(22px) saturate(1.25);
         box-shadow: none !important;
         display: flex;
         justify-content: center;
@@ -1152,7 +1153,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 16px;
+        border-radius: 18px;
         position: relative;
         overflow: visible;
         z-index: 2;
@@ -1223,10 +1224,12 @@
         width: 100%;
         height: 100%;
         aspect-ratio: 1 / 1;
-        border-radius: 16px;
+        border-radius: 18px;
         padding: 10px;
         background: transparent;
         box-shadow: 0 8px 18px rgba(16, 24, 40, 0.18);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        outline: 1px solid rgba(0, 0, 0, 0.08);
         -webkit-box-reflect: below 4px linear-gradient(transparent, rgba(255, 255, 255, 0.12));
         transition: background-color 0.2s ease;
       }
