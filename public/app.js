@@ -1049,10 +1049,15 @@ if ("serviceWorker" in navigator) {
               innerGrid.addEventListener(
                 "wheel",
                 (event) => {
-                  if (Math.abs(event.deltaY) > Math.abs(event.deltaX)) {
-                    event.preventDefault();
-                    innerGrid.scrollLeft += event.deltaY;
+                  const absX = Math.abs(event.deltaX || 0);
+                  const absY = Math.abs(event.deltaY || 0);
+                  const hasHorizontalIntent = absX > absY || event.shiftKey;
+                  if (!hasHorizontalIntent) {
+                    return;
                   }
+                  event.preventDefault();
+                  const delta = absX > 0 ? event.deltaX : event.deltaY;
+                  innerGrid.scrollLeft += delta;
                 },
                 { passive: false }
               );
