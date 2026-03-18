@@ -1063,6 +1063,42 @@ if ("serviceWorker" in navigator) {
               );
               innerGrid.dataset.wheelBound = "true";
             }
+            if (!isCardView && isMobileView && !innerGrid.dataset.touchBound) {
+              let startX = 0;
+              let startY = 0;
+              let startLeft = 0;
+              let lockedAxis = "";
+              innerGrid.addEventListener(
+                "touchstart",
+                (event) => {
+                  const touch = event.touches[0];
+                  if (!touch) return;
+                  startX = touch.clientX;
+                  startY = touch.clientY;
+                  startLeft = innerGrid.scrollLeft;
+                  lockedAxis = "";
+                },
+                { passive: true }
+              );
+              innerGrid.addEventListener(
+                "touchmove",
+                (event) => {
+                  const touch = event.touches[0];
+                  if (!touch) return;
+                  const dx = touch.clientX - startX;
+                  const dy = touch.clientY - startY;
+                  if (!lockedAxis) {
+                    lockedAxis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+                  }
+                  if (lockedAxis === "x") {
+                    event.preventDefault();
+                    innerGrid.scrollLeft = startLeft - dx;
+                  }
+                },
+                { passive: false }
+              );
+              innerGrid.dataset.touchBound = "true";
+            }
             const items = grouped.groups[category];
             const edgePad = isCardView ? Math.round(iconSize * 0.22) : 0;
             const gridWidth = perRow * iconSize + (perRow - 1) * gridGap + edgePad * 2;

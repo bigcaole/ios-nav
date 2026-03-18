@@ -431,6 +431,9 @@
         overscroll-behavior-x: contain;
         touch-action: pan-x;
       }
+      body.is-mobile:not(.view-card) .category-grid {
+        touch-action: pan-y;
+      }
       .category-grid::-webkit-scrollbar {
         display: none;
       }
