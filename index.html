@@ -42,6 +42,16 @@
           </div>
         </div>
         <div id="top-controls" class="header-right">
+        <div class="search-box" id="searchBox">
+          <svg class="h-4 w-4 search-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M15.5 14h-.79l-.28-.27a6 6 0 1 0-.71.71l.27.28v.79L20 20.5 20.5 20 15.5 15v-1Zm-5.5 0a4 4 0 1 1 0-8 4 4 0 0 1 0 8Z"
+            />
+          </svg>
+          <input id="searchInput" type="text" placeholder="搜索图标或分类" />
+          <button id="searchClearBtn" type="button" class="hidden" aria-label="清除搜索">×</button>
+        </div>
         <div id="menuRoot" class="relative flex flex-col items-center gap-3 md:flex-row md:items-center">
           <div id="modeControl" class="mode-control">
             <button class="mode-btn active" data-mode="preview">预览</button>
@@ -179,6 +189,13 @@
       <div class="dock-grid" id="dockGrid" data-dock="true"></div>
     </div>
 
+    <div class="bulk-bar hidden" id="bulkBar">
+      <div class="bulk-count">已选 <span id="bulkCount">0</span> 项</div>
+      <select id="bulkMoveSelect"></select>
+      <button class="btn bg-slate-100 text-slate-700 border border-slate-200" id="bulkMoveBtn">移动</button>
+      <button class="btn bg-red-500 text-white border border-red-500/60" id="bulkDeleteBtn">删除</button>
+    </div>
+
     <div class="brightness-control" id="brightnessControl" aria-label="页面亮度">
       <button class="brightness-toggle" id="brightnessToggle" type="button" aria-label="调节亮度">
         <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -232,6 +249,16 @@
               required
             />
             </div>
+          </div>
+          <div class="field">
+            <label for="tagsInput">标签</label>
+            <input
+              id="tagsInput"
+              class="text-slate-900 dark:text-white bg-white/50 dark:bg-slate-700/50 border border-slate-300 dark:border-gray-600 placeholder-slate-400 dark:placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              style="color: #1a1a1a !important; background-color: rgba(255, 255, 255, 0.9) !important;"
+              type="text"
+              placeholder="例如：工作,工具"
+            />
           </div>
           <div class="field">
             <label for="categorySelectBtn">分类</label>
@@ -371,6 +398,31 @@
           <input id="frostBlurInput" type="range" min="0" max="100" value="50" />
         </div>
         <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">页面亮度</span>
+          <input id="brightnessSettingInput" type="range" min="0" max="100" value="60" />
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">省电模式</span>
+          <label class="toggle">
+            <input id="lowPowerToggle" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">显示快捷亮度按钮</span>
+          <label class="toggle">
+            <input id="quickBrightnessToggle" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
+          <span class="text-slate-800 dark:text-slate-100">简洁顶栏</span>
+          <label class="toggle">
+            <input id="compactHeaderToggle" type="checkbox" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-row">
           <span class="text-slate-800 dark:text-slate-100">加粗文字</span>
           <label class="toggle">
             <input id="boldToggle" type="checkbox" />
@@ -414,6 +466,19 @@
           <div class="settings-row">
             <span></span>
             <button class="btn bg-slate-100 text-slate-700 border border-gray-200/50" id="importBtn">导入</button>
+          </div>
+        </div>
+        <div class="settings-group bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/20 rounded-xl p-3">
+          <div class="settings-row">
+            <span class="text-slate-800 dark:text-slate-100">布局方案</span>
+          </div>
+          <div class="settings-row">
+            <button class="btn bg-slate-100 text-slate-700 border border-slate-200" id="saveLayoutA">保存方案 A</button>
+            <button class="btn bg-slate-100 text-slate-700 border border-slate-200" id="saveLayoutB">保存方案 B</button>
+          </div>
+          <div class="settings-row">
+            <button class="btn bg-blue-600 text-white border border-blue-600/60" id="applyLayoutA">应用方案 A</button>
+            <button class="btn bg-blue-600 text-white border border-blue-600/60" id="applyLayoutB">应用方案 B</button>
           </div>
         </div>
         <div class="footer">

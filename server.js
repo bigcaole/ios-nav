@@ -328,6 +328,7 @@ async function initDb() {
   );
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS is_dock BOOLEAN DEFAULT FALSE`);
   await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS position_index INTEGER`);
+  await pool.query(`ALTER TABLE links ADD COLUMN IF NOT EXISTS tags TEXT`);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS blacklist (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -808,7 +809,7 @@ async function buildFullBackupPayload() {
     "SELECT id, user_id, name, is_private, sort_index, pos_x, pos_y FROM categories ORDER BY sort_index ASC, name ASC"
   );
   const links = await pool.query(
-    "SELECT id, user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index, created_at FROM links ORDER BY sort_index ASC, created_at ASC"
+    "SELECT id, user_id, title, url, icon, tags, category_id, is_private, is_dock, sort_index, position_index, created_at FROM links ORDER BY sort_index ASC, created_at ASC"
   );
   const invites = await pool.query(
     "SELECT id, code, created_by, created_at, expires_at, used_at, used_by FROM invite_codes ORDER BY created_at ASC"
@@ -1114,6 +1115,9 @@ function normalizeSettings(settings, fallbackName) {
     iconScale: typeof safe.iconScale === "number" ? safe.iconScale : 100,
     frostBlur: typeof safe.frostBlur === "number" ? safe.frostBlur : 50,
     pageBrightness: typeof safe.pageBrightness === "number" ? safe.pageBrightness : 60,
+    lowPowerMode: Boolean(safe.lowPowerMode),
+    quickBrightness: safe.quickBrightness !== undefined ? Boolean(safe.quickBrightness) : true,
+    compactHeader: Boolean(safe.compactHeader),
     userName: safe.userName || fallbackName || "Admin",
     userAvatar: safe.userAvatar || "",
     userTotpEnabled: Boolean(safe.userTotpEnabled),
@@ -1471,7 +1475,7 @@ app.get("/api/public/:username", async (req, res) => {
       [userId]
     );
     const linksResult = await pool.query(
-      `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
+      `SELECT links.id, links.title, links.url, links.icon, links.tags, links.is_private, links.is_dock, links.sort_index, links.position_index,
               categories.name AS category,
               COALESCE(categories.is_private, FALSE) AS category_private
        FROM links
@@ -1519,7 +1523,7 @@ app.get("/api/links", async (req, res) => {
       where += " AND links.is_private = FALSE AND COALESCE(categories.is_private, FALSE) = FALSE";
     }
     const result = await pool.query(
-      `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
+      `SELECT links.id, links.title, links.url, links.icon, links.tags, links.is_private, links.is_dock, links.sort_index, links.position_index,
               categories.name AS category,
               COALESCE(categories.is_private, FALSE) AS category_private
        FROM links
@@ -2529,6 +2533,31 @@ adminApp.get("/api/admin/visitors", requireAdmin, async (req, res) => {
   }
 });
 
+adminApp.get("/api/admin/visitors/summary", requireAdmin, async (req, res) => {
+  try {
+    const trendResult = await pool.query(
+      `SELECT to_char(date_trunc('day', created_at), 'YYYY-MM-DD') AS day,
+              COUNT(*)::int AS total
+       FROM visitor_logs
+       WHERE created_at >= NOW() - INTERVAL '7 days'
+       GROUP BY day
+       ORDER BY day ASC`
+    );
+    const topResult = await pool.query(
+      `SELECT COALESCE(link_title, '页面访问') AS title,
+              COUNT(*)::int AS total
+       FROM visitor_logs
+       WHERE event_type = 'click'
+       GROUP BY title
+       ORDER BY total DESC
+       LIMIT 8`
+    );
+    res.json({ trend: trendResult.rows, top: topResult.rows });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.post("/api/logout", (req, res) => {
   const secure = getSecureCookieFlag(req);
   res.setHeader(
@@ -3044,13 +3073,14 @@ adminApp.post(
 
         for (const item of links) {
           await client.query(
-            "INSERT INTO links (id, user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
+            "INSERT INTO links (id, user_id, title, url, icon, tags, category_id, is_private, is_dock, sort_index, position_index, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
             [
               item.id,
               item.user_id,
               item.title,
               item.url,
               item.icon || null,
+              item.tags || null,
               item.category_id || null,
               Boolean(item.is_private),
               Boolean(item.is_dock),
@@ -3309,7 +3339,7 @@ adminApp.use("/api", (req, res) => {
 
 
 app.post("/api/links", requireAuth, async (req, res) => {
-  const { title, url, icon, category, is_private, is_dock, position_index } = req.body || {};
+  const { title, url, icon, tags, category, is_private, is_dock, position_index } = req.body || {};
   if (!title || !url) {
     res.status(400).json({ error: "Title and url are required" });
     return;
@@ -3326,12 +3356,13 @@ app.post("/api/links", requireAuth, async (req, res) => {
     const privateValue = categoryInfo.is_private ? true : Boolean(is_private);
     const categoryId = categoryInfo.id;
     const result = await pool.query(
-      "INSERT INTO links (user_id, title, url, icon, category_id, is_private, is_dock, position_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id",
+      "INSERT INTO links (user_id, title, url, icon, tags, category_id, is_private, is_dock, position_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id",
       [
         req.user.id,
         safeTitle,
         safeUrl,
         icon || null,
+        tags || null,
         categoryId,
         privateValue,
         dockValue,
@@ -3363,7 +3394,7 @@ app.put("/api/links/:id", requireAuth, async (req, res) => {
     res.status(400).json({ error: "Invalid id" });
     return;
   }
-  const { title, url, icon, category, is_private, is_dock, position_index } = req.body || {};
+  const { title, url, icon, tags, category, is_private, is_dock, position_index } = req.body || {};
   if (!title || !url) {
     res.status(400).json({ error: "Title and url are required" });
     return;
@@ -3401,11 +3432,12 @@ app.put("/api/links/:id", requireAuth, async (req, res) => {
     const privateValue = categoryInfo.is_private ? true : Boolean(is_private);
     const categoryId = categoryInfo.id;
     await pool.query(
-      "UPDATE links SET title = $1, url = $2, icon = $3, category_id = $4, is_private = $5, is_dock = $6, position_index = $7 WHERE id = $8 AND user_id = $9",
+      "UPDATE links SET title = $1, url = $2, icon = $3, tags = $4, category_id = $5, is_private = $6, is_dock = $7, position_index = $8 WHERE id = $9 AND user_id = $10",
       [
         safeTitle,
         safeUrl,
         icon || nextIcon,
+        tags || null,
         categoryId,
         privateValue,
         dockValue,
@@ -3465,7 +3497,7 @@ app.get("/api/backup/export", requireAuth, async (req, res) => {
       [req.user.id]
     );
     const linksResult = await pool.query(
-      `SELECT links.id, links.title, links.url, links.icon, links.is_private, links.is_dock, links.sort_index, links.position_index,
+      `SELECT links.id, links.title, links.url, links.icon, links.tags, links.is_private, links.is_dock, links.sort_index, links.position_index,
               categories.name AS category,
               COALESCE(categories.is_private, FALSE) AS category_private
        FROM links
@@ -3547,12 +3579,13 @@ app.post("/api/backup/import", requireAuth, upload.single("backup"), async (req,
         const dockValue = Boolean(item.is_dock);
         const positionIndex = Number(item.position_index);
         await client.query(
-          "INSERT INTO links (user_id, title, url, icon, category_id, is_private, is_dock, sort_index, position_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)",
+          "INSERT INTO links (user_id, title, url, icon, tags, category_id, is_private, is_dock, sort_index, position_index) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)",
           [
             req.user.id,
             title,
             url,
             item.icon || null,
+            item.tags || null,
             categoryId,
             Boolean(item.is_private),
             dockValue,

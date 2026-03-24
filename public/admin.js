@@ -471,6 +471,46 @@ const loginCard = document.getElementById("loginCard");
         });
       }
 
+      async function loadVisitorSummary() {
+        const trendEl = document.getElementById("visitorTrend");
+        const topEl = document.getElementById("visitorTopIcons");
+        if (!trendEl || !topEl) return;
+        const res = await apiFetch("/api/admin/visitors/summary");
+        const data = await res.json();
+        trendEl.innerHTML = "";
+        topEl.innerHTML = "";
+        const trend = Array.isArray(data.trend) ? data.trend : [];
+        const top = Array.isArray(data.top) ? data.top : [];
+        const maxTrend = trend.reduce((acc, item) => Math.max(acc, Number(item.total) || 0), 0) || 1;
+        trend.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const width = Math.round(((Number(item.total) || 0) / maxTrend) * 100);
+          row.innerHTML = `<div class="flex items-center gap-2">
+            <div class="text-xs text-slate-500 w-20">${item.day}</div>
+            <div class="flex-1 h-2 rounded-full bg-slate-200">
+              <div class="h-2 rounded-full bg-blue-500" style="width:${width}%"></div>
+            </div>
+            <div class="text-xs text-slate-500 w-8 text-right">${item.total}</div>
+          </div>`;
+          trendEl.appendChild(row);
+        });
+        const maxTop = top.reduce((acc, item) => Math.max(acc, Number(item.total) || 0), 0) || 1;
+        top.forEach((item) => {
+          const row = document.createElement("div");
+          row.className = "list-item";
+          const width = Math.round(((Number(item.total) || 0) / maxTop) * 100);
+          row.innerHTML = `<div class="flex items-center gap-2">
+            <div class="text-xs text-slate-700 flex-1">${item.title}</div>
+            <div class="h-2 rounded-full bg-slate-200 w-24">
+              <div class="h-2 rounded-full bg-emerald-500" style="width:${width}%"></div>
+            </div>
+            <div class="text-xs text-slate-500 w-8 text-right">${item.total}</div>
+          </div>`;
+          topEl.appendChild(row);
+        });
+      }
+
       async function saveAdminCredentials() {
         const payload = {
           currentUsername: document.getElementById("currentAdminUsername").value.trim(),
@@ -499,6 +539,7 @@ const loginCard = document.getElementById("loginCard");
           loadBlacklist(),
           loadSecurityPolicy(),
           loadLoginLogs(),
+          loadVisitorSummary(),
           loadVisitorLogs(),
           loadAdminLogs()
         ]);

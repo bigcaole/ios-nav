@@ -43,6 +43,7 @@ if ("serviceWorker" in navigator) {
       const topControls = document.querySelector("#top-controls");
       const titleInput = document.querySelector("#titleInput");
       const urlInput = document.querySelector("#urlInput");
+      const tagsInput = document.querySelector("#tagsInput");
       const protocolToggle = document.querySelector("#protocolToggle");
       const protocolButtons = protocolToggle
         ? Array.from(protocolToggle.querySelectorAll(".protocol-btn"))
@@ -79,6 +80,21 @@ if ("serviceWorker" in navigator) {
       const importBtn = document.querySelector("#importBtn");
       const backupGroup = document.querySelector("#backupGroup");
       const settingsSaveBtn = document.querySelector("#settingsSaveBtn");
+      const searchInput = document.querySelector("#searchInput");
+      const searchClearBtn = document.querySelector("#searchClearBtn");
+      const brightnessSettingInput = document.querySelector("#brightnessSettingInput");
+      const lowPowerToggle = document.querySelector("#lowPowerToggle");
+      const quickBrightnessToggle = document.querySelector("#quickBrightnessToggle");
+      const compactHeaderToggle = document.querySelector("#compactHeaderToggle");
+      const saveLayoutA = document.querySelector("#saveLayoutA");
+      const saveLayoutB = document.querySelector("#saveLayoutB");
+      const applyLayoutA = document.querySelector("#applyLayoutA");
+      const applyLayoutB = document.querySelector("#applyLayoutB");
+      const bulkBar = document.querySelector("#bulkBar");
+      const bulkCount = document.querySelector("#bulkCount");
+      const bulkMoveSelect = document.querySelector("#bulkMoveSelect");
+      const bulkMoveBtn = document.querySelector("#bulkMoveBtn");
+      const bulkDeleteBtn = document.querySelector("#bulkDeleteBtn");
       const editModeToggle = document.getElementById("editModeSwitch");
       const deleteModeToggle = document.getElementById("deleteModeSwitch");
       const sortLockBtn = document.querySelector("#sortLockBtn");
@@ -152,9 +168,71 @@ if ("serviceWorker" in navigator) {
 
       const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal].filter(Boolean);
       const iconCache = new Map();
+      const iconCacheOrder = [];
+      let iconCacheSaveTimer = null;
+      const MAX_ICON_CACHE = 320;
+      const ICON_CACHE_KEY = "iconCacheV2";
       let scrollLockY = 0;
       let scrollPerfTimer = null;
       let scrollRaf = null;
+      let lastRenderSignature = "";
+      let renderQueued = false;
+      let searchTerm = "";
+      const bulkSelected = new Set();
+      let categoryLazyObserver = null;
+      const lazyCategoryMap = new Map();
+
+      function loadIconCache() {
+        try {
+          const raw = localStorage.getItem(ICON_CACHE_KEY);
+          if (!raw) return;
+          const parsed = JSON.parse(raw);
+          if (!parsed || typeof parsed !== "object") return;
+          const entries = parsed.entries || {};
+          const order = Array.isArray(parsed.order) ? parsed.order : Object.keys(entries);
+          order.forEach((key) => {
+            if (entries[key]) {
+              iconCache.set(key, entries[key]);
+              iconCacheOrder.push(key);
+            }
+          });
+        } catch (err) {}
+      }
+
+      function persistIconCache() {
+        if (iconCacheSaveTimer) {
+          clearTimeout(iconCacheSaveTimer);
+        }
+        iconCacheSaveTimer = setTimeout(() => {
+          try {
+            const entries = {};
+            iconCacheOrder.forEach((key) => {
+              const value = iconCache.get(key);
+              if (value) {
+                entries[key] = value;
+              }
+            });
+            localStorage.setItem(ICON_CACHE_KEY, JSON.stringify({ order: iconCacheOrder, entries }));
+          } catch (err) {}
+        }, 300);
+      }
+
+      function rememberIconCache(key, value) {
+        if (!key || !value) return;
+        if (iconCache.has(key)) {
+          const idx = iconCacheOrder.indexOf(key);
+          if (idx !== -1) iconCacheOrder.splice(idx, 1);
+        }
+        iconCache.set(key, value);
+        iconCacheOrder.unshift(key);
+        if (iconCacheOrder.length > MAX_ICON_CACHE) {
+          const toDrop = iconCacheOrder.splice(MAX_ICON_CACHE);
+          toDrop.forEach((dropKey) => iconCache.delete(dropKey));
+        }
+        persistIconCache();
+      }
+
+      loadIconCache();
 
       function updateMobileClass() {
         const isMobileView =
@@ -341,6 +419,7 @@ if ("serviceWorker" in navigator) {
             });
             allCategories = categories;
             renderCategorySelect(categories, selectedName);
+            refreshBulkMoveOptions();
             if (Array.isArray(allLinks) && allLinks.length) {
               renderLinks(allLinks);
               renderDockLinks(allLinks);
@@ -356,6 +435,17 @@ if ("serviceWorker" in navigator) {
       function getCategoryByName(name) {
         if (!name) return null;
         return allCategories.find((item) => item.name === name) || null;
+      }
+
+      function refreshBulkMoveOptions() {
+        if (!bulkMoveSelect) return;
+        bulkMoveSelect.innerHTML = '<option value="">移动到...</option>';
+        allCategories.forEach((item) => {
+          const option = document.createElement("option");
+          option.value = item.name;
+          option.textContent = item.name;
+          bulkMoveSelect.appendChild(option);
+        });
       }
 
       function syncPrivateToggleForCategory(name) {
@@ -706,7 +796,7 @@ if ("serviceWorker" in navigator) {
           }
           try {
             if (cacheKey) {
-              iconCache.set(cacheKey, img.src);
+              rememberIconCache(cacheKey, img.src);
             }
           } catch (err) {}
           const fallbackText = iconEl.querySelector(".icon-fallback-text");
@@ -743,6 +833,34 @@ if ("serviceWorker" in navigator) {
         fallbackToLetter();
         iconEl.appendChild(img);
         loadNext();
+      }
+
+      function prefetchIcons(items = []) {
+        items.forEach((item) => {
+          const direct = normalizeIconUrl(item.icon);
+          const normalized = normalizeUrlForFavicon(item.url);
+          const cacheKey =
+            normalizeIconUrl(item.icon) ||
+            normalizeUrlForFavicon(item.url) ||
+            normalizeHost(item.url) ||
+            item.url;
+          const prefetchUrl = direct
+            ? direct
+            : normalized
+            ? `https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(
+                normalized
+              )}&size=128`
+            : "";
+          if (!prefetchUrl) return;
+          const img = new Image();
+          img.decoding = "async";
+          img.loading = "lazy";
+          img.referrerPolicy = "no-referrer";
+          img.src = prefetchUrl;
+          if (cacheKey) {
+            rememberIconCache(cacheKey, prefetchUrl);
+          }
+        });
       }
 
             function groupByCategory(links) {
@@ -936,6 +1054,9 @@ if ("serviceWorker" in navigator) {
                 saveBtn.textContent = "保存";
                 titleInput.value = "";
                 applyUrlToInput("");
+                if (tagsInput) {
+                  tagsInput.value = "";
+                }
                 privateInput.checked = false;
                 loadCategories();
                 openModal(modal, { returnToSettings: true });
@@ -972,8 +1093,55 @@ if ("serviceWorker" in navigator) {
         return count < dockLimit ? count : null;
       }
 
+      function getRenderSignature(links, mode) {
+        const keyParts = [];
+        if (Array.isArray(links)) {
+          links.forEach((item) => {
+            keyParts.push(
+              [
+                item.id,
+                item.sort_index,
+                item.position_index,
+                item.category,
+                item.is_dock ? 1 : 0,
+                item.title,
+                item.icon
+              ].join(":")
+            );
+          });
+        }
+        return `${mode || viewMode}|${keyParts.join("|")}`;
+      }
+
+      function setupCategoryLazyObserver() {
+        if (categoryLazyObserver) {
+          categoryLazyObserver.disconnect();
+        }
+        lazyCategoryMap.clear();
+        categoryLazyObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              const renderFn = lazyCategoryMap.get(entry.target);
+              if (renderFn) {
+                renderFn();
+                lazyCategoryMap.delete(entry.target);
+                categoryLazyObserver.unobserve(entry.target);
+              }
+            });
+          },
+          { root: null, rootMargin: "200px", threshold: 0.1 }
+        );
+      }
+
       function renderLinks(links) {
         try {
+          const signature = getRenderSignature(links, viewMode);
+          if (signature === lastRenderSignature) {
+            return;
+          }
+          lastRenderSignature = signature;
+          setupCategoryLazyObserver();
           const normalLinks = links.filter((item) => !item.is_dock);
           const isCardView = viewMode === "card";
           const isMobileView = window.innerWidth < 768;
@@ -1381,6 +1549,13 @@ if ("serviceWorker" in navigator) {
               });
               updateArrows();
 
+              if (items.length > 9) {
+                const nextSlice = items.slice(9, 18);
+                setTimeout(() => {
+                  prefetchIcons(nextSlice);
+                }, 500);
+              }
+
               cardWrap.appendChild(pagesContainer);
               cardWrap.appendChild(dots);
               cardWrap.appendChild(leftArrow);
@@ -1424,6 +1599,9 @@ if ("serviceWorker" in navigator) {
                 saveBtn.textContent = "保存";
                 titleInput.value = "";
                 applyUrlToInput("");
+                if (tagsInput) {
+                  tagsInput.value = "";
+                }
                 privateInput.checked = false;
                 categoryInput.value = category;
                 categorySelectLabel.textContent = category;
@@ -1788,6 +1966,58 @@ if ("serviceWorker" in navigator) {
         categoryLayoutState = state;
       }
 
+      function captureLayoutPreset() {
+        return getCategoryCards()
+          .filter((card) => !card.classList.contains("category-add-card"))
+          .map((card) => ({
+            name: card.dataset.category || "",
+            pos_x: Number.isFinite(Number(card.dataset.posX))
+              ? Number(card.dataset.posX)
+              : null,
+            pos_y: Number.isFinite(Number(card.dataset.posY))
+              ? Number(card.dataset.posY)
+              : null
+          }));
+      }
+
+      function saveLayoutPreset(key) {
+        try {
+          const payload = captureLayoutPreset();
+          localStorage.setItem(key, JSON.stringify(payload));
+          showToast("布局已保存");
+        } catch (err) {
+          showToast("保存失败");
+        }
+      }
+
+      function applyLayoutPreset(key) {
+        try {
+          const raw = localStorage.getItem(key);
+          if (!raw) {
+            showToast("暂无保存的布局");
+            return;
+          }
+          const preset = JSON.parse(raw);
+          if (!Array.isArray(preset)) return;
+          const lookup = new Map(preset.map((item) => [item.name, item]));
+          getCategoryCards().forEach((card) => {
+            const entry = lookup.get(card.dataset.category || "");
+            if (entry) {
+              card.dataset.posX =
+                Number.isFinite(Number(entry.pos_x)) ? String(entry.pos_x) : "";
+              card.dataset.posY =
+                Number.isFinite(Number(entry.pos_y)) ? String(entry.pos_y) : "";
+            }
+          });
+          pendingChanges = true;
+          applyCategoryFreeLayout();
+          scheduleAutoSave();
+          showToast("布局已应用");
+        } catch (err) {
+          showToast("应用失败");
+        }
+      }
+
       function initCategoryFreeDrag() {
         if (!grid) return;
         if (viewMode !== "card") return;
@@ -1924,7 +2154,7 @@ if ("serviceWorker" in navigator) {
         emptyCards.forEach((card) => grid.appendChild(card));
       }
 
-        function renderCategoryNav(categories) {
+      function renderCategoryNav(categories) {
           const nav = document.querySelector("#categoryNav");
           if (!nav) return;
           nav.innerHTML = "";
@@ -1946,7 +2176,16 @@ if ("serviceWorker" in navigator) {
             }
             nav.dataset.wheelBound = "true";
           }
-          categories.forEach((category) => {
+          const maxVisible = 7;
+          const visibleCategories =
+            Array.isArray(categories) && categories.length > maxVisible
+              ? categories.slice(0, maxVisible)
+              : categories;
+          const overflowCategories =
+            Array.isArray(categories) && categories.length > maxVisible
+              ? categories.slice(maxVisible)
+              : [];
+          visibleCategories.forEach((category) => {
             const pill = document.createElement("button");
             pill.type = "button";
             pill.className = "category-pill nav-item";
@@ -1970,6 +2209,47 @@ if ("serviceWorker" in navigator) {
             });
             nav.appendChild(pill);
           });
+          if (overflowCategories.length) {
+            const moreWrap = document.createElement("div");
+            moreWrap.className = "nav-more";
+            const moreBtn = document.createElement("button");
+            moreBtn.type = "button";
+            moreBtn.className = "category-pill nav-item";
+            moreBtn.textContent = "更多";
+            const menu = document.createElement("div");
+            menu.className = "nav-more-menu hidden";
+            overflowCategories.forEach((category) => {
+              const itemBtn = document.createElement("button");
+              itemBtn.type = "button";
+              itemBtn.className = "nav-more-item";
+              itemBtn.textContent = category;
+              itemBtn.addEventListener("click", () => {
+                menu.classList.add("hidden");
+                const target = document.getElementById(`category-${slugify(category)}`);
+                if (!target) return;
+                const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
+                const navHeight = nav.offsetHeight || 0;
+                const top =
+                  target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
+                window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+                document.querySelectorAll(".category-card.nav-active").forEach((card) => {
+                  card.classList.remove("nav-active");
+                });
+                target.classList.add("nav-active");
+              });
+              menu.appendChild(itemBtn);
+            });
+            moreBtn.addEventListener("click", (event) => {
+              event.stopPropagation();
+              menu.classList.toggle("hidden");
+            });
+            document.addEventListener("click", () => {
+              menu.classList.add("hidden");
+            });
+            moreWrap.appendChild(moreBtn);
+            moreWrap.appendChild(menu);
+            nav.appendChild(moreWrap);
+          }
         }
 
       function fetchPublicView() {
@@ -2579,13 +2859,54 @@ if ("serviceWorker" in navigator) {
 
       function applySearch() {
         try {
-          renderLinks(allLinks);
+          const term = String(searchTerm || "").trim().toLowerCase();
+          const source = Array.isArray(allLinks) ? allLinks : [];
+          const filtered = term
+            ? source.filter((item) => {
+                const hay =
+                  `${item.title || ""} ${item.category || ""} ${item.url || ""} ${item.tags || ""}`.toLowerCase();
+                return hay.includes(term);
+              })
+            : source;
+          renderLinks(filtered);
           if (!(currentMode === "delete" && activeDeleteBubble)) {
-            renderDockLinks(allLinks);
+            renderDockLinks(filtered);
           }
         } catch (err) {
           console.log("No data found");
         }
+      }
+
+      function updateBulkBar() {
+        if (!bulkBar || !bulkCount) return;
+        bulkCount.textContent = String(bulkSelected.size);
+        bulkBar.classList.toggle("hidden", bulkSelected.size === 0);
+      }
+
+      function resetBulkSelection() {
+        bulkSelected.clear();
+        document.querySelectorAll(".bulk-selected").forEach((el) => {
+          el.classList.remove("bulk-selected");
+        });
+        updateBulkBar();
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener("input", () => {
+          searchTerm = searchInput.value;
+          if (searchClearBtn) {
+            searchClearBtn.classList.toggle("hidden", !searchTerm);
+          }
+          applySearch();
+        });
+      }
+      if (searchClearBtn) {
+        searchClearBtn.addEventListener("click", () => {
+          searchTerm = "";
+          if (searchInput) searchInput.value = "";
+          searchClearBtn.classList.add("hidden");
+          applySearch();
+        });
       }
 
       function deleteLink(id) {
@@ -2658,11 +2979,88 @@ if ("serviceWorker" in navigator) {
         }
       }
 
+      function handleBulkSelect(event) {
+        if (currentMode !== "delete") return;
+        if (event.target.closest(".delete-badge") || event.target.closest(".edit-badge")) {
+          return;
+        }
+        const app = event.target.closest(".app");
+        if (!app || !app.dataset.id) return;
+        event.preventDefault();
+        event.stopPropagation();
+        const id = String(app.dataset.id);
+        if (bulkSelected.has(id)) {
+          bulkSelected.delete(id);
+          app.classList.remove("bulk-selected");
+        } else {
+          bulkSelected.add(id);
+          app.classList.add("bulk-selected");
+        }
+        updateBulkBar();
+      }
+
+      async function bulkDeleteSelected() {
+        if (!bulkSelected.size) return;
+        if (!window.confirm(`确定删除选中的 ${bulkSelected.size} 个图标吗？`)) {
+          return;
+        }
+        const ids = Array.from(bulkSelected);
+        for (const id of ids) {
+          try {
+            await fetch(`/api/links/${id}`, {
+              method: "DELETE",
+              credentials: "same-origin"
+            });
+          } catch (err) {}
+        }
+        allLinks = allLinks.filter((item) => !bulkSelected.has(String(item.id)));
+        resetBulkSelection();
+        applySearch();
+      }
+
+      async function bulkMoveSelected() {
+        if (!bulkSelected.size) return;
+        if (!bulkMoveSelect || !bulkMoveSelect.value) {
+          showToast("请选择目标分类");
+          return;
+        }
+        const targetCategory = bulkMoveSelect.value;
+        const categoryInfo = getCategoryByName(targetCategory);
+        const enforcedPrivate = categoryInfo && categoryInfo.is_private;
+        const ids = Array.from(bulkSelected);
+        for (const id of ids) {
+          const item = allLinks.find((link) => String(link.id) === String(id));
+          if (!item) continue;
+          const payload = {
+            title: item.title,
+            url: item.url,
+            tags: item.tags || "",
+            category: targetCategory,
+            is_private: enforcedPrivate ? 1 : item.is_private ? 1 : 0,
+            is_dock: false,
+            position_index: null
+          };
+          try {
+            await fetch(`/api/links/${id}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json; charset=utf-8" },
+              credentials: "same-origin",
+              body: JSON.stringify(payload)
+            });
+          } catch (err) {}
+        }
+        await fetchLinks();
+        resetBulkSelection();
+        if (bulkMoveSelect) bulkMoveSelect.value = "";
+      }
+
       if (grid) {
         grid.addEventListener("click", handleBadgeAction);
+        grid.addEventListener("click", handleBulkSelect);
       }
       if (dockGrid) {
         dockGrid.addEventListener("click", handleBadgeAction);
+        dockGrid.addEventListener("click", handleBulkSelect);
       }
       const dockContainer = document.querySelector("#dock-container");
       if (dockContainer) {
@@ -2703,6 +3101,14 @@ if ("serviceWorker" in navigator) {
         setTimeout(() => {
           toast.classList.remove("show");
         }, 1200);
+      }
+
+      function showHintOnce(key, message) {
+        try {
+          if (localStorage.getItem(key)) return;
+          localStorage.setItem(key, "1");
+        } catch (err) {}
+        showToast(message);
       }
 
       function closeDeleteBubble() {
@@ -2756,6 +3162,9 @@ if ("serviceWorker" in navigator) {
           localStorage.setItem("viewMode", mode);
         }
         document.body.classList.toggle("view-card", viewMode === "card");
+        if (viewMode === "list" && !isMobileView) {
+          showHintOnce("hint_list_mode", "列表模式下可左右滑动分类内图标");
+        }
         if (viewToggleBtn) {
           const gridIcon = viewToggleBtn.querySelector(".view-icon-grid");
           const cardIcon = viewToggleBtn.querySelector(".view-icon-card");
@@ -2815,6 +3224,15 @@ if ("serviceWorker" in navigator) {
             }
             if (payload.pageBrightness !== undefined) {
               applyBrightness(payload.pageBrightness);
+            }
+            if (payload.lowPowerMode !== undefined) {
+              applyLowPower(payload.lowPowerMode);
+            }
+            if (payload.quickBrightness !== undefined) {
+              applyQuickBrightness(payload.quickBrightness);
+            }
+            if (payload.compactHeader !== undefined) {
+              applyCompactHeader(payload.compactHeader);
             }
             showToast("保存成功");
           })
@@ -3042,6 +3460,7 @@ if ("serviceWorker" in navigator) {
           setSortLockState(true);
           editing = false;
           deleting = false;
+          showHintOnce("hint_sort_mode", "拖拽图标或分类可排序，完成后退出排序模式");
         } else if (next === "edit") {
           sortUnlocked = false;
           setSortLockState(false);
@@ -3057,6 +3476,9 @@ if ("serviceWorker" in navigator) {
           setSortLockState(false);
           editing = false;
           deleting = false;
+        }
+        if (next !== "delete") {
+          resetBulkSelection();
         }
         updateDockDragState();
         updateModeUI();
@@ -3350,6 +3772,9 @@ if ("serviceWorker" in navigator) {
         saveBtn.textContent = "保存修改";
         titleInput.value = item.title || "";
         applyUrlToInput(item.url || "");
+        if (tagsInput) {
+          tagsInput.value = item.tags || "";
+        }
         const categoryName = item.is_dock ? "" : item.category || "";
         categoryInput.value = categoryName;
         privateInput.checked = Number(item.is_private) === 1;
@@ -3413,6 +3838,19 @@ if ("serviceWorker" in navigator) {
         } catch (err) {}
       }
 
+      function applyLowPower(enabled) {
+        document.body.classList.toggle("low-power", Boolean(enabled));
+      }
+
+      function applyQuickBrightness(enabled) {
+        if (!brightnessControl) return;
+        brightnessControl.classList.toggle("hidden", !enabled);
+      }
+
+      function applyCompactHeader(enabled) {
+        document.body.classList.toggle("compact-header", Boolean(enabled));
+      }
+
       function updateDockDragState() {
         if (!dockGrid) return;
         const enabled = currentMode === "sort" || sortUnlocked;
@@ -3428,6 +3866,12 @@ if ("serviceWorker" in navigator) {
           savedBrightness !== null ? savedBrightness : brightnessInput.value || "60";
         brightnessInput.value = initialBrightness;
         applyBrightness(initialBrightness);
+      }
+      if (quickBrightnessToggle) {
+        if (quickBrightnessToggle.checked === false) {
+          quickBrightnessToggle.checked = true;
+        }
+        applyQuickBrightness(quickBrightnessToggle.checked);
       }
 
       function initMobilePosition() {}
@@ -3827,14 +4271,44 @@ if ("serviceWorker" in navigator) {
           if (frostBlurInput) {
             payload.frostBlur = frostBlurInput.value;
           }
-          if (brightnessInput) {
+          if (brightnessSettingInput) {
+            payload.pageBrightness = brightnessSettingInput.value;
+          } else if (brightnessInput) {
             payload.pageBrightness = brightnessInput.value;
+          }
+          if (lowPowerToggle) {
+            payload.lowPowerMode = lowPowerToggle.checked;
+          }
+          if (quickBrightnessToggle) {
+            payload.quickBrightness = quickBrightnessToggle.checked;
+          }
+          if (compactHeaderToggle) {
+            payload.compactHeader = compactHeaderToggle.checked;
           }
           if (userTotpToggle) {
             payload.userTotpEnabled = userTotpToggle.checked;
           }
           saveAppearanceSettings(payload);
         });
+      }
+      if (bulkDeleteBtn) {
+        bulkDeleteBtn.addEventListener("click", bulkDeleteSelected);
+      }
+      if (bulkMoveBtn) {
+        bulkMoveBtn.addEventListener("click", bulkMoveSelected);
+      }
+
+      if (saveLayoutA) {
+        saveLayoutA.addEventListener("click", () => saveLayoutPreset("layoutPresetA"));
+      }
+      if (saveLayoutB) {
+        saveLayoutB.addEventListener("click", () => saveLayoutPreset("layoutPresetB"));
+      }
+      if (applyLayoutA) {
+        applyLayoutA.addEventListener("click", () => applyLayoutPreset("layoutPresetA"));
+      }
+      if (applyLayoutB) {
+        applyLayoutB.addEventListener("click", () => applyLayoutPreset("layoutPresetB"));
       }
 
       if (siteNameInput) {
@@ -3885,10 +4359,40 @@ if ("serviceWorker" in navigator) {
           queueAppearanceSave({ frostBlur: frostBlurInput.value });
         });
       }
+      if (brightnessSettingInput) {
+        brightnessSettingInput.addEventListener("input", () => {
+          if (brightnessInput) {
+            brightnessInput.value = brightnessSettingInput.value;
+          }
+          applyBrightness(brightnessSettingInput.value);
+          queueAppearanceSave({ pageBrightness: brightnessSettingInput.value });
+        });
+      }
       if (brightnessInput) {
         brightnessInput.addEventListener("input", () => {
           applyBrightness(brightnessInput.value);
           queueAppearanceSave({ pageBrightness: brightnessInput.value });
+          if (brightnessSettingInput) {
+            brightnessSettingInput.value = brightnessInput.value;
+          }
+        });
+      }
+      if (lowPowerToggle) {
+        lowPowerToggle.addEventListener("change", () => {
+          applyLowPower(lowPowerToggle.checked);
+          queueAppearanceSave({ lowPowerMode: lowPowerToggle.checked });
+        });
+      }
+      if (quickBrightnessToggle) {
+        quickBrightnessToggle.addEventListener("change", () => {
+          applyQuickBrightness(quickBrightnessToggle.checked);
+          queueAppearanceSave({ quickBrightness: quickBrightnessToggle.checked });
+        });
+      }
+      if (compactHeaderToggle) {
+        compactHeaderToggle.addEventListener("change", () => {
+          applyCompactHeader(compactHeaderToggle.checked);
+          queueAppearanceSave({ compactHeader: compactHeaderToggle.checked });
         });
       }
 
@@ -3984,6 +4488,7 @@ if ("serviceWorker" in navigator) {
         const payload = {
           title: titleInput.value.trim(),
           url: buildFullUrl(),
+          tags: tagsInput ? tagsInput.value.trim() : "",
           category: selectedCategory,
           is_private: enforcedPrivate ? 1 : privateInput.checked ? 1 : 0,
           is_dock: dockInput && dockInput.checked,
@@ -4087,7 +4592,22 @@ if ("serviceWorker" in navigator) {
               if (brightnessInput) {
                 brightnessInput.value = String(safeValue);
               }
+              if (brightnessSettingInput) {
+                brightnessSettingInput.value = String(safeValue);
+              }
               applyBrightness(safeValue);
+            }
+            if (data && data.lowPowerMode !== undefined && lowPowerToggle) {
+              lowPowerToggle.checked = Boolean(data.lowPowerMode);
+              applyLowPower(lowPowerToggle.checked);
+            }
+            if (data && data.quickBrightness !== undefined && quickBrightnessToggle) {
+              quickBrightnessToggle.checked = Boolean(data.quickBrightness);
+              applyQuickBrightness(quickBrightnessToggle.checked);
+            }
+            if (data && data.compactHeader !== undefined && compactHeaderToggle) {
+              compactHeaderToggle.checked = Boolean(data.compactHeader);
+              applyCompactHeader(compactHeaderToggle.checked);
             }
             if (data && data.userTotpEnabled !== undefined && userTotpToggle) {
               userTotpToggle.checked = Boolean(data.userTotpEnabled);
