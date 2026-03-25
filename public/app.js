@@ -1808,7 +1808,8 @@ if ("serviceWorker" in navigator) {
         if (!isOverlapping(state, baseRect, ignoreCard)) {
           return { x: baseX, y: baseY };
         }
-        const step = Math.max(8, Math.round(state.gap));
+        const stepValue = Number.isFinite(Number(options.step)) ? Number(options.step) : null;
+        const step = Math.max(4, Math.round(stepValue || state.gap / 2));
         const maxRadius = 800;
         for (let radius = step; radius <= maxRadius; radius += step) {
           for (let dy = -radius; dy <= radius; dy += step) {
@@ -2083,6 +2084,7 @@ if ("serviceWorker" in navigator) {
             if (currentMode !== "sort" && !sortUnlocked) {
               return;
             }
+            ensureSortSession();
             if (!categoryLayoutState) {
               applyCategoryFreeLayout();
             }
@@ -2090,6 +2092,11 @@ if ("serviceWorker" in navigator) {
             if (!state) return;
             event.preventDefault();
             event.stopPropagation();
+            if (categoryDragState && categoryDragState.cleanup) {
+              try {
+                categoryDragState.cleanup();
+              } catch (err) {}
+            }
             const gridRect = grid.getBoundingClientRect();
             const cardRect = card.getBoundingClientRect();
             const offsetX = event.clientX - cardRect.left;
@@ -2110,14 +2117,14 @@ if ("serviceWorker" in navigator) {
               card.style.top = `${y}px`;
               const relX = moveEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = moveEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false });
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
               updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false });
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
               card.dataset.posX = String(target.x);
               card.dataset.posY = String(target.y);
               card.style.left = `${state.paddingLeft + target.x}px`;
@@ -2136,12 +2143,29 @@ if ("serviceWorker" in navigator) {
             const cleanup = () => {
               document.removeEventListener("pointermove", move);
               document.removeEventListener("pointerup", up);
+              document.removeEventListener("pointercancel", cancel);
+              document.removeEventListener("lostpointercapture", cancel);
+              try {
+                if (card.hasPointerCapture(event.pointerId)) {
+                  card.releasePointerCapture(event.pointerId);
+                }
+              } catch (err) {}
+              categoryDragState = null;
             };
+            const cancel = () => {
+              card.classList.remove("is-free-dragging");
+              card.style.zIndex = "";
+              clearDragGuides();
+              cleanup();
+            };
+            categoryDragState.cleanup = cleanup;
             document.addEventListener("pointermove", move);
             document.addEventListener("pointerup", (upEvent) => {
               cleanup();
               up(upEvent);
             }, { once: true });
+            document.addEventListener("pointercancel", cancel, { once: true });
+            document.addEventListener("lostpointercapture", cancel, { once: true });
           });
         });
       }
@@ -2409,13 +2433,23 @@ if ("serviceWorker" in navigator) {
         });
       }
 
+      function ensureSortSession() {
+        if (currentMode !== "sort") return;
+        if (!sortUnlocked) {
+          sortUnlocked = true;
+          document.body.classList.add("sort-unlocked", "app-unlocked");
+        }
+        setSortablesEnabled(true);
+      }
+
       function initSortables() {
         if (isVisitorMode) {
           destroySortables();
           return;
         }
+        const sortActive = currentMode === "sort" || sortUnlocked;
         console.log("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "sortUnlocked:", sortUnlocked);
-        if (!window.Sortable || !loggedIn || !sortUnlocked) {
+        if (!window.Sortable || !loggedIn || !sortActive) {
           destroySortables();
           return;
         }
@@ -2438,6 +2472,7 @@ if ("serviceWorker" in navigator) {
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
+              ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
             },
@@ -2499,6 +2534,7 @@ if ("serviceWorker" in navigator) {
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
+              ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
               if (event.item) {
@@ -2606,6 +2642,7 @@ if ("serviceWorker" in navigator) {
             disabled: false,
             onStart: (event) => {
               console.log("图标拖拽已捕获");
+              ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
               dockGrid.classList.add("dock-drop");
