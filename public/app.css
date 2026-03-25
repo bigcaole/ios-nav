@@ -2134,6 +2134,10 @@
         pointer-events: auto !important;
         cursor: grab;
       }
+      .sort-unlocked .category-title,
+      .sort-unlocked .category-card {
+        cursor: grab !important;
+      }
       .category-card.is-free-dragging {
         cursor: grabbing !important;
         z-index: 10000;

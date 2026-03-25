@@ -2098,16 +2098,26 @@ if ("serviceWorker" in navigator) {
         cards.forEach((card) => {
           if (card.classList.contains("category-add-card")) return;
           if (card.dataset.freeDragBound) return;
-          const handle =
-            card.querySelector(".category-title") || card.querySelector(".category-drag-handle");
-          if (!handle) return;
           card.dataset.freeDragBound = "true";
-          handle.addEventListener("pointerdown", (event) => {
+          card.addEventListener("pointerdown", (event) => {
             if (event.button !== 0 && event.pointerType !== "touch") {
               return;
             }
+            if (
+              event.target.closest(".app, .icon, .page-arrow, .pagination-dots, .rename-input")
+            ) {
+              return;
+            }
+            if (currentMode !== "sort" && !sortUnlocked) {
+              if (!editing && !deleting) {
+                setActiveMode("sort");
+              }
+            }
             if (currentMode !== "sort" && !sortUnlocked) {
               return;
+            }
+            if (!document.body.classList.contains("mode-sort")) {
+              document.body.classList.add("mode-sort");
             }
             ensureSortSession();
             if (!categoryLayoutState) {
