@@ -2102,23 +2102,36 @@ if ("serviceWorker" in navigator) {
             const offsetX = event.clientX - cardRect.left;
             const offsetY = event.clientY - cardRect.top;
             const dragSize = getCardSize(card);
+            const originX = Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : 0;
+            const originY = Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : 0;
             state.placed = state.placed.filter((item) => item.card !== card);
             card.classList.add("is-free-dragging");
             card.style.zIndex = "10000";
             card.setPointerCapture(event.pointerId);
-            categoryDragState = { card, offsetX, offsetY };
+            document.body.classList.add("dragging-card");
+            let rafId = null;
+            let pendingMove = null;
+            categoryDragState = { card, offsetX, offsetY, originX, originY, cleanup: null };
             ensureDragGuides();
             grid.classList.add("drag-guides-active");
             const move = (moveEvent) => {
               if (!categoryDragState) return;
-              const x = moveEvent.clientX - gridRect.left - offsetX;
-              const y = moveEvent.clientY - gridRect.top - offsetY;
-              card.style.left = `${x}px`;
-              card.style.top = `${y}px`;
-              const relX = moveEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
-              const relY = moveEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
-              updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
+              pendingMove = moveEvent;
+              if (rafId) return;
+              rafId = requestAnimationFrame(() => {
+                rafId = null;
+                if (!categoryDragState || !pendingMove) return;
+                const evt = pendingMove;
+                pendingMove = null;
+                const x = evt.clientX - gridRect.left - offsetX;
+                const y = evt.clientY - gridRect.top - offsetY;
+                card.style.left = `${x}px`;
+                card.style.top = `${y}px`;
+                const relX = evt.clientX - gridRect.left - state.paddingLeft - offsetX;
+                const relY = evt.clientY - gridRect.top - state.paddingTop - offsetY;
+                const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
+                updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
+              });
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
@@ -2132,8 +2145,11 @@ if ("serviceWorker" in navigator) {
               state.placed.push({ card, x: target.x, y: target.y, w: dragSize.w, h: dragSize.h });
               card.classList.remove("is-free-dragging");
               card.style.zIndex = "";
-              card.releasePointerCapture(upEvent.pointerId);
+              try {
+                card.releasePointerCapture(upEvent.pointerId);
+              } catch (err) {}
               categoryDragState = null;
+              document.body.classList.remove("dragging-card");
               pendingChanges = true;
               syncAllOrders();
               updateFreeLayoutMinHeight(state);
@@ -2145,24 +2161,30 @@ if ("serviceWorker" in navigator) {
               document.removeEventListener("pointerup", up);
               document.removeEventListener("pointercancel", cancel);
               document.removeEventListener("lostpointercapture", cancel);
-              try {
-                if (card.hasPointerCapture(event.pointerId)) {
-                  card.releasePointerCapture(event.pointerId);
-                }
-              } catch (err) {}
-              categoryDragState = null;
+              if (rafId) {
+                cancelAnimationFrame(rafId);
+                rafId = null;
+              }
             };
             const cancel = () => {
               card.classList.remove("is-free-dragging");
               card.style.zIndex = "";
               clearDragGuides();
+              const fallbackX = Number.isFinite(originX) ? originX : 0;
+              const fallbackY = Number.isFinite(originY) ? originY : 0;
+              card.dataset.posX = String(fallbackX);
+              card.dataset.posY = String(fallbackY);
+              card.style.left = `${state.paddingLeft + fallbackX}px`;
+              card.style.top = `${state.paddingTop + fallbackY}px`;
+              document.body.classList.remove("dragging-card");
+              categoryDragState = null;
               cleanup();
             };
             categoryDragState.cleanup = cleanup;
             document.addEventListener("pointermove", move);
             document.addEventListener("pointerup", (upEvent) => {
-              cleanup();
               up(upEvent);
+              cleanup();
             }, { once: true });
             document.addEventListener("pointercancel", cancel, { once: true });
             document.addEventListener("lostpointercapture", cancel, { once: true });

@@ -2135,6 +2135,15 @@
         cursor: grabbing !important;
         z-index: 10000;
       }
+      body.dragging-card .category-card,
+      body.is-dragging .category-card {
+        transition: none !important;
+      }
+      body.dragging-card .icon,
+      body.is-dragging .icon {
+        transition: none !important;
+        animation: none !important;
+      }
       .category-card.category-empty {
         display: none;
       }
