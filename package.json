@@ -4,7 +4,8 @@
   "description": "iOS-style nav site (Express)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "check": "node --check server.js && node --check public/app.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

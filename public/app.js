@@ -170,6 +170,8 @@ if ("serviceWorker" in navigator) {
         const dockLimit = 6;
         let dockFullWarned = false;
       let saveTimer = null;
+      let saveInFlight = false;
+      let saveQueued = false;
       let appearanceTimer = null;
 
       const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal, visitorModal].filter(Boolean);
@@ -184,9 +186,24 @@ if ("serviceWorker" in navigator) {
       let lastRenderSignature = "";
       let renderQueued = false;
       let searchTerm = "";
+      let searchDebounceTimer = null;
+      let sortRefreshTimer = null;
       const bulkSelected = new Set();
       let categoryLazyObserver = null;
       const lazyCategoryMap = new Map();
+      const DEBUG_ENABLED = false;
+      let navOverflowMenu = null;
+      let navGlobalCloseBound = false;
+
+      function debugLog(...args) {
+        if (!DEBUG_ENABLED) return;
+        console.log(...args);
+      }
+
+      function closeNavOverflowMenu() {
+        if (!navOverflowMenu) return;
+        navOverflowMenu.classList.add("hidden");
+      }
 
       function loadIconCache() {
         try {
@@ -1072,7 +1089,7 @@ if ("serviceWorker" in navigator) {
             }
           }
         } catch (err) {
-          console.log("No data found");
+          debugLog("No data found");
         }
       }
 
@@ -1100,23 +1117,28 @@ if ("serviceWorker" in navigator) {
       }
 
       function getRenderSignature(links, mode) {
-        const keyParts = [];
+        let hash = 2166136261;
+        const add = (value) => {
+          const text = String(value ?? "");
+          for (let i = 0; i < text.length; i += 1) {
+            hash ^= text.charCodeAt(i);
+            hash +=
+              (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+          }
+        };
         if (Array.isArray(links)) {
+          add(links.length);
           links.forEach((item) => {
-            keyParts.push(
-              [
-                item.id,
-                item.sort_index,
-                item.position_index,
-                item.category,
-                item.is_dock ? 1 : 0,
-                item.title,
-                item.icon
-              ].join(":")
-            );
+            add(item.id);
+            add(item.sort_index);
+            add(item.position_index);
+            add(item.category);
+            add(item.is_dock ? 1 : 0);
+            add(item.title);
+            add(item.icon);
           });
         }
-        return `${mode || viewMode}|${keyParts.join("|")}`;
+        return `${mode || viewMode}|${hash >>> 0}`;
       }
 
       function setupCategoryLazyObserver() {
@@ -1647,10 +1669,10 @@ if ("serviceWorker" in navigator) {
           applyCategoryFreeLayout();
           initCategoryFreeDrag();
           initCategoryFisheye();
-          initSortables();
+          refreshSortability();
           updateEmptyCategories();
         } catch (err) {
-          console.log("No data found");
+          debugLog("No data found");
         }
       }
 
@@ -2263,6 +2285,13 @@ if ("serviceWorker" in navigator) {
           const nav = document.querySelector("#categoryNav");
           if (!nav) return;
           nav.innerHTML = "";
+          navOverflowMenu = null;
+          if (!navGlobalCloseBound) {
+            document.addEventListener("click", () => {
+              closeNavOverflowMenu();
+            });
+            navGlobalCloseBound = true;
+          }
           if (!nav.dataset.wheelBound) {
             const canWheel =
               window.matchMedia &&
@@ -2281,6 +2310,19 @@ if ("serviceWorker" in navigator) {
             }
             nav.dataset.wheelBound = "true";
           }
+          const scrollToCategory = (categoryName) => {
+            const target = document.getElementById(`category-${slugify(categoryName)}`);
+            if (!target) return;
+            const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
+            const navHeight = nav.offsetHeight || 0;
+            const top =
+              target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
+            window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
+            document.querySelectorAll(".category-card.nav-active").forEach((card) => {
+              card.classList.remove("nav-active");
+            });
+            target.classList.add("nav-active");
+          };
           const maxVisible = 7;
           const visibleCategories =
             Array.isArray(categories) && categories.length > maxVisible
@@ -2300,17 +2342,8 @@ if ("serviceWorker" in navigator) {
                 btn.classList.remove("active");
               });
               pill.classList.add("active");
-              const target = document.getElementById(`category-${slugify(category)}`);
-              if (!target) return;
-              const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
-              const navHeight = nav.offsetHeight || 0;
-              const top =
-                target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
-              window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-              document.querySelectorAll(".category-card.nav-active").forEach((card) => {
-                card.classList.remove("nav-active");
-              });
-              target.classList.add("nav-active");
+              closeNavOverflowMenu();
+              scrollToCategory(category);
             });
             nav.appendChild(pill);
           });
@@ -2330,26 +2363,20 @@ if ("serviceWorker" in navigator) {
               itemBtn.textContent = category;
               itemBtn.addEventListener("click", () => {
                 menu.classList.add("hidden");
-                const target = document.getElementById(`category-${slugify(category)}`);
-                if (!target) return;
-                const headerHeight = document.querySelector(".site-header")?.offsetHeight || 0;
-                const navHeight = nav.offsetHeight || 0;
-                const top =
-                  target.getBoundingClientRect().top + window.scrollY - headerHeight - navHeight - 12;
-                window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
-                document.querySelectorAll(".category-card.nav-active").forEach((card) => {
-                  card.classList.remove("nav-active");
-                });
-                target.classList.add("nav-active");
+                scrollToCategory(category);
               });
               menu.appendChild(itemBtn);
             });
             moreBtn.addEventListener("click", (event) => {
               event.stopPropagation();
+              if (navOverflowMenu && navOverflowMenu !== menu) {
+                navOverflowMenu.classList.add("hidden");
+              }
               menu.classList.toggle("hidden");
+              navOverflowMenu = menu.classList.contains("hidden") ? null : menu;
             });
-            document.addEventListener("click", () => {
-              menu.classList.add("hidden");
+            menu.addEventListener("click", (event) => {
+              event.stopPropagation();
             });
             moreWrap.appendChild(moreBtn);
             moreWrap.appendChild(menu);
@@ -2421,7 +2448,7 @@ if ("serviceWorker" in navigator) {
                   trackVisitorEvent("visit");
                 }
               } else {
-                console.log("No data found");
+                debugLog("No data found");
                 renderLinks([]);
                 renderDockLinks([]);
               }
@@ -2467,13 +2494,41 @@ if ("serviceWorker" in navigator) {
         setSortablesEnabled(true);
       }
 
+      function refreshSortability(immediate = false) {
+        if (sortRefreshTimer) {
+          clearTimeout(sortRefreshTimer);
+          sortRefreshTimer = null;
+        }
+        const runner = () => {
+          const active = loggedIn && (currentMode === "sort" || sortUnlocked);
+          if (!active) {
+            setSortablesEnabled(false);
+            destroySortables();
+            updateDockDragState();
+            return;
+          }
+          initSortables();
+          setSortablesEnabled(true);
+          initCategoryFreeDrag();
+          updateDockDragState();
+        };
+        if (immediate) {
+          runner();
+          return;
+        }
+        sortRefreshTimer = setTimeout(() => {
+          sortRefreshTimer = null;
+          runner();
+        }, 40);
+      }
+
       function initSortables() {
         if (isVisitorMode) {
           destroySortables();
           return;
         }
         const sortActive = currentMode === "sort" || sortUnlocked;
-        console.log("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "sortUnlocked:", sortUnlocked);
+        debugLog("Sortable init:", typeof Sortable, "loggedIn:", loggedIn, "sortUnlocked:", sortUnlocked);
         if (!window.Sortable || !loggedIn || !sortActive) {
           destroySortables();
           return;
@@ -2496,13 +2551,13 @@ if ("serviceWorker" in navigator) {
             swapThreshold: 0.65,
             disabled: false,
             onStart: (event) => {
-              console.log("图标拖拽已捕获");
+              debugLog("图标拖拽已捕获");
               ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
             },
             onEnd: (event) => {
-              console.log("排序数据已保存");
+              debugLog("排序数据已保存");
               document.body.classList.remove("is-dragging");
               const moved =
                 event &&
@@ -2520,7 +2575,7 @@ if ("serviceWorker" in navigator) {
 
         document.querySelectorAll(".category-grid, .card-page").forEach((container) => {
           const rect = container.getBoundingClientRect();
-          console.log("Category grid rect:", rect.width, rect.height);
+          debugLog("Category grid rect:", rect.width, rect.height);
           const sortable = new Sortable(container, {
             animation: 320,
             draggable: ".icon-item",
@@ -2558,7 +2613,7 @@ if ("serviceWorker" in navigator) {
             dragClass: "sortable-drag",
             disabled: false,
             onStart: (event) => {
-              console.log("图标拖拽已捕获");
+              debugLog("图标拖拽已捕获");
               ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
@@ -2608,7 +2663,7 @@ if ("serviceWorker" in navigator) {
               syncAllOrders();
             },
             onEnd: (event) => {
-              console.log("排序数据已保存");
+              debugLog("排序数据已保存");
               document.body.classList.remove("is-dragging");
               if (event.item) {
                 event.item.classList.remove("is-dragging");
@@ -2639,7 +2694,7 @@ if ("serviceWorker" in navigator) {
         });
         if (dockGrid) {
           const rect = dockGrid.getBoundingClientRect();
-          console.log("Dock grid rect:", rect.width, rect.height);
+          debugLog("Dock grid rect:", rect.width, rect.height);
           const dockSortable = new Sortable(dockGrid, {
             animation: 180,
             draggable: ".dock-item",
@@ -2666,7 +2721,7 @@ if ("serviceWorker" in navigator) {
             dragClass: "sortable-drag",
             disabled: false,
             onStart: (event) => {
-              console.log("图标拖拽已捕获");
+              debugLog("图标拖拽已捕获");
               ensureSortSession();
               document.body.classList.add("is-dragging");
               clearDragImage(event);
@@ -2724,7 +2779,7 @@ if ("serviceWorker" in navigator) {
               updateLinkDockState(id, true, "", null);
             },
             onEnd: (event) => {
-              console.log("排序数据已保存");
+              debugLog("排序数据已保存");
               document.body.classList.remove("is-dragging");
               if (event.item) {
                 event.item.classList.remove("is-dragging");
@@ -3076,7 +3131,7 @@ if ("serviceWorker" in navigator) {
             renderDockLinks(filtered);
           }
         } catch (err) {
-          console.log("No data found");
+          debugLog("No data found");
         }
       }
 
@@ -3100,7 +3155,12 @@ if ("serviceWorker" in navigator) {
           if (searchClearBtn) {
             searchClearBtn.classList.toggle("hidden", !searchTerm);
           }
-          applySearch();
+          if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+          }
+          searchDebounceTimer = setTimeout(() => {
+            applySearch();
+          }, 120);
         });
       }
       if (searchClearBtn) {
@@ -3494,20 +3554,41 @@ if ("serviceWorker" in navigator) {
 
       function scheduleAutoSave() {
         if (!loggedIn) return;
+        if (!pendingChanges) return;
         if (saveTimer) {
           clearTimeout(saveTimer);
         }
         saveTimer = setTimeout(() => {
+          if (saveInFlight) {
+            saveQueued = true;
+            return;
+          }
+          const silent =
+            currentMode === "sort" ||
+            document.body.classList.contains("is-dragging") ||
+            document.body.classList.contains("dragging-card");
+          saveInFlight = true;
           saveEditingChanges()
             .then(() => {
               pendingChanges = false;
               document.querySelectorAll(".category-card").forEach((card) => {
                 card.dataset.original = card.dataset.category || "";
               });
-              showToast("保存成功");
+              if (!silent) {
+                showToast("保存成功");
+              }
             })
             .catch(() => {
-              showToast("保存失败");
+              if (!silent) {
+                showToast("保存失败");
+              }
+            })
+            .finally(() => {
+              saveInFlight = false;
+              if (saveQueued) {
+                saveQueued = false;
+                scheduleAutoSave();
+              }
             });
           }, 600);
         }
@@ -3598,11 +3679,11 @@ if ("serviceWorker" in navigator) {
       function setSortLockState(unlocked) {
         if (!loggedIn) {
           sortUnlocked = false;
-          document.body.classList.remove("sort-unlocked");
+          document.body.classList.remove("sort-unlocked", "app-unlocked");
           destroySortables();
           return;
         }
-        console.log("Sort lock toggled:", unlocked);
+        debugLog("Sort lock toggled:", unlocked);
         sortUnlocked = unlocked;
         document.body.classList.toggle("sort-unlocked", sortUnlocked);
         document.body.classList.toggle("app-unlocked", sortUnlocked);
@@ -3619,18 +3700,10 @@ if ("serviceWorker" in navigator) {
             open.classList.toggle("hidden", !sortUnlocked);
           }
         }
+        refreshSortability(sortUnlocked);
         if (sortUnlocked) {
-          setTimeout(() => {
-            initSortables();
-            setSortablesEnabled(true);
-            updateDockDragState();
-            const containers = document.querySelectorAll(".category-grid, .card-page");
-            console.log("检测到 " + containers.length + " 个分类容器已激活排序");
-          }, 150);
-        } else {
-          setSortablesEnabled(false);
-          destroySortables();
-          updateDockDragState();
+          const containers = document.querySelectorAll(".category-grid, .card-page");
+          debugLog("检测到 " + containers.length + " 个分类容器已激活排序");
         }
       }
 
@@ -3683,17 +3756,8 @@ if ("serviceWorker" in navigator) {
         if (next !== "delete") {
           resetBulkSelection();
         }
-        updateDockDragState();
+        refreshSortability(next === "sort");
         updateModeUI();
-        if (next === "sort") {
-          setTimeout(() => {
-            sortUnlocked = true;
-            setSortLockState(true);
-            initSortables();
-            setSortablesEnabled(true);
-            initCategoryFreeDrag();
-          }, 80);
-        }
         try {
           const selection = window.getSelection && window.getSelection();
           if (selection && selection.removeAllRanges) {
@@ -3702,11 +3766,15 @@ if ("serviceWorker" in navigator) {
         } catch (err) {
           console.warn("Selection reset failed", err);
         }
-        console.log("当前全站模式已切换至：" + next);
+        debugLog("当前全站模式已切换至：" + next);
       }
 
       function setActiveMode(next) {
-        console.log("检测到模式切换：正在清理所有排序实例...");
+        debugLog("检测到模式切换：正在清理所有排序实例...");
+        if (sortRefreshTimer) {
+          clearTimeout(sortRefreshTimer);
+          sortRefreshTimer = null;
+        }
         const previousMode = currentMode;
         closeDeleteBubble();
         destroySortables();
@@ -3735,7 +3803,7 @@ if ("serviceWorker" in navigator) {
             renderDockLinks(allLinks);
           }
         }
-        console.log("清理完成。");
+        debugLog("清理完成。");
       }
 
       function collectEditingPayload() {

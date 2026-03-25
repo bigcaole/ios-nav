@@ -263,6 +263,9 @@ async function initDb() {
   `);
   await pool.query("CREATE INDEX IF NOT EXISTS visitor_logs_user_id_idx ON visitor_logs (user_id)");
   await pool.query("CREATE INDEX IF NOT EXISTS visitor_logs_created_idx ON visitor_logs (created_at DESC)");
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS visitor_logs_user_created_idx ON visitor_logs (user_id, created_at DESC)"
+  );
   await pool.query(`
     CREATE TABLE IF NOT EXISTS categories (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -322,6 +325,9 @@ async function initDb() {
   );
   await pool.query(
     "CREATE INDEX IF NOT EXISTS links_user_dock_idx ON links (user_id, is_dock, position_index)"
+  );
+  await pool.query(
+    "CREATE INDEX IF NOT EXISTS links_user_dock_sort_idx ON links (user_id, is_dock, sort_index, position_index)"
   );
   await pool.query(
     "CREATE INDEX IF NOT EXISTS links_user_private_idx ON links (user_id, is_private)"
@@ -1070,7 +1076,6 @@ async function getAuthUser(req) {
 }
 
 async function requireAuth(req, res, next) {
-  console.log("User accessing API:", req.session && req.session.userId ? req.session.userId : "none");
   try {
     const user = await getAuthUser(req);
     if (!user) {
@@ -1625,6 +1630,31 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    const categoryIdCache = new Map();
+    const categoryRows = await client.query(
+      "SELECT id, name FROM categories WHERE user_id = $1",
+      [req.user.id]
+    );
+    categoryRows.rows.forEach((row) => {
+      categoryIdCache.set(String(row.name || "").trim(), row.id);
+    });
+
+    const getOrCreateCategoryId = async (name) => {
+      const safeName = String(name || "").trim();
+      if (!safeName) return null;
+      if (categoryIdCache.has(safeName)) {
+        return categoryIdCache.get(safeName);
+      }
+      const upsert = await client.query(
+        "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, 0, NULL, NULL) ON CONFLICT (user_id, name) DO UPDATE SET name = EXCLUDED.name RETURNING id",
+        [req.user.id, safeName]
+      );
+      const createdId = upsert.rows[0] ? upsert.rows[0].id : null;
+      if (createdId) {
+        categoryIdCache.set(safeName, createdId);
+      }
+      return createdId;
+    };
 
     for (const rename of renames) {
       const from = String(rename?.from || "").trim();
@@ -1652,11 +1682,15 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
           req.user.id,
           source.rows[0].id
         ]);
+        categoryIdCache.delete(from);
+        categoryIdCache.set(to, target.rows[0].id);
       } else {
         await client.query(
           "UPDATE categories SET name = $1 WHERE user_id = $2 AND id = $3",
           [to, req.user.id, source.rows[0].id]
         );
+        categoryIdCache.delete(from);
+        categoryIdCache.set(to, source.rows[0].id);
       }
     }
 
@@ -1665,8 +1699,8 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
       if (!name) {
         continue;
       }
-      await client.query(
-        "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index, pos_x = EXCLUDED.pos_x, pos_y = EXCLUDED.pos_y",
+      const categorySave = await client.query(
+        "INSERT INTO categories (user_id, name, sort_index, pos_x, pos_y) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (user_id, name) DO UPDATE SET sort_index = EXCLUDED.sort_index, pos_x = EXCLUDED.pos_x, pos_y = EXCLUDED.pos_y RETURNING id",
         [
           req.user.id,
           name,
@@ -1675,6 +1709,14 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
           Number.isFinite(Number(item.pos_y)) ? Number(item.pos_y) : null
         ]
       );
+      if (categorySave.rows && categorySave.rows[0] && categorySave.rows[0].id) {
+        categoryIdCache.set(name, categorySave.rows[0].id);
+      } else if (!categoryIdCache.has(name)) {
+        const categoryId = await getOrCreateCategoryId(name);
+        if (categoryId) {
+          categoryIdCache.set(name, categoryId);
+        }
+      }
     }
 
     for (const item of links) {
@@ -1686,7 +1728,7 @@ app.post("/api/editing/save", requireAuth, async (req, res) => {
       if (!id || Number.isNaN(sortIndex)) {
         continue;
       }
-      const categoryId = isDock ? null : await getCategoryId(client, req.user.id, categoryName);
+      const categoryId = isDock ? null : await getOrCreateCategoryId(categoryName);
       await client.query(
         "UPDATE links SET sort_index = $1, category_id = $2, is_dock = $3, position_index = $4 WHERE id = $5 AND user_id = $6",
         [sortIndex, categoryId, isDock, isDock && !Number.isNaN(positionIndex) ? positionIndex : null, id, req.user.id]
