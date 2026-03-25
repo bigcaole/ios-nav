@@ -2636,6 +2636,24 @@ app.get("/api/visitors/today", requireAuth, async (req, res) => {
   }
 });
 
+app.get("/api/visitors/today/details", requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT ip, city, region, country, created_at
+       FROM visitor_logs
+       WHERE user_id = $1
+         AND event_type = 'visit'
+         AND created_at >= date_trunc('day', NOW())
+       ORDER BY created_at DESC
+       LIMIT 200`,
+      [req.user.id]
+    );
+    res.json({ items: result.rows || [] });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.post("/api/auth/update-password", requireAuth, async (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   if (!oldPassword || !newPassword) {

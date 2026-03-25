@@ -497,6 +497,18 @@
       </div>
     </div>
 
+    <div class="modal" id="visitorModal">
+      <div class="modal-backdrop" id="visitorBackdrop"></div>
+      <div class="sheet glass bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl">
+        <div class="modal-header">
+          <h2>今日访客</h2>
+          <button type="button" class="btn bg-slate-100 text-slate-700 border border-slate-200" id="visitorCloseBtn">关闭</button>
+        </div>
+        <div id="visitorList" class="visitor-list"></div>
+        <div id="visitorEmpty" class="visitor-empty hidden">暂无访客记录</div>
+      </div>
+    </div>
+
     <script src="/vendor-sortable.min.js" defer></script>
     <script src="/app.js" defer></script>
   </body>

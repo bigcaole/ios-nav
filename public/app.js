@@ -12,7 +12,9 @@ if ("serviceWorker" in navigator) {
       const addMenuModal = document.querySelector("#addMenuModal");
       const categoryManagerModal = document.querySelector("#categoryManagerModal");
       const settingsModal = document.querySelector("#settingsModal");
+      const visitorModal = document.querySelector("#visitorModal");
       const settingsBackdrop = document.querySelector("#settingsBackdrop");
+      const visitorBackdrop = document.querySelector("#visitorBackdrop");
       const addBtn = document.querySelector("#addBtn");
       const addMenuCloseBtn = document.querySelector("#addMenuCloseBtn");
       const addLinkEntryBtn = document.querySelector("#addLinkEntryBtn");
@@ -22,6 +24,7 @@ if ("serviceWorker" in navigator) {
       const registerBtn = document.querySelector("#registerBtn");
       const settingsBtn = document.querySelector("#settingsBtn");
       const settingsCloseBtn = document.querySelector("#settingsCloseBtn");
+      const visitorCloseBtn = document.querySelector("#visitorCloseBtn");
       const toast = document.querySelector("#toast");
       const modalBackBtn = document.querySelector("#modalBackBtn");
       const avatarWrap = document.querySelector("#avatarWrap");
@@ -66,6 +69,8 @@ if ("serviceWorker" in navigator) {
       const siteLogoImg = document.querySelector("#siteLogoImg");
       const siteLogoText = document.querySelector("#siteLogoText");
       const todayVisitorBadge = document.querySelector("#todayVisitorBadge");
+      const visitorList = document.querySelector("#visitorList");
+      const visitorEmpty = document.querySelector("#visitorEmpty");
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
       const fontSizeInput = document.querySelector("#fontSizeInput");
@@ -167,7 +172,7 @@ if ("serviceWorker" in navigator) {
       let saveTimer = null;
       let appearanceTimer = null;
 
-      const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal].filter(Boolean);
+      const modalList = [modal, addMenuModal, categoryManagerModal, settingsModal, visitorModal].filter(Boolean);
       const iconCache = new Map();
       const iconCacheOrder = [];
       let iconCacheSaveTimer = null;
@@ -2105,14 +2110,14 @@ if ("serviceWorker" in navigator) {
               card.style.top = `${y}px`;
               const relX = moveEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = moveEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: true });
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false });
               updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: true });
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false });
               card.dataset.posX = String(target.x);
               card.dataset.posY = String(target.y);
               card.style.left = `${state.paddingLeft + target.x}px`;
@@ -2737,6 +2742,60 @@ if ("serviceWorker" in navigator) {
             }
           })
           .catch(() => {});
+      }
+
+      function renderVisitorDetails(items) {
+        if (!visitorList || !visitorEmpty) return;
+        visitorList.innerHTML = "";
+        const rows = Array.isArray(items) ? items : [];
+        visitorEmpty.classList.toggle("hidden", rows.length > 0);
+        rows.forEach((item) => {
+          const wrap = document.createElement("div");
+          wrap.className = "visitor-item";
+          const ip = document.createElement("div");
+          ip.className = "visitor-ip";
+          ip.textContent = item.ip || "未知 IP";
+          const meta = document.createElement("div");
+          meta.className = "visitor-location";
+          const location = [item.city, item.region, item.country]
+            .filter(Boolean)
+            .join(" ");
+          meta.textContent = location || "未知归属地";
+          const time = document.createElement("div");
+          time.className = "visitor-time";
+          const ts = item.created_at ? new Date(item.created_at) : null;
+          time.textContent = ts ? ts.toLocaleString() : "";
+          const left = document.createElement("div");
+          left.style.display = "grid";
+          left.style.gap = "2px";
+          left.appendChild(ip);
+          left.appendChild(meta);
+          wrap.appendChild(left);
+          wrap.appendChild(time);
+          visitorList.appendChild(wrap);
+        });
+      }
+
+      function fetchTodayVisitorDetails() {
+        if (!loggedIn || isVisitorMode) return;
+        if (visitorList) {
+          visitorList.innerHTML = "";
+        }
+        if (visitorEmpty) {
+          visitorEmpty.classList.add("hidden");
+        }
+        fetch("/api/visitors/today/details", { credentials: "include", cache: "no-store" })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data && Array.isArray(data.items)) {
+              renderVisitorDetails(data.items);
+            } else {
+              renderVisitorDetails([]);
+            }
+          })
+          .catch(() => {
+            renderVisitorDetails([]);
+          });
       }
 
       function setLoginState(next, options = {}) {
@@ -3564,6 +3623,15 @@ if ("serviceWorker" in navigator) {
         }
         updateDockDragState();
         updateModeUI();
+        if (next === "sort") {
+          setTimeout(() => {
+            sortUnlocked = true;
+            setSortLockState(true);
+            initSortables();
+            setSortablesEnabled(true);
+            initCategoryFreeDrag();
+          }, 80);
+        }
         try {
           const selection = window.getSelection && window.getSelection();
           if (selection && selection.removeAllRanges) {
@@ -4299,6 +4367,14 @@ if ("serviceWorker" in navigator) {
         } catch (err) {}
       }
 
+      if (todayVisitorBadge) {
+        todayVisitorBadge.addEventListener("click", () => {
+          if (!loggedIn || isVisitorMode) return;
+          openModal(visitorModal);
+          fetchTodayVisitorDetails();
+        });
+      }
+
       if (settingsCloseBtn) {
         settingsCloseBtn.addEventListener("click", () => {
           closeModal(settingsModal);
@@ -4308,6 +4384,18 @@ if ("serviceWorker" in navigator) {
       if (settingsBackdrop) {
         settingsBackdrop.addEventListener("click", () => {
           closeModal(settingsModal);
+        });
+      }
+
+      if (visitorCloseBtn) {
+        visitorCloseBtn.addEventListener("click", () => {
+          closeModal(visitorModal);
+        });
+      }
+
+      if (visitorBackdrop) {
+        visitorBackdrop.addEventListener("click", () => {
+          closeModal(visitorModal);
         });
       }
 
