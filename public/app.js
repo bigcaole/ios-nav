@@ -113,6 +113,7 @@ if ("serviceWorker" in navigator) {
       let currentMode = "preview";
       let categoryLayoutState = null;
       let categoryDragState = null;
+      let categoryDragPointerId = null;
       let currentUsername = "";
       let visitorTracked = false;
       let currentProtocol = "https://";
@@ -2081,6 +2082,9 @@ if ("serviceWorker" in navigator) {
           if (!handle) return;
           card.dataset.freeDragBound = "true";
           handle.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0 && event.pointerType !== "touch") {
+              return;
+            }
             if (currentMode !== "sort" && !sortUnlocked) {
               return;
             }
@@ -2096,6 +2100,8 @@ if ("serviceWorker" in navigator) {
               try {
                 categoryDragState.cleanup();
               } catch (err) {}
+              categoryDragPointerId = null;
+              categoryDragState = null;
             }
             const gridRect = grid.getBoundingClientRect();
             const cardRect = card.getBoundingClientRect();
@@ -2104,10 +2110,10 @@ if ("serviceWorker" in navigator) {
             const dragSize = getCardSize(card);
             const originX = Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : 0;
             const originY = Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : 0;
+            categoryDragPointerId = event.pointerId;
             state.placed = state.placed.filter((item) => item.card !== card);
             card.classList.add("is-free-dragging");
             card.style.zIndex = "10000";
-            card.setPointerCapture(event.pointerId);
             document.body.classList.add("dragging-card");
             let rafId = null;
             let pendingMove = null;
@@ -2116,6 +2122,7 @@ if ("serviceWorker" in navigator) {
             grid.classList.add("drag-guides-active");
             const move = (moveEvent) => {
               if (!categoryDragState) return;
+              if (moveEvent.pointerId !== categoryDragPointerId) return;
               pendingMove = moveEvent;
               if (rafId) return;
               rafId = requestAnimationFrame(() => {
@@ -2135,6 +2142,7 @@ if ("serviceWorker" in navigator) {
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
+              if (upEvent.pointerId !== categoryDragPointerId) return;
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
               const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
@@ -2145,10 +2153,8 @@ if ("serviceWorker" in navigator) {
               state.placed.push({ card, x: target.x, y: target.y, w: dragSize.w, h: dragSize.h });
               card.classList.remove("is-free-dragging");
               card.style.zIndex = "";
-              try {
-                card.releasePointerCapture(upEvent.pointerId);
-              } catch (err) {}
               categoryDragState = null;
+              categoryDragPointerId = null;
               document.body.classList.remove("dragging-card");
               pendingChanges = true;
               syncAllOrders();
@@ -2178,6 +2184,7 @@ if ("serviceWorker" in navigator) {
               card.style.top = `${state.paddingTop + fallbackY}px`;
               document.body.classList.remove("dragging-card");
               categoryDragState = null;
+              categoryDragPointerId = null;
               cleanup();
             };
             categoryDragState.cleanup = cleanup;
