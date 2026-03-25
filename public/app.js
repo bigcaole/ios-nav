@@ -65,6 +65,7 @@ if ("serviceWorker" in navigator) {
       const logoMark = document.querySelector(".logo-mark");
       const siteLogoImg = document.querySelector("#siteLogoImg");
       const siteLogoText = document.querySelector("#siteLogoText");
+      const todayVisitorBadge = document.querySelector("#todayVisitorBadge");
       const siteNameInput = document.querySelector("#siteNameInput");
       const logoInput = document.querySelector("#logoInput");
       const fontSizeInput = document.querySelector("#fontSizeInput");
@@ -1833,11 +1834,46 @@ if ("serviceWorker" in navigator) {
         }px`;
       }
 
+      function ensureDragGuides() {
+        if (!grid) return null;
+        let guides = grid.querySelector(".drag-guides");
+        if (guides) return guides;
+        guides = document.createElement("div");
+        guides.className = "drag-guides";
+        const lineX = document.createElement("div");
+        lineX.className = "drag-guide-line drag-guide-x";
+        const lineY = document.createElement("div");
+        lineY.className = "drag-guide-line drag-guide-y";
+        guides.appendChild(lineX);
+        guides.appendChild(lineY);
+        grid.appendChild(guides);
+        return guides;
+      }
+
+      function updateDragGuides(x, y) {
+        if (!grid) return;
+        grid.style.setProperty("--guide-x", `${Math.max(0, x)}px`);
+        grid.style.setProperty("--guide-y", `${Math.max(0, y)}px`);
+      }
+
+      function clearDragGuides() {
+        if (!grid) return;
+        grid.classList.remove("drag-guides-active");
+      }
+
+      function getCardSize(card) {
+        if (!card) return { w: 0, h: 0 };
+        const width = card.offsetWidth || card.getBoundingClientRect().width || 0;
+        const height = card.offsetHeight || card.getBoundingClientRect().height || 0;
+        return { w: width, h: height };
+      }
+
       function applyCategoryFreeLayout() {
         if (!grid) return;
         const enable = viewMode === "card";
         grid.classList.toggle("free-layout", enable);
         if (!enable) {
+          clearDragGuides();
           grid.style.minHeight = "";
           categoryLayoutState = null;
           getCategoryCards().forEach((card) => {
@@ -1857,8 +1893,8 @@ if ("serviceWorker" in navigator) {
         const state = computeCategoryLayoutState(cards);
         if (!state) return;
         const maxCardWidth = cards.reduce((acc, card) => {
-          const rect = card.getBoundingClientRect();
-          return Math.max(acc, rect.width || 0);
+          const size = getCardSize(card);
+          return Math.max(acc, size.w || 0);
         }, 0);
         const minTwoCardWidth = maxCardWidth * 2 + state.gap;
         const shouldAutoFlow = state.availableWidth < minTwoCardWidth;
@@ -1875,14 +1911,22 @@ if ("serviceWorker" in navigator) {
           }
         });
         const lockCardSize = (card) => {
-          const rect = card.getBoundingClientRect();
+          const rect = getCardSize(card);
           const storedW = Number(card.dataset.fixedW);
           const storedH = Number(card.dataset.fixedH);
-          if (!Number.isFinite(storedW) || storedW <= 0) {
-            card.dataset.fixedW = rect.width ? String(rect.width) : "";
+          if (
+            !Number.isFinite(storedW) ||
+            storedW <= 0 ||
+            (rect.w && Math.abs(storedW - rect.w) > 2)
+          ) {
+            card.dataset.fixedW = rect.w ? String(rect.w) : "";
           }
-          if (!Number.isFinite(storedH) || storedH <= 0) {
-            card.dataset.fixedH = rect.height ? String(rect.height) : "";
+          if (
+            !Number.isFinite(storedH) ||
+            storedH <= 0 ||
+            (rect.h && Math.abs(storedH - rect.h) > 2)
+          ) {
+            card.dataset.fixedH = rect.h ? String(rect.h) : "";
           }
           const finalW = Number(card.dataset.fixedW);
           const finalH = Number(card.dataset.fixedH);
@@ -1899,8 +1943,8 @@ if ("serviceWorker" in navigator) {
             commitPosition = true,
             strictPersist = false
           } = options;
-          const rect = card.getBoundingClientRect();
-          const size = { w: rect.width, h: rect.height };
+          const rect = getCardSize(card);
+          const size = { w: rect.w, h: rect.h };
           const target = findFreePosition(state, posX, posY, size, null, { snap });
           const moved = target.x !== posX || target.y !== posY;
           const canPersist =
@@ -1945,9 +1989,9 @@ if ("serviceWorker" in navigator) {
         let cursorY = 0;
         let rowHeight = 0;
         cardsWithoutPos.forEach((card) => {
-          const rect = card.getBoundingClientRect();
-          const cardWidth = rect.width;
-          const cardHeight = rect.height;
+          const rect = getCardSize(card);
+          const cardWidth = rect.w;
+          const cardHeight = rect.h;
           if (cursorX + cardWidth > state.availableWidth && cursorX !== 0) {
             cursorX = 0;
             cursorY += rowHeight + state.gap;
@@ -2045,29 +2089,35 @@ if ("serviceWorker" in navigator) {
             const cardRect = card.getBoundingClientRect();
             const offsetX = event.clientX - cardRect.left;
             const offsetY = event.clientY - cardRect.top;
+            const dragSize = getCardSize(card);
             state.placed = state.placed.filter((item) => item.card !== card);
             card.classList.add("is-free-dragging");
             card.style.zIndex = "10000";
             card.setPointerCapture(event.pointerId);
             categoryDragState = { card, offsetX, offsetY };
+            ensureDragGuides();
+            grid.classList.add("drag-guides-active");
             const move = (moveEvent) => {
               if (!categoryDragState) return;
               const x = moveEvent.clientX - gridRect.left - offsetX;
               const y = moveEvent.clientY - gridRect.top - offsetY;
               card.style.left = `${x}px`;
               card.style.top = `${y}px`;
+              const relX = moveEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
+              const relY = moveEvent.clientY - gridRect.top - state.paddingTop - offsetY;
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: true });
+              updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
             };
             const up = (upEvent) => {
               if (!categoryDragState) return;
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-              const size = { w: cardRect.width, h: cardRect.height };
-              const target = findFreePosition(state, relX, relY, size, card, { snap: true });
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: true });
               card.dataset.posX = String(target.x);
               card.dataset.posY = String(target.y);
               card.style.left = `${state.paddingLeft + target.x}px`;
               card.style.top = `${state.paddingTop + target.y}px`;
-              state.placed.push({ card, x: target.x, y: target.y, w: size.w, h: size.h });
+              state.placed.push({ card, x: target.x, y: target.y, w: dragSize.w, h: dragSize.h });
               card.classList.remove("is-free-dragging");
               card.style.zIndex = "";
               card.releasePointerCapture(upEvent.pointerId);
@@ -2076,6 +2126,7 @@ if ("serviceWorker" in navigator) {
               syncAllOrders();
               updateFreeLayoutMinHeight(state);
               scheduleAutoSave();
+              clearDragGuides();
             };
             const cleanup = () => {
               document.removeEventListener("pointermove", move);
@@ -2634,6 +2685,9 @@ if ("serviceWorker" in navigator) {
 
       function applyVisitorModeUI() {
         document.body.classList.add("is-visitor");
+        if (todayVisitorBadge) {
+          todayVisitorBadge.classList.add("hidden");
+        }
         if (loginBtn) {
           loginBtn.classList.remove("hidden");
           const label = loginBtn.querySelector("span");
@@ -2660,6 +2714,29 @@ if ("serviceWorker" in navigator) {
         try {
           setActiveMode("preview");
         } catch (err) {}
+      }
+
+      function updateTodayVisitorBadge(count) {
+        if (!todayVisitorBadge) return;
+        if (!loggedIn || isVisitorMode) {
+          todayVisitorBadge.classList.add("hidden");
+          return;
+        }
+        const safeCount = Number.isFinite(Number(count)) ? Number(count) : 0;
+        todayVisitorBadge.textContent = `今日访客 ${safeCount}`;
+        todayVisitorBadge.classList.remove("hidden");
+      }
+
+      function fetchTodayVisitors() {
+        if (!todayVisitorBadge || !loggedIn || isVisitorMode) return;
+        fetch("/api/visitors/today", { credentials: "include", cache: "no-store" })
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data && data.count !== undefined) {
+              updateTodayVisitorBadge(data.count);
+            }
+          })
+          .catch(() => {});
       }
 
       function setLoginState(next, options = {}) {
@@ -2715,6 +2792,11 @@ if ("serviceWorker" in navigator) {
             } else {
               fetchLinks();
             }
+          }
+          if (loggedIn) {
+            fetchTodayVisitors();
+          } else if (todayVisitorBadge) {
+            todayVisitorBadge.classList.add("hidden");
           }
         } catch (err) {}
       }

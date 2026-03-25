@@ -277,6 +277,10 @@
         display: block;
         position: relative;
       }
+      .grid.card-layout.free-layout.drag-guides-active::before {
+        opacity: 0.65;
+        background-size: 96px 96px;
+      }
       body.mode-sort .grid.card-layout.free-layout::before {
         content: "";
         position: absolute;
@@ -289,11 +293,41 @@
         pointer-events: none;
         z-index: 0;
       }
+      .grid.card-layout.free-layout .drag-guides {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 2;
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      .grid.card-layout.free-layout.drag-guides-active .drag-guides {
+        opacity: 1;
+      }
+      .grid.card-layout.free-layout .drag-guide-line {
+        position: absolute;
+        background: rgba(0, 122, 255, 0.55);
+        box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5);
+      }
+      .grid.card-layout.free-layout .drag-guide-x {
+        left: 0;
+        right: 0;
+        height: 1px;
+        top: var(--guide-y, 0px);
+      }
+      .grid.card-layout.free-layout .drag-guide-y {
+        top: 0;
+        bottom: 0;
+        width: 1px;
+        left: var(--guide-x, 0px);
+      }
       body.mode-sort .grid.card-layout.free-layout .category-card {
         z-index: 1;
       }
       .grid.card-layout.free-layout .category-card {
         position: absolute;
+        content-visibility: visible;
+        contain-intrinsic-size: auto;
       }
       .category-card {
         width: 100%;
@@ -1937,6 +1971,31 @@
         font-size: calc(var(--base-size) * 0.75);
         color: var(--muted);
         white-space: nowrap;
+      }
+      .visitor-badge {
+        margin-top: 6px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #1f2937;
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        box-shadow: 0 6px 16px rgba(15, 23, 42, 0.12);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        width: fit-content;
+      }
+      .visitor-badge.hidden {
+        display: none;
+      }
+      html.dark .visitor-badge {
+        color: #f8fafc;
+        background: rgba(15, 23, 42, 0.55);
+        border-color: rgba(255, 255, 255, 0.12);
       }
       html.dark .site-slogan {
         color: var(--muted);

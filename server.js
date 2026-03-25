@@ -2620,6 +2620,22 @@ app.post("/api/visit/track", async (req, res) => {
   }
 });
 
+app.get("/api/visitors/today", requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM visitor_logs
+       WHERE user_id = $1
+         AND created_at >= date_trunc('day', NOW())`,
+      [req.user.id]
+    );
+    const count = result.rows[0] ? Number(result.rows[0].total) : 0;
+    res.json({ count });
+  } catch (err) {
+    res.status(500).json({ error: "Database error" });
+  }
+});
+
 app.post("/api/auth/update-password", requireAuth, async (req, res) => {
   const { oldPassword, newPassword } = req.body || {};
   if (!oldPassword || !newPassword) {
