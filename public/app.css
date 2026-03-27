@@ -926,10 +926,16 @@
         opacity: 0;
         pointer-events: none;
       }
-        .edit-badge,
-        .delete-badge {
-          display: none !important;
-        }
+      .edit-badge,
+      .delete-badge {
+        display: none;
+      }
+      body.mode-edit .edit-badge,
+      body.mode-delete .delete-badge {
+        display: grid !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+      }
         .delete-bubble {
           position: absolute;
           left: 50%;

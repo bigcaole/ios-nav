@@ -1618,6 +1618,7 @@ if ("serviceWorker" in navigator) {
               placeholder.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
+                returnToMode = currentMode;
                 editingLinkId = null;
                 editingDockPosition = null;
                 if (dockInput) {
@@ -2333,65 +2334,24 @@ if ("serviceWorker" in navigator) {
             });
             target.classList.add("nav-active");
           };
-          const maxVisible = 7;
-          const visibleCategories =
-            Array.isArray(categories) && categories.length > maxVisible
-              ? categories.slice(0, maxVisible)
-              : categories;
-          const overflowCategories =
-            Array.isArray(categories) && categories.length > maxVisible
-              ? categories.slice(maxVisible)
-              : [];
-          visibleCategories.forEach((category) => {
+          const list = Array.isArray(categories) ? categories.filter(Boolean) : [];
+          list.forEach((category, index) => {
             const pill = document.createElement("button");
             pill.type = "button";
             pill.className = "category-pill nav-item";
             pill.textContent = category;
+            if (index === 0) {
+              pill.classList.add("active");
+            }
             pill.addEventListener("click", () => {
               nav.querySelectorAll(".category-pill").forEach((btn) => {
                 btn.classList.remove("active");
               });
               pill.classList.add("active");
-              closeNavOverflowMenu();
               scrollToCategory(category);
             });
             nav.appendChild(pill);
           });
-          if (overflowCategories.length) {
-            const moreWrap = document.createElement("div");
-            moreWrap.className = "nav-more";
-            const moreBtn = document.createElement("button");
-            moreBtn.type = "button";
-            moreBtn.className = "category-pill nav-item";
-            moreBtn.textContent = "更多";
-            const menu = document.createElement("div");
-            menu.className = "nav-more-menu hidden";
-            overflowCategories.forEach((category) => {
-              const itemBtn = document.createElement("button");
-              itemBtn.type = "button";
-              itemBtn.className = "nav-more-item";
-              itemBtn.textContent = category;
-              itemBtn.addEventListener("click", () => {
-                menu.classList.add("hidden");
-                scrollToCategory(category);
-              });
-              menu.appendChild(itemBtn);
-            });
-            moreBtn.addEventListener("click", (event) => {
-              event.stopPropagation();
-              if (navOverflowMenu && navOverflowMenu !== menu) {
-                navOverflowMenu.classList.add("hidden");
-              }
-              menu.classList.toggle("hidden");
-              navOverflowMenu = menu.classList.contains("hidden") ? null : menu;
-            });
-            menu.addEventListener("click", (event) => {
-              event.stopPropagation();
-            });
-            moreWrap.appendChild(moreBtn);
-            moreWrap.appendChild(menu);
-            nav.appendChild(moreWrap);
-          }
         }
 
       function fetchPublicView() {
@@ -3735,6 +3695,9 @@ if ("serviceWorker" in navigator) {
           "mode-edit",
           "mode-delete"
         );
+        if (next !== "sort") {
+          document.body.classList.remove("is-dragging", "dragging-card");
+        }
         currentMode = next;
         document.body.classList.add(`mode-${next}`);
         modeButtons.forEach((btn) => {
@@ -3792,6 +3755,10 @@ if ("serviceWorker" in navigator) {
           el.classList.remove("jiggle", "is-shaking");
         });
         document.body.classList.remove("sort-unlocked", "app-unlocked");
+        document.body.classList.remove("is-dragging", "dragging-card");
+        document.querySelectorAll(".app.is-dragging").forEach((el) => {
+          el.classList.remove("is-dragging");
+        });
         document.querySelectorAll(".rename-input").forEach((input) => {
           try {
             input.blur();
