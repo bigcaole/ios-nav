@@ -10,11 +10,13 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const { Pool } = require("pg");
 const { API_NO_STORE, HTML_NO_CACHE, sendHtml, staticOptions } = require("./lib/http");
+const packageInfo = require("./package.json");
 
 const app = express();
 const adminApp = express();
 const port = process.env.PORT || 3000;
 const adminPort = process.env.ADMIN_PORT || 3001;
+const APP_VERSION = String(process.env.APP_VERSION || packageInfo.version || "dev");
 const jwtSecret = process.env.JWT_SECRET;
 if (!process.env.DATABASE_URL) {
   console.error("Missing DATABASE_URL environment variable.");
@@ -2058,6 +2060,10 @@ app.get("/api/public-config", async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Database error" });
   }
+});
+
+app.get("/api/version", (req, res) => {
+  res.json({ version: APP_VERSION });
 });
 
 async function handleRegister(req, res) {

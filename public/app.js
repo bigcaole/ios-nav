@@ -105,8 +105,12 @@ if ("serviceWorker" in navigator) {
       const deleteModeToggle = document.getElementById("deleteModeSwitch");
       const sortLockBtn = document.querySelector("#sortLockBtn");
       const editToolbar = document.querySelector("#editToolbar");
-      const editDoneBtn = document.querySelector("#editDoneBtn");
+      const editSaveBtn = document.querySelector("#editSaveBtn");
+      const editCancelBtn = document.querySelector("#editCancelBtn");
       const editStatusLabel = document.querySelector("#editStatusLabel");
+      const toolbarAddLinkBtn = document.querySelector("#toolbarAddLinkBtn");
+      const toolbarAddCategoryBtn = document.querySelector("#toolbarAddCategoryBtn");
+      const dockVersion = document.querySelector("#dockVersion");
       let loggedIn = false;
       let editing = false;
       let deleting = false;
@@ -204,6 +208,23 @@ if ("serviceWorker" in navigator) {
         if (!navOverflowMenu) return;
         navOverflowMenu.classList.add("hidden");
       }
+
+      function applyDockVersion(version) {
+        if (!dockVersion) return;
+        const safe = String(version || "").trim();
+        if (!safe) return;
+        dockVersion.textContent = `版本 v${safe}`;
+      }
+
+      applyDockVersion("1.0.0");
+      fetch("/api/version", { cache: "no-store" })
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.version) {
+            applyDockVersion(data.version);
+          }
+        })
+        .catch(() => {});
 
       function loadIconCache() {
         try {
@@ -383,10 +404,7 @@ if ("serviceWorker" in navigator) {
           event.stopPropagation();
           categorySelectMenu.classList.remove("open");
           closeModal(modal);
-          loadCategories().then((list) => {
-            renderCategoryManager(list);
-          });
-            openModal(categoryManagerModal, { returnToSettings: false });
+          openCategoryManagerEntry();
         });
         categorySelectMenu.appendChild(manageBtn);
 
@@ -1073,22 +1091,7 @@ if ("serviceWorker" in navigator) {
               placeholder.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                returnToMode = currentMode;
-                editingLinkId = null;
-                editingDockPosition = null;
-                if (dockInput) {
-                  dockInput.checked = true;
-                }
-                formTitle.textContent = "添加导航";
-                saveBtn.textContent = "保存";
-                titleInput.value = "";
-                applyUrlToInput("");
-                if (tagsInput) {
-                  tagsInput.value = "";
-                }
-                privateInput.checked = false;
-                loadCategories();
-                openModal(modal, { returnToSettings: true });
+                openCreateLinkModal("", true);
               });
 
               dockGrid.appendChild(placeholder);
@@ -1624,24 +1627,7 @@ if ("serviceWorker" in navigator) {
               placeholder.addEventListener("click", (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                returnToMode = currentMode;
-                editingLinkId = null;
-                editingDockPosition = null;
-                if (dockInput) {
-                  dockInput.checked = false;
-                }
-                formTitle.textContent = "添加导航";
-                saveBtn.textContent = "保存";
-                titleInput.value = "";
-                applyUrlToInput("");
-                if (tagsInput) {
-                  tagsInput.value = "";
-                }
-                privateInput.checked = false;
-                categoryInput.value = category;
-                categorySelectLabel.textContent = category;
-                loadCategories(category);
-                openModal(modal, { returnToSettings: true });
+                openCreateLinkModal(category, false);
               });
 
               innerGrid.appendChild(placeholder);
@@ -1662,10 +1648,7 @@ if ("serviceWorker" in navigator) {
             addBtn.addEventListener("click", (event) => {
               event.preventDefault();
               event.stopPropagation();
-              loadCategories().then((list) => {
-                renderCategoryManager(list);
-              });
-            openModal(categoryManagerModal, { returnToSettings: false });
+              openCategoryManagerEntry();
             });
             addCard.appendChild(addBtn);
           grid.appendChild(addCard);
@@ -2812,6 +2795,7 @@ if ("serviceWorker" in navigator) {
         try {
           setActiveMode("preview");
         } catch (err) {}
+        updateEditToolbarState();
       }
 
       function updateTodayVisitorBadge(count) {
@@ -2950,6 +2934,7 @@ if ("serviceWorker" in navigator) {
           } else if (todayVisitorBadge) {
             todayVisitorBadge.classList.add("hidden");
           }
+          updateEditToolbarState();
         } catch (err) {}
       }
 
@@ -3530,44 +3515,12 @@ if ("serviceWorker" in navigator) {
 
       function scheduleAutoSave() {
         if (!loggedIn) return;
-        if (!pendingChanges) return;
-        if (saveTimer) {
-          clearTimeout(saveTimer);
+        if (!pendingChanges) {
+          updateEditToolbarState();
+          return;
         }
-        saveTimer = setTimeout(() => {
-          if (saveInFlight) {
-            saveQueued = true;
-            return;
-          }
-          const silent =
-            currentMode === "sort" ||
-            document.body.classList.contains("is-dragging") ||
-            document.body.classList.contains("dragging-card");
-          saveInFlight = true;
-          saveEditingChanges()
-            .then(() => {
-              pendingChanges = false;
-              document.querySelectorAll(".category-card").forEach((card) => {
-                card.dataset.original = card.dataset.category || "";
-              });
-              if (!silent) {
-                showToast("保存成功");
-              }
-            })
-            .catch(() => {
-              if (!silent) {
-                showToast("保存失败");
-              }
-            })
-            .finally(() => {
-              saveInFlight = false;
-              if (saveQueued) {
-                saveQueued = false;
-                scheduleAutoSave();
-              }
-            });
-          }, 600);
-        }
+        updateEditToolbarState();
+      }
 
       function saveOrder(orderIds) {
         if (!loggedIn) return;
@@ -3863,6 +3816,129 @@ if ("serviceWorker" in navigator) {
         });
       }
 
+      function isWorkMode() {
+        return currentMode === "sort" || currentMode === "edit" || currentMode === "delete";
+      }
+
+      function updateEditToolbarState() {
+        if (!editToolbar) return;
+        const showToolbar = loggedIn && (isWorkMode() || pendingChanges);
+        editToolbar.classList.toggle("active", showToolbar);
+        if (!showToolbar) {
+          return;
+        }
+        if (editStatusLabel) {
+          const modeLabel =
+            currentMode === "sort"
+              ? "排序模式"
+              : currentMode === "edit"
+              ? "编辑模式"
+              : "增删模式";
+          if (pendingChanges) {
+            if (isWorkMode()) {
+              editStatusLabel.textContent = `${modeLabel} · 有未保存更改`;
+            } else {
+              editStatusLabel.textContent = "有未保存更改";
+            }
+          } else {
+            editStatusLabel.textContent = modeLabel;
+          }
+        }
+        if (editSaveBtn) {
+          editSaveBtn.disabled = !pendingChanges;
+        }
+        if (editCancelBtn) {
+          editCancelBtn.disabled = !pendingChanges;
+        }
+        if (toolbarAddLinkBtn) {
+          toolbarAddLinkBtn.classList.toggle("hidden", currentMode !== "delete");
+        }
+        if (toolbarAddCategoryBtn) {
+          toolbarAddCategoryBtn.classList.toggle("hidden", currentMode !== "delete");
+        }
+      }
+
+      function openCreateLinkModal(categoryName = "", dock = false) {
+        returnToMode = currentMode;
+        editingLinkId = null;
+        editingDockPosition = null;
+        formTitle.textContent = "添加导航";
+        saveBtn.textContent = "保存";
+        titleInput.value = "";
+        applyUrlToInput("");
+        if (tagsInput) {
+          tagsInput.value = "";
+        }
+        privateInput.checked = false;
+        if (dockInput) {
+          dockInput.checked = Boolean(dock);
+        }
+        if (!dock && categoryName) {
+          categoryInput.value = categoryName;
+          categorySelectLabel.textContent = categoryName;
+        }
+        loadCategories(!dock ? categoryName : "").finally(() => {
+          openModal(modal, { returnToSettings: true });
+        });
+      }
+
+      function openCategoryManagerEntry() {
+        loadCategories().then((categories) => {
+          renderCategoryManager(categories);
+          openModal(categoryManagerModal, { returnToSettings: false });
+        });
+      }
+
+      function savePendingChanges() {
+        if (!loggedIn || !pendingChanges || saveInFlight) {
+          updateEditToolbarState();
+          return;
+        }
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        saveInFlight = true;
+        saveEditingChanges()
+          .then(() => {
+            pendingChanges = false;
+            document.querySelectorAll(".category-card").forEach((card) => {
+              card.dataset.original = card.dataset.category || "";
+            });
+            showToast("保存成功");
+            fetchLinks();
+          })
+          .catch(() => {
+            showToast("保存失败");
+          })
+          .finally(() => {
+            saveInFlight = false;
+            updateEditToolbarState();
+          });
+      }
+
+      function cancelPendingChanges() {
+        if (!pendingChanges) {
+          updateEditToolbarState();
+          return;
+        }
+        if (saveTimer) {
+          clearTimeout(saveTimer);
+          saveTimer = null;
+        }
+        saveQueued = false;
+        pendingChanges = false;
+        closeDeleteBubble();
+        resetBulkSelection();
+        Promise.resolve(loadCategories())
+          .catch(() => {})
+          .finally(() => {
+            fetchLinks();
+            updateEditToolbarState();
+            showToast("已取消更改");
+          });
+      }
+
       function updateModeUI() {
         try {
           if (editModeToggle) {
@@ -3871,13 +3947,8 @@ if ("serviceWorker" in navigator) {
           if (deleteModeToggle) {
             deleteModeToggle.checked = false;
           }
-          if (editToolbar) {
-            editToolbar.classList.toggle("active", false);
-          }
-          if (editStatusLabel) {
-            editStatusLabel.textContent = "";
-          }
           document.body.classList.remove("is-editing", "is-deleting");
+          updateEditToolbarState();
         } catch (err) {}
       }
 
@@ -4285,19 +4356,7 @@ if ("serviceWorker" in navigator) {
           event.preventDefault();
           event.stopPropagation();
           closeModal(addMenuModal);
-          returnToMode = currentMode;
-          editingLinkId = null;
-          editingDockPosition = null;
-          formTitle.textContent = "添加导航";
-          saveBtn.textContent = "保存";
-          titleInput.value = "";
-          applyUrlToInput("");
-          privateInput.checked = false;
-          if (dockInput) {
-            dockInput.checked = false;
-          }
-          loadCategories();
-          openModal(modal, { returnToSettings: true });
+          openCreateLinkModal("", false);
         });
       }
 
@@ -4345,10 +4404,7 @@ if ("serviceWorker" in navigator) {
           event.preventDefault();
           event.stopPropagation();
           closeModal(addMenuModal);
-          loadCategories().then((categories) => {
-            renderCategoryManager(categories);
-          });
-            openModal(categoryManagerModal, { returnToSettings: false });
+          openCategoryManagerEntry();
         });
       }
       function handleCreateCategory(event) {
@@ -4683,31 +4739,38 @@ if ("serviceWorker" in navigator) {
         });
       }
 
-      if (editDoneBtn) {
-        editDoneBtn.addEventListener("click", () => {
-          setActiveMode("preview");
-          if (settingsModal) {
-            openModal(settingsModal);
-          }
+      if (editCancelBtn) {
+        editCancelBtn.addEventListener("click", () => {
+          cancelPendingChanges();
+        });
+      }
+
+      if (editSaveBtn) {
+        editSaveBtn.addEventListener("click", () => {
+          savePendingChanges();
+        });
+      }
+
+      if (toolbarAddLinkBtn) {
+        toolbarAddLinkBtn.addEventListener("click", () => {
+          openCreateLinkModal("", false);
+        });
+      }
+
+      if (toolbarAddCategoryBtn) {
+        toolbarAddCategoryBtn.addEventListener("click", () => {
+          openCategoryManagerEntry();
         });
       }
 
       if (sortLockBtn) {
         sortLockBtn.addEventListener("click", () => {
-          if (currentMode !== "preview") {
-            setActiveMode("preview");
-            if (modeControl) {
-              modeControl.classList.remove("open");
-            }
-            return;
-          }
           if (modeControl) {
             const willOpen = !modeControl.classList.contains("open");
             if (willOpen) {
               modeControl.classList.add("open");
             } else {
               modeControl.classList.remove("open");
-              setActiveMode("preview");
             }
           }
         });

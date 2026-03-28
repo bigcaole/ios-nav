@@ -1135,6 +1135,7 @@
         -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.45);
         box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+        gap: 10px;
       }
       html.dark .edit-toolbar {
         background: rgba(2, 6, 23, 0.6);
@@ -1142,6 +1143,40 @@
       }
       .edit-toolbar.active {
         display: flex;
+      }
+      .toolbar-btn {
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        border-radius: 999px;
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+      .toolbar-btn.primary {
+        background: #2563eb;
+        color: #ffffff;
+      }
+      .toolbar-btn.muted {
+        background: rgba(148, 163, 184, 0.22);
+        color: #0f172a;
+      }
+      .toolbar-btn.ghost {
+        background: rgba(255, 255, 255, 0.42);
+        color: #0f172a;
+      }
+      .toolbar-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      html.dark .toolbar-btn.muted,
+      html.dark .toolbar-btn.ghost {
+        color: #e2e8f0;
+        border-color: rgba(148, 163, 184, 0.38);
+      }
+      html.dark .toolbar-btn.ghost {
+        background: rgba(15, 23, 42, 0.42);
       }
       .icon .lock {
         position: absolute;
@@ -1233,6 +1268,22 @@
         transition: background-color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
         overflow: visible;
       }
+      .dock-version {
+        position: fixed;
+        left: 50%;
+        bottom: 6px;
+        transform: translateX(-50%);
+        font-size: 11px;
+        letter-spacing: 0.3px;
+        color: rgba(15, 23, 42, 0.55);
+        text-shadow: 0 1px 2px rgba(255, 255, 255, 0.45);
+        pointer-events: none;
+        z-index: 9998;
+      }
+      html.dark .dock-version {
+        color: rgba(226, 232, 240, 0.64);
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.38);
+      }
       html.dark .dock {
         background: transparent !important;
         border-color: var(--dock-border);
@@ -1280,6 +1331,10 @@
           max-width: 94vw;
           padding: 12px 12px 18px;
           overflow-x: hidden;
+        }
+        .dock-version {
+          bottom: 2px;
+          font-size: 10px;
         }
         .dock-grid {
           width: 100%;

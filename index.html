@@ -20,14 +20,11 @@
       <span class="glow g7"></span>
     </div>
     <div id="editToolbar" class="edit-toolbar">
-      <span id="editStatusLabel" class="text-slate-900 dark:text-white font-medium">正在编辑...</span>
-      <button
-        type="button"
-        class="flex items-center gap-2 rounded-full bg-blue-500 px-4 py-2 text-white font-medium shadow-sm"
-        id="editDoneBtn"
-      >
-        完成
-      </button>
+      <span id="editStatusLabel" class="text-slate-900 dark:text-white font-medium">编辑模式</span>
+      <button type="button" class="toolbar-btn ghost hidden" id="toolbarAddCategoryBtn">+ 分类</button>
+      <button type="button" class="toolbar-btn ghost hidden" id="toolbarAddLinkBtn">+ 图标</button>
+      <button type="button" class="toolbar-btn muted" id="editCancelBtn">取消</button>
+      <button type="button" class="toolbar-btn primary" id="editSaveBtn">保存</button>
     </div>
     <div id="toast" class="toast">保存成功</div>
     <header class="site-header header-logo">
@@ -189,6 +186,7 @@
     >
       <div class="dock-grid" id="dockGrid" data-dock="true"></div>
     </div>
+    <div id="dockVersion" class="dock-version" aria-label="项目版本">版本 -</div>
 
     <div class="bulk-bar hidden" id="bulkBar">
       <div class="bulk-count">已选 <span id="bulkCount">0</span> 项</div>
