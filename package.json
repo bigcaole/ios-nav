@@ -1,6 +1,6 @@
 {
   "name": "mynavsite",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "iOS-style nav site (Express)",
   "main": "server.js",
   "scripts": {
