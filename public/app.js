@@ -2129,6 +2129,9 @@ if ("serviceWorker" in navigator) {
           const cardRect = card.getBoundingClientRect();
           const offsetX = event.clientX - cardRect.left;
           const offsetY = event.clientY - cardRect.top;
+          const pointerId = Number.isFinite(Number(event.pointerId))
+            ? Number(event.pointerId)
+            : null;
           const dragSize = getCardSize(card);
           const originX = Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : 0;
           const originY = Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : 0;
@@ -2136,14 +2139,34 @@ if ("serviceWorker" in navigator) {
           card.classList.add("is-free-dragging");
           card.style.zIndex = "10000";
           document.body.classList.add("dragging-card");
+          try {
+            if (pointerId !== null && typeof card.setPointerCapture === "function") {
+              card.setPointerCapture(pointerId);
+            }
+          } catch (err) {}
           let rafId = null;
           let pendingMove = null;
           let settled = false;
-          categoryDragState = { card, offsetX, offsetY, originX, originY, cancel: null };
+          categoryDragState = {
+            card,
+            offsetX,
+            offsetY,
+            originX,
+            originY,
+            pointerId,
+            cancel: null
+          };
           ensureDragGuides();
           grid.classList.add("drag-guides-active");
           const move = (moveEvent) => {
             if (!categoryDragState) return;
+            if (
+              categoryDragState.pointerId !== null &&
+              Number.isFinite(Number(moveEvent.pointerId)) &&
+              Number(moveEvent.pointerId) !== categoryDragState.pointerId
+            ) {
+              return;
+            }
             pendingMove = moveEvent;
             if (rafId) return;
             rafId = requestAnimationFrame(() => {
@@ -2165,6 +2188,7 @@ if ("serviceWorker" in navigator) {
             document.removeEventListener("pointermove", move);
             document.removeEventListener("pointerup", handleUp);
             document.removeEventListener("pointercancel", handleCancel);
+            card.removeEventListener("lostpointercapture", handleCancel);
             window.removeEventListener("blur", handleCancel);
             if (rafId) {
               cancelAnimationFrame(rafId);
@@ -2173,11 +2197,30 @@ if ("serviceWorker" in navigator) {
           };
           const finalize = (commit, upEvent) => {
             if (settled) return;
+            if (
+              categoryDragState &&
+              categoryDragState.pointerId !== null &&
+              upEvent &&
+              Number.isFinite(Number(upEvent.pointerId)) &&
+              Number(upEvent.pointerId) !== categoryDragState.pointerId
+            ) {
+              return;
+            }
             settled = true;
             cleanup();
             if (!categoryDragState || categoryDragState.card !== card) {
               return;
             }
+            try {
+              if (
+                categoryDragState.pointerId !== null &&
+                typeof card.releasePointerCapture === "function" &&
+                typeof card.hasPointerCapture === "function" &&
+                card.hasPointerCapture(categoryDragState.pointerId)
+              ) {
+                card.releasePointerCapture(categoryDragState.pointerId);
+              }
+            } catch (err) {}
             if (commit) {
               const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
               const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
@@ -2208,12 +2251,25 @@ if ("serviceWorker" in navigator) {
             categoryDragState = null;
           };
           const handleUp = (upEvent) => finalize(true, upEvent);
-          const handleCancel = () =>
-            finalize(false, { clientX: cardRect.left + offsetX, clientY: cardRect.top + offsetY });
+          const handleCancel = (cancelEvent) => {
+            const fallbackPoint = {
+              clientX: cardRect.left + offsetX,
+              clientY: cardRect.top + offsetY,
+              pointerId
+            };
+            const safePoint =
+              cancelEvent &&
+              Number.isFinite(Number(cancelEvent.clientX)) &&
+              Number.isFinite(Number(cancelEvent.clientY))
+                ? cancelEvent
+                : fallbackPoint;
+            finalize(false, safePoint);
+          };
           categoryDragState.cancel = handleCancel;
           document.addEventListener("pointermove", move);
           document.addEventListener("pointerup", handleUp, { once: true });
           document.addEventListener("pointercancel", handleCancel, { once: true });
+          card.addEventListener("lostpointercapture", handleCancel, { once: true });
           window.addEventListener("blur", handleCancel, { once: true });
         });
       }
