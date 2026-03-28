@@ -443,7 +443,7 @@ if ("serviceWorker" in navigator) {
             allCategories = categories;
             renderCategorySelect(categories, selectedName);
             refreshBulkMoveOptions();
-            if (Array.isArray(allLinks) && allLinks.length) {
+            if (Array.isArray(allLinks)) {
               renderLinks(allLinks);
               renderDockLinks(allLinks);
             }
@@ -905,6 +905,12 @@ if ("serviceWorker" in navigator) {
           : [];
         preferredOrder.forEach((name) => {
           if (groups[name]) {
+            order.push(name);
+          }
+        });
+        preferredOrder.forEach((name) => {
+          if (!order.includes(name)) {
+            groups[name] = groups[name] || [];
             order.push(name);
           }
         });
@@ -4275,7 +4281,9 @@ if ("serviceWorker" in navigator) {
         });
       }
       if (addLinkEntryBtn) {
-        addLinkEntryBtn.addEventListener("click", () => {
+        addLinkEntryBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           closeModal(addMenuModal);
           returnToMode = currentMode;
           editingLinkId = null;
@@ -4333,7 +4341,9 @@ if ("serviceWorker" in navigator) {
         });
       }
       if (manageCategoryEntryBtn) {
-        manageCategoryEntryBtn.addEventListener("click", () => {
+        manageCategoryEntryBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
           closeModal(addMenuModal);
           loadCategories().then((categories) => {
             renderCategoryManager(categories);
@@ -4779,12 +4789,23 @@ if ("serviceWorker" in navigator) {
             credentials: "same-origin",
             body: JSON.stringify(payload)
           })
-            .then((res) => {
-              if (!res.ok) throw new Error("Failed to save");
+            .then(async (res) => {
+              if (!res.ok) {
+                let message = "保存失败";
+                try {
+                  const data = await res.json();
+                  message = data?.detail || data?.error || message;
+                } catch (err) {}
+                throw new Error(message);
+              }
               closeEditModalToPreview();
               return fetchLinks();
             })
-            .catch(() => {});
+            .catch((err) => {
+              const message = err?.message || "保存失败";
+              showToast(message);
+              alert(message);
+            });
         });
 
       if (exportBtn) {
