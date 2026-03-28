@@ -2082,138 +2082,139 @@ if ("serviceWorker" in navigator) {
 
       function initCategoryFreeDrag() {
         if (!grid) return;
-        if (viewMode !== "card") return;
-        if (window.innerWidth < 768) return;
-        const cards = getCategoryCards();
-        cards.forEach((card) => {
-          if (card.classList.contains("category-add-card")) return;
-          if (card.dataset.freeDragBound) return;
-          card.dataset.freeDragBound = "true";
-          card.addEventListener("pointerdown", (event) => {
-            if (event.button !== 0 && event.pointerType !== "touch") {
+        if (grid.dataset.freeDragBound) return;
+        grid.dataset.freeDragBound = "true";
+        grid.addEventListener("pointerdown", (event) => {
+          if (viewMode !== "card" || window.innerWidth < 768) {
+            return;
+          }
+          const card = event.target.closest(".category-card");
+          if (!card || !grid.contains(card) || card.classList.contains("category-add-card")) {
+            return;
+          }
+          if (event.button !== 0 && event.pointerType !== "touch") {
+            return;
+          }
+          if (
+            event.target.closest(".app, .icon, .page-arrow, .pagination-dots, .rename-input")
+          ) {
+            return;
+          }
+          if (currentMode !== "sort" && !sortUnlocked) {
+            if (!editing && !deleting) {
+              setActiveMode("sort");
+            }
+          }
+          if (currentMode !== "sort" && !sortUnlocked) {
+            return;
+          }
+          if (!document.body.classList.contains("mode-sort")) {
+            document.body.classList.add("mode-sort");
+          }
+          ensureSortSession();
+          if (!categoryLayoutState) {
+            applyCategoryFreeLayout();
+          }
+          const state = categoryLayoutState;
+          if (!state) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (categoryDragState && categoryDragState.cancel) {
+            try {
+              categoryDragState.cancel();
+            } catch (err) {}
+            categoryDragState = null;
+          }
+          const gridRect = grid.getBoundingClientRect();
+          const cardRect = card.getBoundingClientRect();
+          const offsetX = event.clientX - cardRect.left;
+          const offsetY = event.clientY - cardRect.top;
+          const dragSize = getCardSize(card);
+          const originX = Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : 0;
+          const originY = Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : 0;
+          state.placed = state.placed.filter((item) => item.card !== card);
+          card.classList.add("is-free-dragging");
+          card.style.zIndex = "10000";
+          document.body.classList.add("dragging-card");
+          let rafId = null;
+          let pendingMove = null;
+          let settled = false;
+          categoryDragState = { card, offsetX, offsetY, originX, originY, cancel: null };
+          ensureDragGuides();
+          grid.classList.add("drag-guides-active");
+          const move = (moveEvent) => {
+            if (!categoryDragState) return;
+            pendingMove = moveEvent;
+            if (rafId) return;
+            rafId = requestAnimationFrame(() => {
+              rafId = null;
+              if (!categoryDragState || !pendingMove) return;
+              const evt = pendingMove;
+              pendingMove = null;
+              const x = evt.clientX - gridRect.left - offsetX;
+              const y = evt.clientY - gridRect.top - offsetY;
+              card.style.left = `${x}px`;
+              card.style.top = `${y}px`;
+              const relX = evt.clientX - gridRect.left - state.paddingLeft - offsetX;
+              const relY = evt.clientY - gridRect.top - state.paddingTop - offsetY;
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
+              updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
+            });
+          };
+          const cleanup = () => {
+            document.removeEventListener("pointermove", move);
+            document.removeEventListener("pointerup", handleUp);
+            document.removeEventListener("pointercancel", handleCancel);
+            window.removeEventListener("blur", handleCancel);
+            if (rafId) {
+              cancelAnimationFrame(rafId);
+              rafId = null;
+            }
+          };
+          const finalize = (commit, upEvent) => {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            if (!categoryDragState || categoryDragState.card !== card) {
               return;
             }
-            if (
-              event.target.closest(".app, .icon, .page-arrow, .pagination-dots, .rename-input")
-            ) {
-              return;
+            if (commit) {
+              const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
+              const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
+              const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
+              card.dataset.posX = String(target.x);
+              card.dataset.posY = String(target.y);
+              card.style.left = `${state.paddingLeft + target.x}px`;
+              card.style.top = `${state.paddingTop + target.y}px`;
+              state.placed.push({ card, x: target.x, y: target.y, w: dragSize.w, h: dragSize.h });
+              pendingChanges = true;
+              syncAllOrders();
+              updateFreeLayoutMinHeight(state);
+              scheduleAutoSave();
+            } else {
+              const fallbackX = Number.isFinite(originX) ? originX : 0;
+              const fallbackY = Number.isFinite(originY) ? originY : 0;
+              card.dataset.posX = String(fallbackX);
+              card.dataset.posY = String(fallbackY);
+              card.style.left = `${state.paddingLeft + fallbackX}px`;
+              card.style.top = `${state.paddingTop + fallbackY}px`;
+              state.placed.push({ card, x: fallbackX, y: fallbackY, w: dragSize.w, h: dragSize.h });
+              updateFreeLayoutMinHeight(state);
             }
-            if (currentMode !== "sort" && !sortUnlocked) {
-              if (!editing && !deleting) {
-                setActiveMode("sort");
-              }
-            }
-            if (currentMode !== "sort" && !sortUnlocked) {
-              return;
-            }
-            if (!document.body.classList.contains("mode-sort")) {
-              document.body.classList.add("mode-sort");
-            }
-            ensureSortSession();
-            if (!categoryLayoutState) {
-              applyCategoryFreeLayout();
-            }
-            const state = categoryLayoutState;
-            if (!state) return;
-            event.preventDefault();
-            event.stopPropagation();
-            if (categoryDragState && categoryDragState.cancel) {
-              try {
-                categoryDragState.cancel();
-              } catch (err) {}
-              categoryDragState = null;
-            }
-            const gridRect = grid.getBoundingClientRect();
-            const cardRect = card.getBoundingClientRect();
-            const offsetX = event.clientX - cardRect.left;
-            const offsetY = event.clientY - cardRect.top;
-            const dragSize = getCardSize(card);
-            const originX = Number.isFinite(Number(card.dataset.posX)) ? Number(card.dataset.posX) : 0;
-            const originY = Number.isFinite(Number(card.dataset.posY)) ? Number(card.dataset.posY) : 0;
-            state.placed = state.placed.filter((item) => item.card !== card);
-            card.classList.add("is-free-dragging");
-            card.style.zIndex = "10000";
-            document.body.classList.add("dragging-card");
-            let rafId = null;
-            let pendingMove = null;
-            let settled = false;
-            categoryDragState = { card, offsetX, offsetY, originX, originY, cancel: null };
-            ensureDragGuides();
-            grid.classList.add("drag-guides-active");
-            const move = (moveEvent) => {
-              if (!categoryDragState) return;
-              pendingMove = moveEvent;
-              if (rafId) return;
-              rafId = requestAnimationFrame(() => {
-                rafId = null;
-                if (!categoryDragState || !pendingMove) return;
-                const evt = pendingMove;
-                pendingMove = null;
-                const x = evt.clientX - gridRect.left - offsetX;
-                const y = evt.clientY - gridRect.top - offsetY;
-                card.style.left = `${x}px`;
-                card.style.top = `${y}px`;
-                const relX = evt.clientX - gridRect.left - state.paddingLeft - offsetX;
-                const relY = evt.clientY - gridRect.top - state.paddingTop - offsetY;
-                const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
-                updateDragGuides(state.paddingLeft + target.x, state.paddingTop + target.y);
-              });
-            };
-            const cleanup = () => {
-              document.removeEventListener("pointermove", move);
-              document.removeEventListener("pointerup", handleUp);
-              document.removeEventListener("pointercancel", handleCancel);
-              window.removeEventListener("blur", handleCancel);
-              if (rafId) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-              }
-            };
-            const finalize = (commit, upEvent) => {
-              if (settled) return;
-              settled = true;
-              cleanup();
-              if (!categoryDragState || categoryDragState.card !== card) {
-                return;
-              }
-              if (commit) {
-                const relX = upEvent.clientX - gridRect.left - state.paddingLeft - offsetX;
-                const relY = upEvent.clientY - gridRect.top - state.paddingTop - offsetY;
-                const target = findFreePosition(state, relX, relY, dragSize, card, { snap: false, step: 6 });
-                card.dataset.posX = String(target.x);
-                card.dataset.posY = String(target.y);
-                card.style.left = `${state.paddingLeft + target.x}px`;
-                card.style.top = `${state.paddingTop + target.y}px`;
-                state.placed.push({ card, x: target.x, y: target.y, w: dragSize.w, h: dragSize.h });
-                pendingChanges = true;
-                syncAllOrders();
-                updateFreeLayoutMinHeight(state);
-                scheduleAutoSave();
-              } else {
-                const fallbackX = Number.isFinite(originX) ? originX : 0;
-                const fallbackY = Number.isFinite(originY) ? originY : 0;
-                card.dataset.posX = String(fallbackX);
-                card.dataset.posY = String(fallbackY);
-                card.style.left = `${state.paddingLeft + fallbackX}px`;
-                card.style.top = `${state.paddingTop + fallbackY}px`;
-                state.placed.push({ card, x: fallbackX, y: fallbackY, w: dragSize.w, h: dragSize.h });
-                updateFreeLayoutMinHeight(state);
-              }
-              card.classList.remove("is-free-dragging");
-              card.style.zIndex = "";
-              clearDragGuides();
-              document.body.classList.remove("dragging-card");
-              categoryDragState = null;
-            };
-            const handleUp = (upEvent) => finalize(true, upEvent);
-            const handleCancel = () =>
-              finalize(false, { clientX: cardRect.left + offsetX, clientY: cardRect.top + offsetY });
-            categoryDragState.cancel = handleCancel;
-            document.addEventListener("pointermove", move);
-            document.addEventListener("pointerup", handleUp, { once: true });
-            document.addEventListener("pointercancel", handleCancel, { once: true });
-            window.addEventListener("blur", handleCancel, { once: true });
-          });
+            card.classList.remove("is-free-dragging");
+            card.style.zIndex = "";
+            clearDragGuides();
+            document.body.classList.remove("dragging-card");
+            categoryDragState = null;
+          };
+          const handleUp = (upEvent) => finalize(true, upEvent);
+          const handleCancel = () =>
+            finalize(false, { clientX: cardRect.left + offsetX, clientY: cardRect.top + offsetY });
+          categoryDragState.cancel = handleCancel;
+          document.addEventListener("pointermove", move);
+          document.addEventListener("pointerup", handleUp, { once: true });
+          document.addEventListener("pointercancel", handleCancel, { once: true });
+          window.addEventListener("blur", handleCancel, { once: true });
         });
       }
 
@@ -3848,7 +3849,7 @@ if ("serviceWorker" in navigator) {
           editSaveBtn.disabled = !pendingChanges;
         }
         if (editCancelBtn) {
-          editCancelBtn.disabled = !pendingChanges;
+          editCancelBtn.disabled = false;
         }
         if (toolbarAddLinkBtn) {
           toolbarAddLinkBtn.classList.toggle("hidden", currentMode !== "delete");
@@ -3919,6 +3920,9 @@ if ("serviceWorker" in navigator) {
 
       function cancelPendingChanges() {
         if (!pendingChanges) {
+          if (isWorkMode()) {
+            setActiveMode("preview");
+          }
           updateEditToolbarState();
           return;
         }
@@ -3934,6 +3938,7 @@ if ("serviceWorker" in navigator) {
           .catch(() => {})
           .finally(() => {
             fetchLinks();
+            setActiveMode("preview");
             updateEditToolbarState();
             showToast("已取消更改");
           });

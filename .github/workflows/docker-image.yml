@@ -15,6 +15,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Read app version
+        id: appver
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> "$GITHUB_OUTPUT"
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -29,4 +33,6 @@ jobs:
           push: true
           tags: |
             ghcr.io/bigcaole/ios-nav:latest
+            ghcr.io/bigcaole/ios-nav:v${{ steps.appver.outputs.version }}
+            ghcr.io/bigcaole/ios-nav:v${{ steps.appver.outputs.version }}-${{ github.run_number }}
             ghcr.io/bigcaole/ios-nav:${{ github.sha }}
